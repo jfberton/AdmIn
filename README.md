@@ -1,5 +1,4 @@
-# README del Proyecto
-## Administación de Inmuebles
+# Administación de Inmuebles - AdmIn
 
 ## Descripción del Proyecto
 
