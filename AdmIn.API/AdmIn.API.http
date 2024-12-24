@@ -1,0 +1,6 @@
+@AdmIn.API_HostAddress = http://localhost:5291
+
+GET {{AdmIn.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
