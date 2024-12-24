@@ -1,5 +1,5 @@
 # README del Proyecto
-##Administación de Inmuebles
+## Administación de Inmuebles
 
 ## Descripción del Proyecto
 
