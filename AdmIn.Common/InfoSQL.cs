@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace AdmIn.Data.Utilitarios
+namespace AdmIn.Common
 {
     public static class InfoSQL
     {

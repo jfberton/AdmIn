@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
+using AdmIn.Common;
 using AdmIn.Data.Entidades;
 using AdmIn.Data.Utilitarios;
 using Microsoft.Data.SqlClient;

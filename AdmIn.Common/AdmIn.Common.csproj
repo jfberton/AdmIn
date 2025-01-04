@@ -6,9 +6,4 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\AdmIn.Common\AdmIn.Common.csproj" />
-    <ProjectReference Include="..\AdmIn.Data\AdmIn.Data.csproj" />
-  </ItemGroup>
-
 </Project>
