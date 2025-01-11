@@ -1,7 +1,21 @@
-﻿@page "/"
+﻿ @page "/home"
+
+@inject NotificationService NotificationService
 
 <PageTitle>Home</PageTitle>
 
 <h1>Hello, world!</h1>
 
 Welcome to your new app.
+
+<RadzenButton Text="Show success notification" Style="width: 100%;"
+                ButtonStyle="ButtonStyle.Success"
+                Click=@(args => ShowNotification(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = "Success Summary", Detail = "Success Detail", Duration = 4000 })) />
+@code {
+
+    void ShowNotification(NotificationMessage message)
+    {
+        NotificationService.Notify(message);
+    }
+}
+ 

@@ -1,23 +1,195 @@
-﻿@inherits LayoutComponentBase
+﻿@using AdmIn.UI.Authentication
+@using AdmIn.UI.Services;
+@using Microsoft.AspNetCore.Components.Authorization
 
-<div class="page">
-    <div class="sidebar">
-        <NavMenu />
-    </div>
+@inherits LayoutComponentBase
 
-    <main>
-        <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
+@inject NavigationManager navManager
+@inject AuthenticationStateProvider authStateProvider
+@inject DialogService dialogService
+@inject NotificationService notificationService
+@inject IJSRuntime JS
+@inject DeviceService DeviceService
+@inject PageTitleService PageTitleService
+
+<RadzenDialog />
+<RadzenNotification />
+<RadzenContextMenu />
+<RadzenTooltip />
+<RadzenComponents />
+
+<RadzenComponents @rendermode="InteractiveServer" />
+
+
+<RadzenLayout>
+    @if (DeviceService.IsMobileDevice())
+    {
+        <RadzenHeader>
+            <RadzenRow>
+                <RadzenColumn Size="12">
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center">
+                        <RadzenSidebarToggle Click="@(() => sidebar1Expanded = !sidebar1Expanded)" />
+                        <RadzenLabel Text="AdmIn" />
+                    </RadzenStack>
+                    <RadzenText TextStyle="TextStyle.Body1" Style="display:flex; justify-content:center; align-items:center; width:100%;" class="rz-color-white">
+                        <strong>@PageTitleService.Titulo</strong>
+                        @if (!string.IsNullOrEmpty(PageTitleService.Subtitulo))
+                        {
+                            <span>&nbsp;- @PageTitleService.Subtitulo</span>
+                        }
+                    </RadzenText>
+                </RadzenColumn>
+            </RadzenRow>
+        </RadzenHeader>
+    }
+    else
+    {
+        <RadzenHeader>
+            <RadzenRow>
+                <RadzenColumn Size="11">
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center">
+                        <RadzenSidebarToggle Click="@(() => sidebar1Expanded = !sidebar1Expanded)" />
+                        <RadzenLabel Text="AdmIn" />
+                    </RadzenStack>
+                    <RadzenText TextStyle="TextStyle.Body1" Style="display:flex; justify-content:center; align-items:center; width:100%;" class="rz-color-white">
+                        <strong>@PageTitleService.Titulo</strong>
+                        @if (!string.IsNullOrEmpty(PageTitleService.Subtitulo))
+                        {
+                            <span>&nbsp;- @PageTitleService.Subtitulo</span>
+                        }
+
+                    </RadzenText>
+                </RadzenColumn>
+                <RadzenColumn>
+                    <AuthorizeView>
+                        <Authorized>
+                            <RadzenProfileMenu>
+                                <Template>
+                                    <RadzenImage class="rz-gravatar" Path="img/usuario.png"></RadzenImage>
+                                </Template>
+                                <ChildContent>
+                                    <RadzenStack Gap="0" Orientation="Orientation.Vertical" AlignItems="AlignItems.Center" class="rz-p-2">
+                                        <RadzenText TextStyle="TextStyle.Overline">Bienvenido</RadzenText>
+                                        <RadzenText TextStyle="TextStyle.Body1"><b>@userName</b></RadzenText>
+                                        <RadzenButton Icon="password" Variant="Variant.Text" Size="ButtonSize.Small" Click="@(() => CambiarPassword())">Cambiar contraseña</RadzenButton>
+                                        <RadzenButton Icon="logout" Variant="Variant.Text" Size="ButtonSize.Small" Click="@(() => Logout())">Cerrar sesión</RadzenButton>
+                                    </RadzenStack>
+                                </ChildContent>
+                            </RadzenProfileMenu>
+                        </Authorized>
+                    </AuthorizeView>
+                </RadzenColumn>
+            </RadzenRow>
+        </RadzenHeader>
+    }
+
+
+    <RadzenSidebar @bind-Expanded="@sidebar1Expanded">
+        <RadzenPanelMenu>
+            
+            <MenuItem Text="Usuarios" Icon="groups" Path="/usuarios" Roles="admin_usuario" OnMenuItemClick="@OnMenuItemClick" />
+
+            @if (DeviceService.IsMobileDevice())
+            {
+                <RadzenPanelMenuItem Text="Sesión" Icon="account_circle">
+                    <RadzenPanelMenuItem TextStyle="TextStyle.Subtitle2" Text="@userName" Click="@(() => OnMenuItemClick())"></RadzenPanelMenuItem>
+                    <RadzenPanelMenuItem Text="Cambiar contraseña" Icon="password" Click="@(() => CambiarPassword())"></RadzenPanelMenuItem>
+                    <RadzenPanelMenuItem Text="Cerrar sesión" Icon="logout" Click="@(() => Logout())"></RadzenPanelMenuItem>
+                </RadzenPanelMenuItem>
+            }
+        </RadzenPanelMenu>
+    </RadzenSidebar>
+
+    <RadzenBody>
+        <div class="rz-p-4">
+            <AuthorizeView>
+                <Authorized>
+                    @Body
+                </Authorized>
+                <NotAuthorized>
+                    <h1>Hola invitado!</h1>
+                    Debes <a href="/">iniciar sesión</a> para acceder a la aplicación.
+                </NotAuthorized>
+            </AuthorizeView>
         </div>
-
-        <article class="content px-4">
-            @Body
-        </article>
-    </main>
-</div>
+    </RadzenBody>
+    <RadzenFooter>
+        <div class="d-flex justify-content-center">@footerText</div>
+    </RadzenFooter>
+</RadzenLayout>
 
 <div id="blazor-error-ui">
     An unhandled error has occurred.
     <a href="" class="reload">Reload</a>
     <a class="dismiss">🗙</a>
 </div>
+
+@code {
+
+    bool sidebar1Expanded = true;
+    string footerText = $"Sistema de administración de inmuebles - {DateTime.Now.Year}";
+
+    private string userName;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await authStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        userName = user.FindFirst("Nombre")?.Value ?? "Invitado";
+    }
+
+    protected override void OnInitialized()
+    {
+        PageTitleService.Register(async () => await InvokeAsync(StateHasChanged));
+    }
+
+    protected override void OnParametersSet()
+    {
+        PageTitleService.ResetTitle();
+    }
+
+    private async Task Logout()
+    {
+        var customAuthStateProvider = authStateProvider as CustomAuthenticationStateProvider;
+        customAuthStateProvider.UpdateAuthenticationState(null);
+        navManager.NavigateTo("/", true);
+    }
+
+    private async Task OnMenuItemClick()
+    {
+        if (DeviceService.IsMobileDevice())
+        {
+            sidebar1Expanded = false;
+        }
+    }
+
+    private async Task CambiarPassword()
+    {
+        // B_Usuario usuario = new B_Usuario();
+        // var authState = await authStateProvider.GetAuthenticationStateAsync();
+        // usuario.Email = authState.User.Identity.Name;
+
+        // sidebar1Expanded = false;
+
+        // Respuesta_dialogo rd = (Respuesta_dialogo)await dialogService.OpenAsync<Dialog_cambio_clave_usuario>($"Modificar contraseña",
+        // new Dictionary<string, object>() { { "usuario", usuario } },
+        // new DialogOptions()
+        //     {
+        //         Width = "600px",
+        //         Height = "auto",
+        //         Resizable = true,
+        //         Draggable = true,
+        //         ShowClose = false
+        //     }
+        // );
+
+        // if (rd != null && rd.Nombre_dialogo == "Modificar contraseña" && !rd.Error)
+        // {
+        //     notificationService.Notify(NotificationSeverity.Success, "Contraseña actualizada correctamente", $"La contraseña del usuario {rd.Valor_respuesta.Nombre} se modificó correctamente.-");
+        // }
+
+        // if (rd != null && rd.Nombre_dialogo == "Modificar contraseña" && rd.Error)
+        //     notificationService.Notify(NotificationSeverity.Error, "Error al modificar la contraseña", $"Error: {rd.Error_mensaje}");
+
+    }
+}

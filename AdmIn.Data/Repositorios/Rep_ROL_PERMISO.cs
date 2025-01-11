@@ -3,67 +3,66 @@ using AdmIn.Data.Entidades;
 using AdmIn.Common;
 using Microsoft.Data.SqlClient;
 using System.Data;
-using System.Collections.Generic;
 
 namespace AdmIn.Data.Repositorios
 {
-    public class Rep_USUARIO_ROL : IRepoBase<USUARIO_ROL>
+    public class Rep_ROL_PERMISO : IRepoBase<ROL_PERMISO>
     {
-        public async Task<DTO<USUARIO_ROL>> Crear(USUARIO_ROL usuarioRol)
+        public async Task<DTO<ROL_PERMISO>> Crear(ROL_PERMISO rolPermiso)
         {
-            if (usuarioRol.USU_ID == 0 || usuarioRol.ROL_ID == 0)
+            if (rolPermiso.ROL_ID == 0 || rolPermiso.PERM_ID == 0)
             {
-                return new DTO<USUARIO_ROL>
+                return new DTO<ROL_PERMISO>
                 {
                     Correcto = false,
-                    Mensaje = "El ID de usuario y el ID de rol no pueden ser cero."
+                    Mensaje = "El ID del rol y el permiso no pueden ser cero."
                 };
             }
 
-            return MiSqlHelper.EjecutarComando("sp_UsuarioRol_Insertar",
+            return MiSqlHelper.EjecutarComando("sp_RolPermiso_Insertar",
                 comando =>
                 {
-                    comando.Parameters.AddWithValue("@USU_ID", usuarioRol.USU_ID);
-                    comando.Parameters.AddWithValue("@ROL_ID", usuarioRol.ROL_ID);
+                    comando.Parameters.AddWithValue("@ROL_ID", rolPermiso.ROL_ID);
+                    comando.Parameters.AddWithValue("@PERM_ID", rolPermiso.PERM_ID);
                 },
                 comando =>
                 {
                     comando.ExecuteNonQuery();
-                    return usuarioRol;
+                    return rolPermiso;
                 });
         }
 
-        public async Task<DTO<USUARIO_ROL>> Actualizar(USUARIO_ROL usuarioRol)
+        public async Task<DTO<ROL_PERMISO>> Actualizar(ROL_PERMISO rolPermiso)
         {
-            return new DTO<USUARIO_ROL>
+            return new DTO<ROL_PERMISO>
             {
                 Correcto = false,
-                Mensaje = "No es posible actualizar una relación entre usuario y rol."
+                Mensaje = "No es posible actualizar una relación entre rol y permiso."
             };
-
         }
 
-        public async Task<DTO<bool>> Eliminar(USUARIO_ROL entidad)
+        public async Task<DTO<bool>> Eliminar(ROL_PERMISO rol_permiso)
         {
-            return MiSqlHelper.EjecutarComando("sp_UsuarioRol_Eliminar",
-            comando =>
-            {
-                comando.Parameters.AddWithValue("@USU_ID", entidad.USU_ID);
-                comando.Parameters.AddWithValue("@ROL_ID", entidad.ROL_ID);
-            },
-            comando =>
-            {
-                comando.ExecuteNonQuery();
-                return true;
-            });
+            return MiSqlHelper.EjecutarComando("sp_RolPermiso_Eliminar",
+                comando =>
+                {
+                    comando.Parameters.AddWithValue("@ROL_ID", rol_permiso.ROL_ID);
+                    comando.Parameters.AddWithValue("@PERM_ID", rol_permiso.PERM_ID);
+                },
+                comando =>
+                {
+                    comando.ExecuteNonQuery();
+                    return true;
+                });
         }
 
-        public async Task<DTO<USUARIO_ROL?>> Obtener_por_id(USUARIO_ROL entidad)
+        public async Task<DTO<ROL_PERMISO?>> Obtener_por_id(ROL_PERMISO entidad)
         {
-            return MiSqlHelper.EjecutarComando("sp_UsuarioRol_ObtenerPorId",
-                comando => {
-                    comando.Parameters.AddWithValue("@USU_ID", entidad.USU_ID);
+            return MiSqlHelper.EjecutarComando("sp_RolPermiso_ObtenerPorId",
+                comando =>
+                {
                     comando.Parameters.AddWithValue("@ROL_ID", entidad.ROL_ID);
+                    comando.Parameters.AddWithValue("@PERM_ID", entidad.PERM_ID);
                 },
                 comando =>
                 {
@@ -71,10 +70,10 @@ namespace AdmIn.Data.Repositorios
                     {
                         if (lector.Read())
                         {
-                            return new USUARIO_ROL
+                            return new ROL_PERMISO
                             {
-                                USU_ID = lector.GetInt32(0),
-                                ROL_ID = lector.GetInt32(1)
+                                ROL_ID = lector.GetInt32(0),
+                                PERM_ID = lector.GetInt32(1)
                             };
                         }
                         return null;
@@ -82,21 +81,21 @@ namespace AdmIn.Data.Repositorios
                 });
         }
 
-        public async Task<DTO<IEnumerable<USUARIO_ROL>>> Obtener_por_usuario(int id)
+        public async Task<DTO<IEnumerable<ROL_PERMISO>>> Obtener_por_rol(int rol_id)
         {
-            return MiSqlHelper.EjecutarComando("sp_UsuarioRol_ObtenerPorUsuario",
-                comando => comando.Parameters.AddWithValue("@USU_ID", id),
+            return MiSqlHelper.EjecutarComando("sp_RolPermiso_ObtenerPorRol",
+                 comando => comando.Parameters.AddWithValue("@ROL_ID", rol_id),
                 comando =>
                 {
-                    var lista = new List<USUARIO_ROL>();
+                    var lista = new List<ROL_PERMISO>();
                     using (var lector = comando.ExecuteReader())
                     {
                         while (lector.Read())
                         {
-                            lista.Add(new USUARIO_ROL
+                            lista.Add(new ROL_PERMISO
                             {
-                                USU_ID = lector.GetInt32(0),
-                                ROL_ID = lector.GetInt32(1)
+                                ROL_ID = lector.GetInt32(0),
+                                PERM_ID = lector.GetInt32(1)
                             });
                         }
                     }
@@ -104,21 +103,22 @@ namespace AdmIn.Data.Repositorios
                 });
         }
 
-        public async Task<DTO<IEnumerable<USUARIO_ROL>>> Obtener_todos()
+
+        public async Task<DTO<IEnumerable<ROL_PERMISO>>> Obtener_todos()
         {
-            return MiSqlHelper.EjecutarComando("sp_UsuarioRol_ObtenerTodos",
+            return MiSqlHelper.EjecutarComando("sp_RolPermiso_ObtenerTodos",
                 null,
                 comando =>
                 {
-                    var lista = new List<USUARIO_ROL>();
+                    var lista = new List<ROL_PERMISO>();
                     using (var lector = comando.ExecuteReader())
                     {
                         while (lector.Read())
                         {
-                            lista.Add(new USUARIO_ROL
+                            lista.Add(new ROL_PERMISO
                             {
-                                USU_ID = lector.GetInt32(0),
-                                ROL_ID = lector.GetInt32(1)
+                                ROL_ID = lector.GetInt32(0),
+                                PERM_ID = lector.GetInt32(1)
                             });
                         }
                     }
@@ -126,12 +126,12 @@ namespace AdmIn.Data.Repositorios
                 });
         }
 
-        public async Task<DTO<Items_pagina<USUARIO_ROL>>> Obtener_paginado(Filtros_paginado filtros)
+        public async Task<DTO<Items_pagina<ROL_PERMISO>>> Obtener_paginado(Filtros_paginado filtros)
         {
             try
             {
                 // Construcción de la cláusula ORDER BY
-                string orderByClause = string.IsNullOrEmpty(filtros.OrderBy) ? "ORDER BY USU_ID" : $"ORDER BY {filtros.OrderBy}";
+                string orderByClause = string.IsNullOrEmpty(filtros.OrderBy) ? "ORDER BY ROL_PERMISO_ID" : $"ORDER BY {filtros.OrderBy}";
 
                 // Construcción del filtro WHERE dinámico
                 string whereClause = string.IsNullOrEmpty(filtros.Filter) ? "" : $"WHERE {filtros.WhereClause()}";
@@ -142,12 +142,10 @@ namespace AdmIn.Data.Repositorios
                                     SELECT *, ROW_NUMBER() OVER ({orderByClause}) AS RowNum
                                     FROM 
                                         (-- CONSULTA QUE AGRUPA LAS TABLAS RELACIONADAS PARA HACER EL FILTRO DEL WHERE
-                                            SELECT DISTINCT USUARIO_ROL.*, ROL.ROL_NOMBRE, PERMISO.PERM_NOMBRE
+                                            SELECT DISTINCT RP.*
                                             FROM
-                                                USUARIO_ROL
-                                                JOIN ROL ON USUARIO_ROL.ROL_ID = ROL.ROL_ID
-                                                JOIN ROL_PERMISO ON ROL.ROL_ID = ROL_PERMISO.ROL_ID
-                                                JOIN PERMISO ON ROL_PERMISO.PERM_ID = PERMISO.PERM_ID
+                                                ROL_PERMISO
+                                                INNER JOIN PERMISO ON ROL_PERMISO.PERM_ID = PERMISO.PERM_ID
                                             {whereClause}
                                         ) AUX
                                 ) AS PaginatedQuery
@@ -159,34 +157,32 @@ namespace AdmIn.Data.Repositorios
                                     SELECT COUNT(*)
                                     FROM 
                                        (-- CONSULTA QUE AGRUPA LAS TABLAS RELACIONADAS PARA HACER EL FILTRO DEL WHERE
-                                            SELECT DISTINCT USUARIO_ROL.*
+                                            SELECT DISTINCT RP.*
                                             FROM
-                                                USUARIO_ROL
-                                                JOIN ROL ON USUARIO_ROL.ROL_ID = ROL.ROL_ID
-                                                JOIN ROL_PERMISO ON ROL.ROL_ID = ROL_PERMISO.ROL_ID
-                                                JOIN PERMISO ON ROL_PERMISO.PERM_ID = PERMISO.PERM_ID
+                                                ROL_PERMISO
+                                                INNER JOIN PERMISO ON ROL_PERMISO.PERM_ID = PERMISO.PERM_ID
                                             {whereClause}
                                         ) AUX";
 
-                // Ejecutamos la consulta principal para obtener los usuarios y roles paginados
-                DTO<List<USUARIO_ROL>> resultado = MiSqlHelper.EjecutarComando(
+                // Ejecutamos la consulta principal para obtener los rol-permiso paginados
+                DTO<List<ROL_PERMISO>> resultado = MiSqlHelper.EjecutarComando(
                     query,
                     null,
                     comando =>
                     {
-                        var usuarioRoles = new List<USUARIO_ROL>();
+                        var rolesPermisos = new List<ROL_PERMISO>();
                         using (var lector = comando.ExecuteReader())
                         {
                             while (lector.Read())
                             {
-                                usuarioRoles.Add(new USUARIO_ROL
+                                rolesPermisos.Add(new ROL_PERMISO
                                 {
-                                    USU_ID = lector.GetInt32(0),
-                                    ROL_ID = lector.GetInt32(1)
+                                    ROL_ID = lector.GetInt32(0),
+                                    PERM_ID = lector.GetInt32(1)
                                 });
                             }
                         }
-                        return usuarioRoles;
+                        return rolesPermisos;
                     },
                     CommandType.Text
                 );
@@ -204,30 +200,31 @@ namespace AdmIn.Data.Repositorios
                     throw new Exception($"{resultado.Mensaje} {totalRegistros.Mensaje}");
                 }
 
-                // Creamos el objeto de la página de usuario roles
-                var itemsPagina = new Items_pagina<USUARIO_ROL>
+                // Creamos el objeto de la página de rol-permiso
+                var itemsPagina = new Items_pagina<ROL_PERMISO>
                 {
                     Items = resultado.Datos,
                     Total_items = totalRegistros.Datos
                 };
 
-                return new DTO<Items_pagina<USUARIO_ROL>>
+                return new DTO<Items_pagina<ROL_PERMISO>>
                 {
                     Datos = itemsPagina,
                     Correcto = true,
-                    Mensaje = "Usuarios y roles de la página obtenidos correctamente"
+                    Mensaje = "Roles-Permisos de la página obtenidos correctamente"
                 };
             }
             catch (Exception ex)
             {
-                return new DTO<Items_pagina<USUARIO_ROL>>
+                return new DTO<Items_pagina<ROL_PERMISO>>
                 {
                     Datos = null,
                     Correcto = false,
-                    Mensaje = $"Error al obtener la lista de usuarios y roles de la página: {ex.Message}"
+                    Mensaje = $"Error al obtener la lista de roles-permisos de la página: {ex.Message}"
                 };
             }
         }
     }
 }
+
 

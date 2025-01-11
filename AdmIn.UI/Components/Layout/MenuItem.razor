@@ -1,0 +1,25 @@
+﻿@using Microsoft.AspNetCore.Components.Authorization
+@inject AuthenticationStateProvider authStateProvider
+
+<AuthorizeView Roles="@Roles">
+    <Authorized>
+        <RadzenPanelMenuItem Text="@Text" Icon="@Icon" Path="@Path" Click="@(() => OnMenuItemClick.InvokeAsync())"></RadzenPanelMenuItem>
+    </Authorized>
+</AuthorizeView>
+
+@code {
+    [Parameter]
+    public string Roles { get; set; } = null; // Todos los roles si no se especifica.
+
+    [Parameter]
+    public string Text { get; set; } = string.Empty;
+
+    [Parameter]
+    public string Icon { get; set; } = string.Empty;
+
+    [Parameter]
+    public string Path { get; set; } = string.Empty;
+
+    [Parameter]
+    public EventCallback OnMenuItemClick { get; set; }
+}

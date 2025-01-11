@@ -2,16 +2,26 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 namespace AdmIn.Common
 {
     public class Filtros_paginado
     {
+        [JsonPropertyName("filter")]
         public string? Filter { get; set; }
+
+        [JsonPropertyName("top")]
         public int Top { get; set; }
+
+        [JsonPropertyName("skip")]
         public int Skip { get; set; }
+
+        [JsonPropertyName("orderby")]
         public string? OrderBy { get; set; }
+
+        [JsonPropertyName("entityname")]
         public string EntityName { get; set; }
 
         public string WhereClause()
@@ -115,7 +125,10 @@ namespace AdmIn.Common
 
     public class Items_pagina<T>
     {
+        [JsonPropertyName("items")]
         public ICollection<T> Items { get; set; }
+
+        [JsonPropertyName("total_items")]
         public int Total_items { get; set; }
 
     }

@@ -12,22 +12,143 @@ namespace AdmIn.Business.Servicios
     public class Serv_Usuario : IServ_Usuario
     {
         private readonly Rep_USUARIO _repUsuario;
-        private readonly Rep_ROL _repRol = new Rep_ROL();
-        private readonly Rep_PERMISO _repPermiso = new Rep_PERMISO();
-        private readonly Rep_USUARIO_PERMISO _repUsuarioPermiso = new Rep_USUARIO_PERMISO();
         private readonly Rep_USUARIO_ROL _repUsuarioRol = new Rep_USUARIO_ROL();
+
         public Serv_Usuario()
         {
-            _repRol = new Rep_ROL();
-            _repPermiso = new Rep_PERMISO();
             _repUsuario = new Rep_USUARIO();
-            _repUsuarioPermiso = new Rep_USUARIO_PERMISO();
             _repUsuarioRol = new Rep_USUARIO_ROL();
         }
 
-        public async Task<DTO<Usuario>> ValidarCredenciales(LoginModel login)
+        public async Task<DTO<Usuario>> Crear(Usuario usuario)
         {
-            var rta = _repUsuario.Obtener_por_Email(login.Email);
+            //encripto la contraseña para guardarla en la base de datos
+            usuario.Password = MiHash.GenerarHash(usuario.Password);
+
+            var resultado = await _repUsuario.Crear(usuario.ToDataUSUARIO());
+
+            if (resultado.Correcto && resultado.Datos != null)
+            {
+                usuario.Id = resultado.Datos.USU_ID;
+
+                foreach (var rol in usuario.Roles)
+                {
+                    await _repUsuarioRol.Crear(new USUARIO_ROL() { ROL_ID = rol.Id, USU_ID = usuario.Id });
+                }
+            }
+
+            DTO<Usuario> returns = new DTO<Usuario>();
+            returns.Datos = resultado.Datos.ToBusinessUsuario();
+            returns.Mensaje = resultado.Mensaje;
+            returns.Correcto = resultado.Correcto;
+
+            return returns;
+        }
+
+        public async Task<DTO<Usuario>> Actualizar(Usuario usuario)
+        {
+            var usuarioActualizado = new DTO<Usuario>();
+
+            var usuarioRepo = await _repUsuario.Actualizar(usuario.ToDataUSUARIO());
+            if (usuarioRepo.Correcto && usuarioRepo.Datos != null)
+            {
+                var respuesta = _repUsuarioRol.Obtener_por_usuario(usuario.Id).Result;
+                if (respuesta != null)
+                {
+                    var roles = respuesta.Datos;
+                    foreach (var rol in roles)
+                    {
+                        await _repUsuarioRol.Eliminar(rol);
+                    }
+                }
+
+                foreach (var rol in usuario.Roles)
+                {
+                    await _repUsuarioRol.Crear(new USUARIO_ROL() { ROL_ID = rol.Id, USU_ID = usuario.Id });
+                }
+            }
+
+            DTO<Usuario> returns = new DTO<Usuario>();
+            returns.Datos = usuarioRepo.Datos.ToBusinessUsuario();
+            returns.Mensaje = usuarioRepo.Mensaje;
+            returns.Correcto = usuarioRepo.Correcto;
+
+            return returns;
+        }
+
+        public async Task<DTO<bool>> Eliminar(Usuario usuario)
+        {
+            var resultado = await _repUsuario.Eliminar(usuario.ToDataUSUARIO());
+            return resultado;
+        }
+
+        public async Task<DTO<Items_pagina<Usuario>>> Obtener_paginado(Filtros_paginado filtros)
+        {
+            var resultado = new DTO<Items_pagina<Usuario>>
+            {
+                Datos = new Items_pagina<Usuario>
+                {
+                    Items = new List<Usuario>(),
+                    Total_items = 0
+                }
+            };
+
+            filtros.EntityName = "Usuario";
+
+            var usuariosRepo = await _repUsuario.Obtener_paginado(filtros);
+            if (usuariosRepo.Correcto && usuariosRepo.Datos != null)
+            {
+                resultado.Correcto = true;
+                resultado.Mensaje = "Usuarios obtenidos exitosamente";
+                resultado.Datos.Items = usuariosRepo.Datos.Items.Select(u=>u.ToBusinessUsuario()).ToList();
+                resultado.Datos.Total_items = usuariosRepo.Datos.Total_items;
+            }
+            else
+            {
+                resultado.Correcto = false;
+                resultado.Mensaje = "Error al obtener los usuarios.";
+            }
+
+            return resultado;
+        }
+
+        public async Task<DTO<IEnumerable<Usuario>>> Obtener_todos()
+        {
+            var resultado = new DTO<IEnumerable<Usuario>>();
+
+            var usuariosRepo = await _repUsuario.Obtener_todos();
+            if (usuariosRepo.Correcto && usuariosRepo.Datos != null)
+            {
+                resultado.Correcto = true;
+                resultado.Mensaje = "Usuarios obtenidos exitosamente";
+                resultado.Datos = usuariosRepo.Datos.Select(u => u.ToBusinessUsuario()).ToList();
+            }
+            else
+            {
+                resultado.Correcto = false;
+                resultado.Mensaje = usuariosRepo.Mensaje ?? "Error al obtener los usuarios.";
+                resultado.Datos = null;
+            }
+
+            return resultado;
+        }
+
+        public async Task<DTO<Usuario>> Obtener_por_id(Usuario usuario)
+        {
+            var usuarioData = new DTO<Usuario>();
+
+            var usuarioRepo = await _repUsuario.Obtener_por_id(usuario.ToDataUSUARIO());
+            if (usuarioRepo.Correcto && usuarioRepo.Datos != null)
+            {
+                usuarioData.Datos = usuarioRepo.Datos.ToBusinessUsuario();
+            }
+
+            return usuarioData;
+        }
+
+        public async Task<DTO<Usuario>> Validar_credenciales(LoginModel login)
+        {
+            var rta = await _repUsuario.Obtener_por_email(login.Email);
 
             string password_hasheado = MiHash.GenerarHash(login.Password);
 
@@ -64,52 +185,11 @@ namespace AdmIn.Business.Servicios
             }
         }
 
-        public async Task<DTO<Items_pagina<Usuario>>> Obtener_usuarios(Filtros_paginado filtros)
-        {
-            var resultado = new DTO<Items_pagina<Usuario>>
-            {
-                Datos = new Items_pagina<Usuario>
-                {
-                    Items = new List<Usuario>(),
-                    Total_items = 0
-                }
-            };
-
-            filtros.EntityName = "Usuario";
-
-            var usuariosRepo = _repUsuario.Obtener_lista_pagina_usuarios(filtros);
-            if (usuariosRepo.Correcto && usuariosRepo.Datos != null)
-            {
-                resultado.Datos.Items = usuariosRepo.Datos.Items.Select(u=>u.ToBusinessUsuario()).ToList();
-                resultado.Datos.Total_items = usuariosRepo.Datos.Total_items;
-            }
-            else
-            {
-                resultado.Correcto = false;
-                resultado.Mensaje = "Error al obtener los usuarios.";
-            }
-
-            return resultado;
-        }
-
-        public async Task<DTO<Usuario>> Obtener_usuario(int id)
+        public async Task<DTO<Usuario>> Obtener_por_mail(string mail)
         {
             var usuarioData = new DTO<Usuario>();
 
-            var usuarioRepo = _repUsuario.Obtener_por_Id(id);
-            if (usuarioRepo.Correcto && usuarioRepo.Datos != null)
-            {
-                usuarioData.Datos = usuarioRepo.Datos.ToBusinessUsuario();
-            }
-
-            return usuarioData;
-        }
-
-        public async Task<DTO<Usuario>> Obtener_usuario_mail(string mail)
-        {
-            var usuarioData = new DTO<Usuario>();
-
-            var usuarioRepo = _repUsuario.Obtener_por_Email(mail);
+            var usuarioRepo = await _repUsuario.Obtener_por_email(mail);
 
             if (usuarioRepo.Correcto && usuarioRepo.Datos != null)
             {
@@ -121,86 +201,9 @@ namespace AdmIn.Business.Servicios
             return usuarioData;
         }
 
-        public async Task<DTO<Usuario>> Crear_usuario(Usuario usuario)
+        public async Task<DTO<bool>> Modificar_contraseña(CambioClaveModel datos)
         {
-            //encripto la contraseña para guardarla en la base de datos
-            usuario.Password = MiHash.GenerarHash(usuario.Password);
-
-            var resultado = _repUsuario.Insertar(usuario.ToDataUSUARIO());
-
-            if (resultado.Correcto && resultado.Datos != null)
-            {
-                usuario.Id = resultado.Datos.USU_ID;
-
-                //Inserto correctamente el usuario ahora como es nuevo inserto los permisos y roles correspondientes
-                foreach (var permiso in usuario.Permisos)
-                {
-                    _repUsuarioPermiso.Insertar(new USUARIO_PERMISO() { PERM_ID = permiso.Id, USU_ID = usuario.Id });
-                }
-
-                foreach (var rol in usuario.Roles)
-                {
-                    _repUsuarioRol.Insertar(new USUARIO_ROL() { ROL_ID = rol.Id, USU_ID = usuario.Id });
-                }
-            }
-
-            DTO<Usuario> returns = new DTO<Usuario>();
-            returns.Datos = resultado.Datos.ToBusinessUsuario();
-            returns.Mensaje = resultado.Mensaje;
-            returns.Correcto = resultado.Correcto;
-
-            return returns;
-        }
-
-        public async Task<DTO<Usuario>> Actualizar_usuario(Usuario usuario)
-        {
-            var usuarioActualizado = new DTO<Usuario>();
-
-            var usuarioRepo = _repUsuario.Actualizar(usuario.ToDataUSUARIO());
-            if (usuarioRepo.Correcto && usuarioRepo.Datos != null)
-            {
-                //Primero elimino los permisos y roles asociados al usuario y luego agrego los que trae
-                var permisos = _repUsuarioPermiso.ObtenerPorUsuario(usuario.Id).Datos;
-                foreach (var permiso in permisos)
-                {
-                    _repUsuarioPermiso.Eliminar(permiso.USU_ID, permiso.PERM_ID);
-                }
-
-                var roles = _repUsuarioRol.ObtenerPorUsuario(usuario.Id).Datos;
-                foreach (var rol in roles)
-                {
-                    _repUsuarioRol.Eliminar(rol.USU_ID, rol.ROL_ID);
-                }
-
-                //Inserto correctamente el usuario ahora como es nuevo inserto los permisos y roles correspondientes
-                foreach (var permiso in usuario.Permisos)
-                {
-                    _repUsuarioPermiso.Insertar(new USUARIO_PERMISO() { PERM_ID = permiso.Id, USU_ID = usuario.Id });
-                }
-
-                foreach (var rol in usuario.Roles)
-                {
-                    _repUsuarioRol.Insertar(new USUARIO_ROL() { ROL_ID = rol.Id, USU_ID = usuario.Id });
-                }
-            }
-
-            DTO<Usuario> returns = new DTO<Usuario>();
-            returns.Datos = usuarioRepo.Datos.ToBusinessUsuario();
-            returns.Mensaje = usuarioRepo.Mensaje;
-            returns.Correcto = usuarioRepo.Correcto;
-
-            return returns;
-        }
-
-        public async Task<DTO<bool>> Eliminar_usuario(int id)
-        {
-            var resultado = _repUsuario.Eliminar(id);
-            return resultado;
-        }
-
-        public async Task<DTO<bool>> ModificarContraseña(CambioClaveModel datos)
-        {
-            var rta = _repUsuario.Obtener_por_Email(datos.Email);
+            var rta = await _repUsuario.Obtener_por_email(datos.Email);
 
             string password_hasheado = MiHash.GenerarHash(datos.Password);
 
@@ -210,7 +213,7 @@ namespace AdmIn.Business.Servicios
                 {
                     rta.Datos.USU_PASSWORD = MiHash.GenerarHash(datos.NuevaPassword);
 
-                    rta = _repUsuario.Actualizar(rta.Datos);
+                    rta = await _repUsuario.Actualizar(rta.Datos);
 
                     if (rta.Correcto)
                     {

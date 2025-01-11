@@ -1,0 +1,103 @@
+﻿@page "/usuarios"
+
+@using AdmIn.Business.Entidades
+@using AdmIn.Common
+@using AdmIn.UI.Services
+@using Microsoft.AspNetCore.Components.Authorization
+
+
+@inject PageTitleService PageTitleService;
+@inject IServ_Usuario Serv_usuario;
+@inject NotificationService NotificationService;
+
+
+
+<MiRadzenButton ButtonStyle="ButtonStyle.Primary" Text="Agregar usuario" OnClick="@(() =>Agregar())" />
+
+<RadzenDataGrid class="rz-m-2" @ref="grilla" IsLoading=@isLoading Count="@count" Data="@items" EmptyText="No hay registros para mostrar"
+                LoadData="@LoadData" AllowSorting="true" AllowFiltering="true" FilterMode="FilterMode.Simple" AllowPaging="true" PageSize="5"
+                PagerHorizontalAlign="HorizontalAlign.Center" TItem="Usuario">
+    <Columns>
+        <RadzenDataGridColumn TItem="Usuario" Property="Nombre" Title="Nombre" MinWidth="200px" />
+        <RadzenDataGridColumn TItem="Usuario" Property="Email" Title="Email" MinWidth="200px" />
+        <RadzenDataGridColumn TItem="Usuario" Property="RolString" Title="Roles" MinWidth="200px" />
+        <RadzenDataGridColumn Width="200px" TItem="Usuario" Context="usu" MinWidth="200px">
+            <Template>
+                <MiRadzenButton ButtonStyle="ButtonStyle.Primary" Variant="Variant.Outlined" Shade="Shade.Lighter" Title="Ver" Icon="visibility" Size="ButtonSize.ExtraSmall" OnClick=@(() => Ver(usu)) />
+                <AuthorizeView Roles="administrador, supervisor">
+                    <Authorized>
+                        <MiRadzenButton ButtonStyle="ButtonStyle.Success" Variant="Variant.Outlined" Shade="Shade.Lighter" Title="Modificar" Icon="edit" Size="ButtonSize.ExtraSmall" OnClick=@(() => Modificar(usu)) />
+                        <MiRadzenButton ButtonStyle="ButtonStyle.Success" Variant="Variant.Outlined" Shade="Shade.Lighter" Title="Modificar contraseña" Icon="password" Size="ButtonSize.ExtraSmall" OnClick=@(() => ModificarContraseña(usu)) />
+                        <MiRadzenButton ButtonStyle="ButtonStyle.Danger" Variant="Variant.Outlined" Shade="Shade.Lighter" Title="Eliminar" Icon="delete" Size="ButtonSize.ExtraSmall" OnClick=@(() => Eliminar(usu)) />
+                    </Authorized>
+                </AuthorizeView>
+            </Template>
+        </RadzenDataGridColumn>
+    </Columns>
+</RadzenDataGrid>
+
+
+@code {
+
+    private bool isLoading = false;
+    private RadzenDataGrid<Usuario> grilla;
+    private int count;
+    private IEnumerable<Usuario> items;
+
+    protected override void OnInitialized()
+    {
+        PageTitleService.SetTitle("Usuarios", "Principal");
+    }
+
+    private async Task LoadData(LoadDataArgs args)
+    {
+        if (!isLoading)
+        {
+            isLoading = true;
+
+            await Task.Yield();
+
+            Filtros_paginado filtros = new Filtros_paginado
+                {
+                    Filter = args.Filter != "" ? args.Filter : null,
+                    OrderBy = args.OrderBy != "" ? args.OrderBy : null,
+                    Skip = args.Skip != null ? args.Skip.Value : 0,
+                    Top = args.Top != null ? args.Top.Value : 5
+                };
+
+            DTO<Items_pagina<Usuario>> respuesta = await Serv_usuario.Obtener_usuarios(filtros);
+            if (respuesta != null && respuesta.Correcto)
+            {
+                items = respuesta.Datos.Items;
+                count = respuesta.Datos.Total_items;
+            }
+            else
+            {
+                if (respuesta != null && !respuesta.Correcto)
+                    NotificationService.Notify(NotificationSeverity.Error, "Error al obtener los usuarios", $"Error: {respuesta.Mensaje}");
+
+                items = null;
+                count = 0;
+            }
+        }
+
+        isLoading = false;
+    }
+
+    private async Task Agregar()
+    {
+    }
+
+    private async Task Ver(Usuario usuario)
+    { }
+
+    private async Task Modificar(Usuario usuario)
+    { }
+
+    private async Task ModificarContraseña(Usuario usuario)
+    { }
+
+    private async Task Eliminar(Usuario usuario)
+    { }
+
+}

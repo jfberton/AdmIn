@@ -13,5 +13,10 @@ namespace AdmIn.Business.Entidades
         public string Nombre { get; set; }
 
         #endregion
+
+        #region Propiedades de navegación
+        public List<Permiso>? Permisos { get; set; }
+
+        #endregion
     }
 }

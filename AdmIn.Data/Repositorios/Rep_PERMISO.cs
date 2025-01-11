@@ -10,12 +10,12 @@ namespace AdmIn.Data.Repositorios
     {
         public DTO<PERMISO> Insertar(PERMISO permiso)
         {
-            if (!permiso.IsValid())
-                return new DTO<PERMISO>
-                {
-                    Correcto = false,
-                    Mensaje = "El permiso no es válido."
-                };
+            //if (!permiso.IsValid())
+                //return new DTO<PERMISO>
+                //{
+                //    Correcto = false,
+                //    Mensaje = "El permiso no es válido."
+                //};
 
             return MiSqlHelper.EjecutarComando("sp_Permiso_Insertar",
                 comando =>
@@ -34,12 +34,12 @@ namespace AdmIn.Data.Repositorios
 
         public DTO<PERMISO> Actualizar(PERMISO permiso)
         {
-            if (!permiso.IsValid())
-                return new DTO<PERMISO>
-                {
-                    Correcto = false,
-                    Mensaje = "El permiso no es válido."
-                };
+            //if (!permiso.IsValid())
+            //    return new DTO<PERMISO>
+            //    {
+            //        Correcto = false,
+            //        Mensaje = "El permiso no es válido."
+            //    };
 
             return MiSqlHelper.EjecutarComando("sp_Permiso_Actualizar",
                 comando =>

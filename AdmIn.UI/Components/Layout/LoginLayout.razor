@@ -1,0 +1,20 @@
+﻿@using AdmIn.UI.Authentication
+@using Microsoft.AspNetCore.Components.Authorization
+@inherits LayoutComponentBase
+@inject NavigationManager navManager
+@inject AuthenticationStateProvider authStateProvider
+
+
+<RadzenDialog />
+<RadzenNotification />
+<RadzenContextMenu />
+<RadzenTooltip />
+<RadzenComponents />
+
+<div class="page">
+    @Body
+</div>
+
+@code {
+    
+}

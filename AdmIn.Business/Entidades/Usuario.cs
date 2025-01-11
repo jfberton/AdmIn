@@ -1,4 +1,5 @@
-﻿using System;
+﻿using AdmIn.Data.Entidades;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -23,7 +24,23 @@ namespace AdmIn.Business.Entidades
 
         #region Propiedades de navegación
         public List<Rol>? Roles { get; set; }
-        public List<Permiso>? Permisos { get; set; }
+
+        public List<Permiso> Permisos
+        {
+            get {
+                HashSet<Permiso> permisos = new HashSet<Permiso>();
+
+                foreach (Rol rol in Roles)
+                {
+                    foreach (Permiso permiso in rol.Permisos)
+                    {
+                        permisos.Add(permiso);
+                    }
+                }
+
+                return permisos.ToList();
+            }
+        }
 
         #endregion
 
@@ -37,14 +54,15 @@ namespace AdmIn.Business.Entidades
                     return "No posee roles asignados.-";
                 }
 
-                StringBuilder sb = new StringBuilder();
+                // Utilizamos un HashSet para evitar duplicados
+                HashSet<string> rolesUnicos = new HashSet<string>();
+
                 foreach (Rol rol in Roles)
                 {
-                    sb.Append(rol.Nombre);
-                    sb.Append(", ");
+                    rolesUnicos.Add(rol.Nombre);
                 }
 
-                return sb.ToString().TrimEnd(',', ' ');
+                return string.Join(", ", rolesUnicos);
             }
         }
 
@@ -52,19 +70,23 @@ namespace AdmIn.Business.Entidades
         {
             get
             {
-                if (Permisos == null || Permisos.Count == 0)
+                if (Roles == null || Roles.Count == 0)
                 {
                     return "No posee permisos asignados.-";
                 }
 
-                StringBuilder sb = new StringBuilder();
-                foreach (Permiso permiso in Permisos)
+                // Utilizamos un HashSet para evitar duplicados
+                HashSet<string> permisosUnicos = new HashSet<string>();
+
+                foreach (Rol rol in Roles)
                 {
-                    sb.Append(permiso.Nombre);
-                    sb.Append(", ");
+                    foreach (Permiso permiso in rol.Permisos)
+                    {
+                        permisosUnicos.Add(permiso.Nombre);
+                    }
                 }
 
-                return sb.ToString().TrimEnd(',', ' ');
+                return string.Join(", ", permisosUnicos);
             }
         }
 

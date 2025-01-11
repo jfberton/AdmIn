@@ -31,7 +31,7 @@ namespace AdmIn.API.Controllers
         {
             try
             {
-                DTO<Usuario> respuesta = await _serv_usuario.ValidarCredenciales(user);
+                DTO<Usuario> respuesta = await _serv_usuario.Validar_credenciales(user);
 
                 if (respuesta.Correcto)
                 {
@@ -39,6 +39,7 @@ namespace AdmIn.API.Controllers
                     var tokenHandler = new JwtSecurityTokenHandler();
                     var key = Encoding.ASCII.GetBytes(_config.GetSection("Jwt:Key").Value);
                     var claims = new List<Claim>() { new Claim(ClaimTypes.Name, respuesta.Datos.Nombre) };
+
 
                     foreach (var permiso in respuesta.Datos.Permisos)
                     {
@@ -65,7 +66,6 @@ namespace AdmIn.API.Controllers
                             Nombre = respuesta.Datos.Nombre,
                             Email = respuesta.Datos.Email,
                             Roles = respuesta.Datos.Roles,
-                            Permisos = respuesta.Datos.Permisos,
                             Token = tokenString
                         }
                     };

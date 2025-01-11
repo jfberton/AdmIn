@@ -5,6 +5,7 @@ using AdmIn.Common;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
+using AdmIn.API.Utilitarios;
 
 namespace AdmIn.API.Controllers
 {
@@ -21,61 +22,69 @@ namespace AdmIn.API.Controllers
 
 
         [HttpPost("obtener_paginado")]
-        [Authorize(Roles = "CRUD")]
-        public async Task<DTO<Items_pagina<Usuario>>> Obtener_usuarios(Filtros_paginado filtros)
+        [Authorize(Roles = "admin_usuario")]
+        public async Task<DTO<Items_pagina<Usuario>>> Obtener_usuarios(dynamic filtros_paginado)
         {
-            return await _servicio.Obtener_usuarios(filtros);
+            try
+            {
+                // Deserializar usando la clase genérica
+                var filtros = JsonHelper.Deserialize<Filtros_paginado>(filtros_paginado);
+
+                // Usar los filtros deserializados
+                return await _servicio.Obtener_paginado(filtros);
+            }
+            catch (Exception ex)
+            {
+                return new DTO<Items_pagina<Usuario>>
+                {
+                    Correcto = false,
+                    Mensaje = $"Error procesando los filtros: {ex.Message}"
+                };
+            }
+
         }
 
         [HttpGet("obtener_por_mail/{mail}")]
-        [Authorize(Roles = "CRUD")]
+        [Authorize(Roles = "admin_usuario")]
         public async Task<DTO<Usuario>> Obtener_por_mail(string mail)
         {
-            return await _servicio.Obtener_usuario_mail(mail);
+            return await _servicio.Obtener_por_mail(mail);
         }
 
         [HttpPost("nuevo")]
-        [Authorize(Roles = "CRUD")]
+        [Authorize(Roles = "admin_usuario")]
         public async Task<DTO<Usuario>> Crear_usuario(dynamic usuario)
         {
-            // Configuración para que la deserialización no sea sensible a mayúsculas/minúsculas
-            var options = new JsonSerializerOptions
+            try
             {
-                PropertyNameCaseInsensitive = true
-            };
+                // Usar JsonHelper para deserializar dinámicamente al objeto Usuario
+                Usuario oUsuario = JsonHelper.Deserialize<Usuario>(usuario);
 
-            // Deserializa el JSON a un objeto B_Usuario con las opciones definidas
-            Usuario oUsuario = JsonSerializer.Deserialize<Usuario>(Convert.ToString(usuario), options);
-
-            if (oUsuario == null)
-            {
-                throw new ArgumentException("No se pudo deserializar el usuario.");
+                // Llamar al servicio con el objeto deserializado
+                return await _servicio.Crear(oUsuario);
             }
-
-            return await _servicio.Crear_usuario(oUsuario);
+            catch (Exception ex)
+            {
+                // Manejo de errores claros
+                return new DTO<Usuario>
+                {
+                    Correcto = false,
+                    Mensaje = $"Error al crear el usuario: {ex.Message}"
+                };
+            }
         }
 
+
         [HttpPost("modificar")]
-        [Authorize(Roles = "CRUD")]
+        [Authorize(Roles = "admin_usuario")]
         public async Task<DTO<Usuario>> Modificar_usuario(dynamic usuario)
         {
             try
             {
-                // Configuración para que la deserialización no sea sensible a mayúsculas/minúsculas
-                var options = new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true
-                };
-
                 // Deserializa el JSON a un objeto B_Usuario con las opciones definidas
-                Usuario oUsuario = JsonSerializer.Deserialize<Usuario>(Convert.ToString(usuario), options);
+                Usuario oUsuario = JsonHelper.Deserialize<Usuario>(usuario);
 
-                if (oUsuario == null)
-                {
-                    throw new ArgumentException("No se pudo deserializar el usuario.");
-                }
-
-                return await _servicio.Actualizar_usuario(oUsuario);
+                return await _servicio.Actualizar(oUsuario);
             }
             catch (Exception ex)
             {
@@ -88,17 +97,18 @@ namespace AdmIn.API.Controllers
         }
 
         [HttpDelete("eliminar/{usuarioId}")]
-        [Authorize(Roles = "sa")]
+        [Authorize(Roles = "admin_usuario")]
         public async Task<DTO<bool>> Eliminar_usuario(int usuarioId)
         {
-            return await _servicio.Eliminar_usuario(usuarioId);
+            Usuario usuario = new Usuario() { Id = usuarioId };
+            return await _servicio.Eliminar(usuario);
         }
 
         [HttpPost("modificar_password")]
         [Authorize(Roles = "CRUD")]
         public async Task<DTO<bool>> Cambiar_password(CambioClaveModel datos)
         {
-            return await _servicio.ModificarContraseña(datos);
+            return await _servicio.Modificar_contraseña(datos);
         }
     }
 }

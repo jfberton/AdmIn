@@ -1,6 +1,7 @@
 ﻿using AdmIn.Business.Entidades;
 using AdmIn.Data.Entidades;
 using AdmIn.Data.Repositorios;
+using AdmIn.Data.Repositorios.AdmIn.Data.Repositorios;
 
 namespace AdmIn.Business.Utilidades
 {
@@ -9,11 +10,9 @@ namespace AdmIn.Business.Utilidades
         public static Usuario ToBusinessUsuario(this USUARIO dataUsuario)
         {
             if (dataUsuario == null) return null;
-
-            Rep_USUARIO_PERMISO rup = new Rep_USUARIO_PERMISO();
-            Rep_PERMISO rp = new Rep_PERMISO();
-            Rep_USUARIO_ROL rur = new Rep_USUARIO_ROL();
+            
             Rep_ROL rr = new Rep_ROL();
+            Rep_USUARIO_ROL rur = new Rep_USUARIO_ROL();
 
             // Crear el usuario base
             var usuario = new Usuario
@@ -22,29 +21,14 @@ namespace AdmIn.Business.Utilidades
                 Nombre = dataUsuario.USU_NOMBRE,
                 Password = dataUsuario.USU_PASSWORD,
                 Email = dataUsuario.USU_EMAIL,
-                Permisos = new List<Permiso>(), // Inicializa para evitar null
                 Roles = new List<Rol>()        // Inicializa para evitar null
             };
 
-            // Cargar permisos
-            var permisos = rup.ObtenerPorUsuario(usuario.Id);
-            if (permisos.Correcto && permisos.Datos != null)
-            {
-                var permisosDetalles = rp.Obtener_todos();
-                if (permisosDetalles.Correcto && permisosDetalles.Datos != null)
-                {
-                    usuario.Permisos = permisos.Datos
-                        .Select(p => permisosDetalles.Datos.FirstOrDefault(perm => perm.PERM_ID == p.PERM_ID)?.ToBusinessPermiso())
-                        .Where(p => p != null) // Excluye nulos
-                        .ToList();
-                }
-            }
-
             // Cargar roles
-            var roles = rur.ObtenerPorUsuario(usuario.Id);
+            var roles = rur.Obtener_por_usuario(usuario.Id).Result;
             if (roles.Correcto && roles.Datos != null)
             {
-                var rolesDetalles = rr.Obtener_todos();
+                var rolesDetalles = rr.Obtener_todos().Result;
                 if (rolesDetalles.Correcto && rolesDetalles.Datos != null)
                 {
                     usuario.Roles = roles.Datos
@@ -69,16 +53,43 @@ namespace AdmIn.Business.Utilidades
             };
         }
 
+
         public static Rol ToBusinessRol(this ROL dataRol)
         {
             if (dataRol == null) return null;
 
-            return new Rol
+            // Instancia de los repositorios necesarios
+            Rep_ROL_PERMISO repRolPermiso = new Rep_ROL_PERMISO();
+            Rep_PERMISO repPermiso = new Rep_PERMISO();
+
+            // Crear la instancia del rol
+            var rol = new Rol
             {
                 Id = dataRol.ROL_ID,
-                Nombre = dataRol.ROL_NOMBRE
+                Nombre = dataRol.ROL_NOMBRE,
+                Permisos = new List<Permiso>() // Inicializa lista vacía
             };
+
+            // Obtener los permisos asociados al rol
+            var permisosAsociados = repRolPermiso.Obtener_por_rol(dataRol.ROL_ID).Result;
+            if (permisosAsociados.Correcto && permisosAsociados.Datos != null)
+            {
+                // Obtener todos los permisos para mapear nombres
+                var todosPermisos = repPermiso.Obtener_todos();
+                if (todosPermisos.Correcto && todosPermisos.Datos != null)
+                {
+                    // Convertir los permisos a objetos de negocio
+                    rol.Permisos = permisosAsociados.Datos
+                        .Select(rp => todosPermisos.Datos.FirstOrDefault(p => p.PERM_ID == rp.PERM_ID))
+                        .Where(p => p != null) // Excluir nulos
+                        .Select(p => p.ToBusinessPermiso())
+                        .ToList();
+                }
+            }
+
+            return rol;
         }
+
 
         public static USUARIO ToDataUSUARIO(this Usuario data)
         {

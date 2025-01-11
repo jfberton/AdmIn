@@ -6,9 +6,9 @@ using System.Data;
 
 namespace AdmIn.Data.Repositorios
 {
-    public class Rep_USUARIO
+    public class Rep_USUARIO : IRepoBase<USUARIO>
     {
-        public DTO<USUARIO> Insertar(USUARIO usuario)
+        public async Task<DTO<USUARIO>> Crear(USUARIO usuario)
         {
             if (string.IsNullOrWhiteSpace(usuario.USU_NOMBRE) ||
                 string.IsNullOrWhiteSpace(usuario.USU_PASSWORD) ||
@@ -40,7 +40,7 @@ namespace AdmIn.Data.Repositorios
                 });
         }
 
-        public DTO<USUARIO> Actualizar(USUARIO usuario)
+        public async Task<DTO<USUARIO>> Actualizar(USUARIO usuario)
         {
             if (string.IsNullOrWhiteSpace(usuario.USU_NOMBRE) ||
                 string.IsNullOrWhiteSpace(usuario.USU_PASSWORD) ||
@@ -69,10 +69,10 @@ namespace AdmIn.Data.Repositorios
                 });
         }
 
-        public DTO<bool> Eliminar(int id)
+        public async Task<DTO<bool>> Eliminar(USUARIO usuario)
         {
             return MiSqlHelper.EjecutarComando("sp_Usuario_Eliminar",
-                comando => comando.Parameters.AddWithValue("@USU_ID", id),
+                comando => comando.Parameters.AddWithValue("@USU_ID", usuario.USU_ID),
                 comando =>
                 {
                     comando.ExecuteNonQuery();
@@ -80,10 +80,10 @@ namespace AdmIn.Data.Repositorios
                 });
         }
 
-        public DTO<USUARIO> Obtener_por_Id(int id)
+        public async Task<DTO<USUARIO>> Obtener_por_id(USUARIO entidad)
         {
             return MiSqlHelper.EjecutarComando("sp_Usuario_ObtenerPorId",
-                comando => comando.Parameters.AddWithValue("@USU_ID", id),
+                comando => comando.Parameters.AddWithValue("@USU_ID", entidad.USU_ID),
                 comando =>
                 {
                     using (var lector = comando.ExecuteReader())
@@ -105,7 +105,7 @@ namespace AdmIn.Data.Repositorios
                 });
         }
 
-        public DTO<USUARIO> Obtener_por_Email(string email)
+        public async Task<DTO<USUARIO>> Obtener_por_email(string email)
         {
             return MiSqlHelper.EjecutarComando("sp_Usuario_ObtenerPorEmail",
                 comando => comando.Parameters.AddWithValue("@USU_EMAIL", email),
@@ -130,7 +130,7 @@ namespace AdmIn.Data.Repositorios
                 });
         }
 
-        public DTO<List<USUARIO>> Obtener_todos()
+        public async Task<DTO<IEnumerable<USUARIO>>> Obtener_todos()
         {
             return MiSqlHelper.EjecutarComando("sp_Usuario_ObtenerTodos",
                 null,
@@ -152,11 +152,11 @@ namespace AdmIn.Data.Repositorios
                             });
                         }
                     }
-                    return lista;
+                    return lista.AsEnumerable();
                 });
         }
 
-        public DTO<Items_pagina<USUARIO>> Obtener_lista_pagina_usuarios(Filtros_paginado filtros)
+        public async Task<DTO<Items_pagina<USUARIO>>> Obtener_paginado(Filtros_paginado filtros)
         {
             try
             {
@@ -170,8 +170,17 @@ namespace AdmIn.Data.Repositorios
                 string query = $@"
                                 SELECT * FROM (
                                     SELECT *, ROW_NUMBER() OVER ({orderByClause}) AS RowNum
-                                    FROM USUARIO
-                                    {whereClause}
+                                    FROM 
+                                        (-- CONSULTA QUE AGRUPA LAS TABLAS RELACIONADAS PARA HACER EL FILTRO DEL WHERE
+                                            SELECT DISTINCT USUARIO.*
+				                            FROM
+					                            USUARIO
+					                            JOIN USUARIO_ROL ON USUARIO.USU_ID = USUARIO_ROL.USU_ID
+					                            JOIN ROL ON USUARIO_ROL.ROL_ID = ROL.ROL_ID
+					                            JOIN ROL_PERMISO ON ROL.ROL_ID = ROL_PERMISO.ROL_ID
+					                            JOIN PERMISO ON ROL_PERMISO.PERM_ID = PERMISO.PERM_ID   
+                                            {whereClause}
+                                        ) AUX
                                 ) AS PaginatedQuery
                                 WHERE RowNum > {filtros.Skip}
                                 AND RowNum <= {filtros.Skip + filtros.Top}";
@@ -179,8 +188,17 @@ namespace AdmIn.Data.Repositorios
                 // Consulta SQL para contar registros totales aplicando los mismos filtros
                 string countQuery = $@"
                                     SELECT COUNT(*)
-                                    FROM USUARIO
-                                    {whereClause}";
+                                    FROM 
+                                       (-- CONSULTA QUE AGRUPA LAS TABLAS RELACIONADAS PARA HACER EL FILTRO DEL WHERE
+                                            SELECT DISTINCT USUARIO.*
+				                            FROM
+					                            USUARIO
+					                            JOIN USUARIO_ROL ON USUARIO.USU_ID = USUARIO_ROL.USU_ID
+					                            JOIN ROL ON USUARIO_ROL.ROL_ID = ROL.ROL_ID
+					                            JOIN ROL_PERMISO ON ROL.ROL_ID = ROL_PERMISO.ROL_ID
+					                            JOIN PERMISO ON ROL_PERMISO.PERM_ID = PERMISO.PERM_ID   
+                                            {whereClause}
+                                        ) AUX";
 
                 // Ejecutamos la consulta principal para obtener los usuarios paginados
                 DTO<List<USUARIO>> resultado = MiSqlHelper.EjecutarComando(
