@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.Design;
 using System.Linq;
 using System.Text;
 using System.Text.Json.Serialization;
@@ -55,22 +56,30 @@ namespace AdmIn.Common
 
             foreach (campo_filtro filtro in filtros_busqueda)
             {
-                // Verificamos si el campo es una propiedad de navegación
-                if (filtro.campo.Contains("."))
+                //Verificamos si no son casos especiales sino mapeamos
+                if (filtro.campo == "RolString")
                 {
-                    // Si es una propiedad de navegación, separamos en las partes
-                    string[] partes = filtro.campo.Split('.');
-
-                    string tabla = partes[partes.Length - 2]; // El nombre de la clase asociada
-                    string propiedad = partes[partes.Length - 1]; // La propiedad dentro de la clase asociada
-
-                    // Construimos la cláusula WHERE con la propiedad de navegación
-                    whereClause.Append($"{tabla}.{propiedad} LIKE '%{filtro.valor}%' AND ");
+                    whereClause.Append($"ROL.ROL_NOMBRE LIKE '%{filtro.valor}%' AND ");
                 }
                 else
                 {
-                    // Si no es una propiedad de navegación, simplemente agregamos el filtro
-                    whereClause.Append($"{filtro.campo} LIKE '%{filtro.valor}%' AND ");
+                    // Verificamos si el campo es una propiedad de navegación
+                    if (filtro.campo.Contains("."))
+                    {
+                        // Si es una propiedad de navegación, separamos en las partes
+                        string[] partes = filtro.campo.Split('.');
+
+                        string tabla = partes[partes.Length - 2]; // El nombre de la clase asociada
+                        string propiedad = partes[partes.Length - 1]; // La propiedad dentro de la clase asociada
+
+                        // Construimos la cláusula WHERE con la propiedad de navegación
+                        whereClause.Append($"{tabla}.{propiedad} LIKE '%{filtro.valor}%' AND ");
+                    }
+                    else
+                    {
+                        // Si no es una propiedad de navegación, simplemente agregamos el filtro
+                        whereClause.Append($"{filtro.campo} LIKE '%{filtro.valor}%' AND ");
+                    }
                 }
             }
 
@@ -93,12 +102,13 @@ namespace AdmIn.Common
         private List<campo_filtro> ObtenerFiltrosBusqueda(string filtro)
         {
             List<campo_filtro> resultados = new List<campo_filtro>();
-            string[] filtros = filtro.Split("and");
+            string[] filtros = filtro.Split("and", StringSplitOptions.RemoveEmptyEntries);
+
             foreach (string _filtro in filtros)
             {
                 string campo;
                 string valor;
-                // Verificamos si el campo es una propiedad de navegación
+
                 if (_filtro.Split(")").Length == 7)
                 {
                     campo = _filtro.Split("(")[3].Split(")")[0].Trim();
@@ -110,7 +120,11 @@ namespace AdmIn.Common
                     valor = _filtro.Split("(\"")[1].Replace("\")", "").Trim();
                 }
 
-                campo = EntityMappings.EntityFieldMappings[EntityName][campo];
+                // Si el campo existe en los mapeos, lo utilizamos
+                if (EntityMappings.EntityFieldMappings[EntityName].ContainsKey(campo))
+                {
+                    campo = EntityMappings.EntityFieldMappings[EntityName][campo];
+                }
 
                 resultados.Add(new campo_filtro
                 {

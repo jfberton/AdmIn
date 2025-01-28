@@ -1,92 +1,98 @@
-﻿<RadzenButton Disabled="@GetDisabled()"
-    Style="@Style"
-    Class="@GetButtonClass()"
-    Icon="@GetIcon()"
-    Text="@GetText()"
-    Title="@GetTitle()"
-    ButtonStyle="@ButtonStyle"
-    Size="@Size"
-    Variant="@Variant"
-    Shade="@Shade"
-    Click="OnClickHandler" />
+﻿@using AdmIn.UI.Services.UtilityServices
+@inject LogHelper LogHelper
+
+<RadzenButton Disabled="@GetDisabled()"
+              Style="@Style"
+              Class="@GetButtonClass()"
+              Icon="@GetIcon()"
+              Text="@GetText()"
+              Title="@GetTitle()"
+              ButtonStyle="@ButtonStyle"
+              Size="@Size"
+              Variant="@Variant"
+              Shade="@Shade"
+              Click="OnClickHandler" />
 
 @code {
     private bool isDisabled = false;
 
-    [Parameter] public string Text { get; set; } // Texto inicial
-    [Parameter] public string Icon { get; set; } // Clase CSS del ícono (ejemplo: "fas fa-save")
-    [Parameter] public string DisabledIcon { get; set; } // Clase CSS del ícono deshabilitado
-    [Parameter] public string Style { get; set; } // Estilo en línea
-    [Parameter] public string AdditionalClass { get; set; } // Clases CSS adicionales
-    [Parameter] public bool Disabled { get; set; } //en algunos casos necesito deshabilitar el botón independientemente de si fue precionado o no
+    [Inject] private DialogService DialogService { get; set; }
+    [Inject] private NavigationManager NavigationManager { get; set; }
 
-    //propiedades agregadas
-    [Parameter] public string Title { get; set; } // Título del botón
-    [Parameter] public ButtonSize Size { get; set; } // Tamaño del botón
-    [Parameter] public ButtonStyle ButtonStyle { get; set; } // Estilo del botón (ej. Primary, Default, etc.)
-    [Parameter] public Variant Variant { get; set; } // Variante del botón (ej. Filled, Outlined, etc.)
-    [Parameter] public Shade Shade { get; set; } //
-
-    [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; } // Evento personalizado del botón
+    [Parameter] public string Text { get; set; } = string.Empty;
+    [Parameter] public string Icon { get; set; }
+    [Parameter] public string DisabledIcon { get; set; } = "hourglass_empty";
+    [Parameter] public string Style { get; set; }
+    [Parameter] public string AdditionalClass { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public string Title { get; set; }
+    [Parameter] public ButtonSize Size { get; set; }
+    [Parameter] public ButtonStyle ButtonStyle { get; set; }
+    [Parameter] public Variant Variant { get; set; }
+    [Parameter] public Shade Shade { get; set; }
+    [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
 
     protected override void OnInitialized()
     {
-        // Inicializa el texto y el ícono inicial
-        if (string.IsNullOrEmpty(Text))
-        {
-            Text = string.Empty; // Texto vacío si no está definido
-        }
+        NavigationManager.LocationChanged += HandleLocationChanged;
     }
 
     private async Task OnClickHandler(MouseEventArgs e)
     {
-        if (isDisabled)
-            return;
+        if (isDisabled) return;
 
         isDisabled = true;
+        await LogHelper.Info("MiRadzenButton - Deshabilito el botón y muestro el busy dialog");
+        // Muestra el diálogo sin bloquear
+        ShowBusyDialog();
 
         try
         {
-            // // Simula una operación prolongada
-            // await Task.Delay(2000);
-
             if (OnClick.HasDelegate)
             {
-                await OnClick.InvokeAsync(e); // Invocar el evento del botón
+                await LogHelper.Debug("MiRadzenButton - Llamo al método asociado");
+                await OnClick.InvokeAsync(e);
             }
         }
         finally
         {
-            isDisabled = false; // Habilitar el botón nuevamente
+            CloseBusyDialog();
+            isDisabled = false;
+            await LogHelper.Info("MiRadzenButton - Cierro el busy dialog y vuelvo a habilitar el botón");
         }
     }
 
-    private string GetIcon()
+    private void ShowBusyDialog()
     {
-        // Si está deshabilitado, muestra el ícono del reloj de arena
-        return isDisabled ? DisabledIcon ?? "hourglass_empty" : Icon;
+        DialogService.Open("", ds =>
+    @<RadzenStack AlignItems="AlignItems.Center" Gap="2rem" class="rz-p-12">
+        <RadzenIcon Icon="hourglass_empty" Style="font-size: 48px; color: #007bff;" />
+        <RadzenText TextStyle="TextStyle.H6">Procesando, por favor espera...</RadzenText>
+    </RadzenStack>, new DialogOptions() { ShowTitle = false, Style = "min-height:auto;min-width:auto;width:auto", CloseDialogOnEsc = false });
     }
 
-    private bool GetDisabled()
+    private void CloseBusyDialog()
     {
-        // Si está deshabilitado, muestra el ícono del reloj de arena
-        return (isDisabled || Disabled);
+        DialogService.Close();
     }
 
-    private string GetText()
+    private void HandleLocationChanged(object sender, LocationChangedEventArgs e)
     {
-        // Si está deshabilitado y tiene texto, muestra "Procesando..."
-        return isDisabled ? (string.IsNullOrEmpty(Text) ? string.Empty : "Procesando...") : Text;
+        CloseBusyDialog();
     }
 
-    private string GetTitle()
+    public void Dispose()
     {
-        // Si está deshabilitado y tiene texto, muestra "Procesando..."
-        return Title;
+        NavigationManager.LocationChanged -= HandleLocationChanged;
     }
 
-    private string GetButtonClass()
-    {
-        return $"rz-button {AdditionalClass}";
-    }
+    private string GetIcon() => isDisabled ? DisabledIcon : Icon;
+
+    private bool GetDisabled() => isDisabled || Disabled;
+
+    private string GetText() => isDisabled ? "Procesando..." : Text;
+
+    private string GetTitle() => Title;
+
+    private string GetButtonClass() => $"rz-button {AdditionalClass}";
 }

@@ -4,7 +4,6 @@ using AdmIn.Business.Entidades;
 using AdmIn.Common;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Text.Json;
 using AdmIn.API.Utilitarios;
 
 namespace AdmIn.API.Controllers
@@ -49,6 +48,13 @@ namespace AdmIn.API.Controllers
         public async Task<DTO<Usuario>> Obtener_por_mail(string mail)
         {
             return await _servicio.Obtener_por_mail(mail);
+        }
+
+        [HttpGet("obtener_por_id/{id}")]
+        [Authorize(Roles = "admin_usuario")]
+        public async Task<DTO<Usuario>> Obtener_por_mail(int id)
+        {
+            return await _servicio.Obtener_por_id(new Usuario() { Id = id });
         }
 
         [HttpPost("nuevo")]
@@ -105,7 +111,7 @@ namespace AdmIn.API.Controllers
         }
 
         [HttpPost("modificar_password")]
-        [Authorize(Roles = "CRUD")]
+        [Authorize(Roles = "CRUD, admin_usuario")]
         public async Task<DTO<bool>> Cambiar_password(CambioClaveModel datos)
         {
             return await _servicio.Modificar_contraseña(datos);

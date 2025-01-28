@@ -1,0 +1,144 @@
+﻿@page "/usuarios/view/{id}"
+@inherits BaseComponent
+
+@using AdmIn.Business.Entidades
+@using AdmIn.Common
+@using AdmIn.UI.Services
+@using AdmIn.UI.Services.UtilityServices
+
+@inject IServ_Usuario serv_usuario;
+@inject IServ_Rol serv_rol;
+@inject IServ_Permiso serv_permiso;
+
+<RadzenCard>
+    <RadzenRow class="rz-mx-2 rz-mb-8">
+        <RadzenColumn>
+            <RadzenFormField Text="Nombre" Variant="Variant.Outlined" Style="width:100%">
+                <ChildContent>
+                    <RadzenTextBox @bind-Value=usuario.Nombre MaxLength="50" ReadOnly="true" TValue="string" />
+                </ChildContent>
+            </RadzenFormField>
+        </RadzenColumn>
+    </RadzenRow>
+
+    <RadzenRow class="rz-mx-2 rz-mb-8">
+        <RadzenColumn>
+            <RadzenFormField Text="E-mail" Variant="Variant.Outlined" Style="width:100%">
+                <ChildContent>
+                    <RadzenTextBox @bind-Value=usuario.Email MaxLength="50" ReadOnly="true" TValue="string" />
+                </ChildContent>
+            </RadzenFormField>
+        </RadzenColumn>
+    </RadzenRow>
+
+    <!-- Nuevo campo Activo -->
+    <RadzenRow class="rz-mx-2 rz-mb-8">
+        <RadzenColumn>
+            <RadzenFormField Text="Estado">
+                <Start>
+                    <RadzenCheckBox @bind-Value="usuario.Activo" ReadOnly="true" Name="componente_activo" />
+                </Start>
+                <ChildContent>
+                    <RadzenLabel Text="Activo" Component="CheckBox1" Class="rz-mx-4" />
+                </ChildContent>
+            </RadzenFormField>
+        </RadzenColumn>
+    </RadzenRow>
+
+    <RadzenRow class="rz-mx-2 rz-mb-8">
+        <RadzenColumn Size="6">
+            <RadzenLabel Text="Roles" />
+            @if (rolesAsignados == null || rolesAsignados.Count == 0)
+            {
+                <RadzenText Text="No tiene roles asignados.-" />
+            }
+            else
+            {
+                <RadzenListBox TValue="int" Data="@rolesAsignados" ReadOnly="true"
+                               TextProperty="Nombre" ValueProperty="Id" Style="width:100%" />
+            }
+        </RadzenColumn>
+        <RadzenColumn Size="6">
+            <RadzenLabel Text="Permisos asociados a los roles seleccionados" />
+            @if (permisos == null || permisos.Count == 0)
+            {
+                <RadzenText Text="No existen permisos asociados.-" />
+            }
+            else
+            {
+                <RadzenListBox TValue="int" Data="@permisos" ReadOnly="true"
+                               TextProperty="Nombre" ValueProperty="Id" Style="width: 100%; height:200px" />
+            }
+        </RadzenColumn>
+    </RadzenRow>
+
+    <RadzenRow class="rz-mx-2 rz-mb-8" JustifyContent="JustifyContent.End">
+        <RadzenColumn>
+            <MiRadzenButton ButtonStyle="ButtonStyle.Primary" Text="Volver" OnClick="@OnCancel" />
+        </RadzenColumn>
+    </RadzenRow>
+</RadzenCard>
+
+@code {
+    Usuario usuario = new Usuario();
+
+    private List<Permiso> permisos { get; set; }
+    private List<Rol> rolesAsignados { get; set; } // Lista de roles asignados al usuario
+
+    [Parameter]
+    public string id { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+
+        EstablecerTituloPagina("Usuarios", "Ver Detalles");
+
+        int id_usuario;
+
+        if (int.TryParse(id, out id_usuario))
+        {
+            var rta_usuario = await serv_usuario.Obtener_por_id(id_usuario);
+            if (rta_usuario.Correcto)
+            {
+                usuario = rta_usuario.Datos;
+
+                // Obtener solo los roles asignados al usuario
+                rolesAsignados = usuario.Roles.ToList();
+
+                // Obtener permisos asociados a los roles asignados
+                await PermisosRolesSeleccionados(rolesAsignados.Select(r => r.Id).AsEnumerable());
+
+                StateHasChanged();
+            }
+        }
+    }
+
+    async Task PermisosRolesSeleccionados(IEnumerable<int> idRoles)
+    {
+        var permisosUnicos = new HashSet<Permiso>();
+
+        foreach (int idRol in idRoles)
+        {
+            var rta_permisos = await serv_permiso.Obtener_por_rol(idRol);
+            if (rta_permisos.Correcto)
+            {
+                foreach (var permiso in rta_permisos.Datos)
+                {
+                    permisosUnicos.Add(permiso);
+                }
+            }
+            else
+            {
+                base.MostrarNotificacion(NotificationSeverity.Error, "Error!", "Error al obtener los permisos asociados al rol");
+            }
+        }
+
+        permisos = permisosUnicos.ToList();
+    }
+
+    async Task OnCancel()
+    {
+        base.IrA("/usuarios");
+    }
+}

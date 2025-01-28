@@ -1,11 +1,14 @@
-﻿@using AdmIn.UI.Authentication
+﻿@using AdmIn.Business.Entidades
+@using AdmIn.UI.Authentication
 @using AdmIn.UI.Services;
+@using AdmIn.UI.Services.UtilityServices;
 @using Microsoft.AspNetCore.Components.Authorization
 
 @inherits LayoutComponentBase
 
 @inject NavigationManager navManager
 @inject AuthenticationStateProvider authStateProvider
+@inject IServ_Usuario serv_Usuario;
 @inject DialogService dialogService
 @inject NotificationService notificationService
 @inject IJSRuntime JS
@@ -86,7 +89,7 @@
 
     <RadzenSidebar @bind-Expanded="@sidebar1Expanded">
         <RadzenPanelMenu>
-            
+
             <MenuItem Text="Usuarios" Icon="groups" Path="/usuarios" Roles="admin_usuario" OnMenuItemClick="@OnMenuItemClick" />
 
             @if (DeviceService.IsMobileDevice())
@@ -150,9 +153,11 @@
 
     private async Task Logout()
     {
-        var customAuthStateProvider = authStateProvider as CustomAuthenticationStateProvider;
-        customAuthStateProvider.UpdateAuthenticationState(null);
-        navManager.NavigateTo("/", true);
+        if (authStateProvider is CustomAuthenticationStateProvider customAuthStateProvider)
+        {
+            await customAuthStateProvider.Logout();
+            navManager.NavigateTo("/", true); 
+        }
     }
 
     private async Task OnMenuItemClick()
@@ -165,9 +170,17 @@
 
     private async Task CambiarPassword()
     {
-        // B_Usuario usuario = new B_Usuario();
-        // var authState = await authStateProvider.GetAuthenticationStateAsync();
-        // usuario.Email = authState.User.Identity.Name;
+        Usuario usuario = new Usuario();
+        var authState = await authStateProvider.GetAuthenticationStateAsync();
+        usuario.Email = authState.User.Identity.Name;
+
+        var rta_usuario = await serv_Usuario.Obtener_usuario_por_email(usuario.Email);
+
+        if (rta_usuario.Correcto)
+        {
+            usuario = rta_usuario.Datos;
+            navManager.NavigateTo($"/usuarios/update-password/{usuario.Id}/home");
+        }
 
         // sidebar1Expanded = false;
 

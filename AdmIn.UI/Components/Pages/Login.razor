@@ -4,13 +4,15 @@
 @using AdmIn.Business.Utilidades
 @using AdmIn.UI.Components.Layout
 @using AdmIn.UI.Services
+@using AdmIn.UI.Services.UtilityServices
 @using AdmIn.UI.Authentication
 @using Microsoft.AspNetCore.Components.Authorization
 
 @layout LoginLayout
 @inject AuthenticationStateProvider authStateProvider
+@inject ITokenService TokenService
 @inject NavigationManager navManager
-@inject IServ_Usuario servUsuario
+@inject IServ_Auth serv_Auth
 @inject DialogService dialogService
 @inject DeviceService DeviceService
 
@@ -29,8 +31,8 @@
                 </RadzenText>
                 <RadzenTemplateForm Data=@("LoginWithDefaultValues")>
                     <RadzenLogin AllowRegister="false" AllowResetPassword="false" UserText="Usuario" PasswordText="Contraseña"
-                                 AllowRememberMe="false" RememberMe="false" LoginText="Ingresar"
-                                 Login=@(args => OnLogin(args, "Login with default values")) />
+                    AllowRememberMe="false" RememberMe="false" LoginText="Ingresar"
+                    Login=@(args => OnLogin(args, "Login with default values")) />
                 </RadzenTemplateForm>
             </RadzenCard>
         </RadzenColumn>
@@ -50,8 +52,8 @@ else
                 </RadzenText>
                 <RadzenTemplateForm Data=@("LoginWithDefaultValues")>
                     <RadzenLogin AllowRegister="false" AllowResetPassword="false" UserText="Usuario" PasswordText="Contraseña"
-                                 AllowRememberMe="false" RememberMe="false" LoginText="Ingresar"
-                                 Login=@(args => OnLogin(args, "Login with default values")) />
+                    AllowRememberMe="false" RememberMe="false" LoginText="Ingresar"
+                    Login=@(args => OnLogin(args, "Login with default values")) />
                 </RadzenTemplateForm>
             </RadzenCard>
         </RadzenColumn>
@@ -69,12 +71,15 @@ else
                 Password = args.Password
             };
 
-        Usuario user = await servUsuario.Login(model);
+        Usuario user = await serv_Auth.Login(model);
         if (user == null)
         {
             await dialogService.Alert("Usuario o contraseña incorrecta", "Credenciales inválidas");
             return;
         }
+
+        // Setear el token usando el servicio
+        await TokenService.SetTokenAsync(user.Token);
 
         var customAuthStateProvider = authStateProvider as CustomAuthenticationStateProvider;
         await customAuthStateProvider.UpdateAuthenticationState(new UserSession

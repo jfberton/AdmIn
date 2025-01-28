@@ -1,5 +1,4 @@
 ﻿using AdmIn.Business.Entidades;
-using AdmIn.Business.Utilidades;
 using AdmIn.Common;
 using System;
 using System.Collections.Generic;
@@ -9,8 +8,9 @@ using System.Threading.Tasks;
 
 namespace AdmIn.Business.Servicios
 {
-    public interface IServ_Rol : IServicioBase<Rol>
+    public interface IServ_Permiso : IServicioBase<Permiso>
     {
-        Task<DTO<IEnumerable<Rol>>> Obtener_por_usuario(int usuarioId);
+        Task<DTO<IEnumerable<Permiso>>> Obtener_por_rol(int rolId);
     }
+
 }

@@ -1,0 +1,162 @@
+﻿@page "/usuarios/update-password/{id}/{origin}"
+@inherits BaseComponent
+
+@using AdmIn.Business.Entidades
+@using AdmIn.Business.Utilidades
+@using System.Text.RegularExpressions
+@using AdmIn.Common
+@using AdmIn.UI.Services
+@using AdmIn.UI.Services.UtilityServices
+
+@inject IServ_Usuario serv_usuario;
+
+<RadzenTemplateForm @ref="form" TItem="CambioClaveModel" Data="@model">
+    <RadzenRow class="rz-mx-2 rz-mb-8">
+        <RadzenColumn>
+            <RadzenText TextStyle="TextStyle.Overline">Email</RadzenText>
+            <RadzenText TextStyle="TextStyle.Body1"><b>@model.Email</b></RadzenText>
+        </RadzenColumn>
+    </RadzenRow>
+
+    <RadzenRow class="rz-mx-2 rz-mb-8">
+        <RadzenColumn>
+            <RadzenFormField Text="Password" Variant="Variant.Outlined" Style="width:100%">
+                <ChildContent>
+                    <RadzenPassword @bind-Value=model.Password Name="componente_password" TValue="string" />
+                </ChildContent>
+                <Helper>
+                    <RadzenCustomValidator Component="componente_password" Validator="@(() => Validar_Password())" Text="Ingrese la contraseña" Popup=true />
+                </Helper>
+            </RadzenFormField>
+        </RadzenColumn>
+    </RadzenRow>
+
+    <RadzenRow class="rz-mx-2 rz-mb-8">
+        <RadzenColumn>
+            <RadzenFormField Text="Nueva clave" Variant="Variant.Outlined" Style="width:100%">
+                <ChildContent>
+                    <RadzenPassword @bind-Value=model.NuevaPassword Name="componente_nueva_password" TValue="string" />
+                </ChildContent>
+                <Helper>
+                    <RadzenCustomValidator Component="componente_nueva_password" Validator="@(() => Validar_nuevo_password_vacio())" Text="Ingrese la nueva contraseña" Popup=true />
+                </Helper>
+            </RadzenFormField>
+        </RadzenColumn>
+    </RadzenRow>
+
+    <RadzenRow class="rz-mx-2 rz-mb-8">
+        <RadzenColumn>
+            <RadzenFormField Text="Repita la nueva clave" Variant="Variant.Outlined" Style="width:100%">
+                <ChildContent>
+                    <RadzenPassword @bind-Value=nueva_clave_repetida Name="componente_nueva_password2" TValue="string" />
+                </ChildContent>
+                <Helper>
+                    <RadzenCustomValidator Component="componente_nueva_password2" Validator="@(() => Validar_nuevo_password2_vacio())" Text="Repita la nueva contraseña" Popup=true />
+                    <RadzenCustomValidator Component="componente_nueva_password2" Validator="@(() => Validar_passwords_iguales())" Text="Las contraseñas nuevas no coinciden" Popup=true />
+
+                </Helper>
+            </RadzenFormField>
+        </RadzenColumn>
+    </RadzenRow>
+
+    <RadzenRow class="rz-mx-2 rz-mb-8" JustifyContent="JustifyContent.End">
+        <RadzenColumn>
+            <MiRadzenButton ButtonStyle="ButtonStyle.Primary" Text="Guardar" OnClick="@OnSubmit" />
+            <MiRadzenButton ButtonStyle="ButtonStyle.Primary" Text="Cancelar" OnClick="@OnCancel" />
+        </RadzenColumn>
+    </RadzenRow>
+</RadzenTemplateForm>
+
+@code {
+
+    RadzenTemplateForm<CambioClaveModel> form;
+
+    CambioClaveModel model = new CambioClaveModel();
+
+    string nueva_clave_repetida = string.Empty;
+
+    [Parameter]
+    public string id { get; set; }
+
+    [Parameter]
+    public string origin { get; set; } // Origen de la solicitud
+
+    private Usuario usuario;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+
+        EstablecerTituloPagina("Usuarios", "Modificar");
+
+        int id_usuario;
+
+        if (int.TryParse(id, out id_usuario))
+        {
+            var rta_usuario = await serv_usuario.Obtener_por_id(id_usuario);
+            if (rta_usuario.Correcto)
+            {
+                usuario = rta_usuario.Datos;
+
+                model.Email = usuario.Email;
+            }
+        }
+    }
+
+    #region Validaciones
+
+    public bool Is_valid()
+    {
+        form.EditContext.Validate();
+        return form.IsValid;
+    }
+
+    bool Validar_Password() => !string.IsNullOrEmpty(model.Password);
+    bool Validar_nuevo_password_vacio() => !string.IsNullOrEmpty(model.NuevaPassword);
+    bool Validar_nuevo_password2_vacio() => !string.IsNullOrEmpty(nueva_clave_repetida);
+    bool Validar_passwords_iguales() => model.NuevaPassword == nueva_clave_repetida;
+
+    #endregion
+
+    async Task OnSubmit()
+    {
+        if (Is_valid())
+        {
+            try
+            {
+
+                DTO<bool> usuario_respuesta = await serv_usuario.Modificar_password(model);
+                if (usuario_respuesta != null && usuario_respuesta.Correcto)
+                {
+                    base.MostrarNotificacion(NotificationSeverity.Success, "Modificación exitosa", "Los cambios se realizaron correctamente.");
+                    RedirigirAlOrigen();
+                }
+                else
+                {
+                    base.MostrarNotificacion(NotificationSeverity.Error, "Error!", $"Error al guardar los cambios: {usuario_respuesta.Mensaje}");
+                }
+            }
+            catch (Exception ex)
+            {
+                base.MostrarNotificacion(NotificationSeverity.Error, "Error!", $"Error al guardar los cambios: {ex.Message}");
+            }
+        }
+    }
+
+    async Task OnCancel()
+    {
+        RedirigirAlOrigen();
+    }
+
+    void RedirigirAlOrigen()
+    {
+        if (origin == "usuarios")
+        {
+            base.IrA("/usuarios");
+        }
+        else if (origin == "home")
+        {
+            base.IrA("/home");
+        }
+    }
+}

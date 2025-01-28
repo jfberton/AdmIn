@@ -1,4 +1,4 @@
-﻿namespace AdmIn.UI.Services
+﻿namespace AdmIn.UI.Services.UtilityServices
 {
     public class DeviceService
     {

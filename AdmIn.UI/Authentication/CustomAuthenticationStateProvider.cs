@@ -19,61 +19,99 @@ namespace AdmIn.UI.Authentication
         {
             try
             {
-                var userSessionStorageResult = await _sessionStorage.GetAsync<UserSession>("UserSession");
+                var userSessionTask = _sessionStorage.GetAsync<UserSession>("UserSession").AsTask();
+                var completedTask = await Task.WhenAny(userSessionTask, Task.Delay(TimeSpan.FromSeconds(5)));
+
+                if (completedTask != userSessionTask)
+                {
+                    Console.Error.WriteLine("Timeout al obtener el estado de autenticación.");
+                    return new AuthenticationState(_anonymous);
+                }
+
+                var userSessionStorageResult = await userSessionTask;
+
                 var userSession = userSessionStorageResult.Success ? userSessionStorageResult.Value : null;
 
                 if (userSession == null)
-                    return await Task.FromResult(new AuthenticationState(_anonymous));
+                {
+                    return new AuthenticationState(_anonymous);
+                }
 
                 var claims = new List<Claim>
                 {
                     new Claim(ClaimTypes.Name, userSession.Email),
+                    new Claim("Nombre", userSession.Nombre),
+                    new Claim("Token", userSession.Token)
                 };
 
-                claims.Add(new Claim("Nombre", userSession.Nombre));
-
-                var roles = userSession.Roles.Split(", ");
-
-                foreach (var role in roles)
+                foreach (var role in userSession.Roles.Split(", "))
                 {
                     claims.Add(new Claim(ClaimTypes.Role, role));
                 }
 
-                claims.Add(new Claim("Token", userSession.Token));
+                var claimsPrincipal = new ClaimsPrincipal(new ClaimsIdentity(claims, "apiauth"));
 
-                var ClaimsPrincipal = new ClaimsPrincipal(new ClaimsIdentity(claims, "apiauth"));
-
-                return await Task.FromResult(new AuthenticationState(ClaimsPrincipal));
+                return new AuthenticationState(claimsPrincipal);
             }
             catch (Exception ex)
             {
-                return await Task.FromResult(new AuthenticationState(_anonymous));
+                Console.Error.WriteLine($"Error en GetAuthenticationStateAsync: {ex.Message}");
+                return new AuthenticationState(_anonymous);
             }
         }
 
         public async Task UpdateAuthenticationState(UserSession userSession)
         {
-            ClaimsPrincipal claimsPrincipal;
-
-            if (userSession != null)
+            try
             {
-                await _sessionStorage.SetAsync("UserSession", userSession);
+                ClaimsPrincipal claimsPrincipal;
 
-                claimsPrincipal = new ClaimsPrincipal(new ClaimsIdentity(new List<Claim>{
-                    new Claim(ClaimTypes.Name, userSession.Email),
-                    new Claim(ClaimTypes.Role, userSession.Roles),
-                    new Claim("Password", userSession.Password),
-                    new Claim("Token", userSession.Token)
-                }));
+                if (userSession != null)
+                {
+                    await _sessionStorage.SetAsync("UserSession", userSession);
+
+                    var claims = new List<Claim>
+                    {
+                        new Claim(ClaimTypes.Name, userSession.Email),
+                        new Claim("Token", userSession.Token)
+                    };
+
+                    foreach (var role in userSession.Roles.Split(", "))
+                    {
+                        claims.Add(new Claim(ClaimTypes.Role, role));
+                    }
+
+                    claimsPrincipal = new ClaimsPrincipal(new ClaimsIdentity(claims, "apiauth"));
+                }
+                else
+                {
+                    await _sessionStorage.DeleteAsync("UserSession");
+                    claimsPrincipal = _anonymous;
+                }
+
+                NotifyAuthenticationStateChanged(Task.FromResult(new AuthenticationState(claimsPrincipal)));
             }
-            else
+            catch (Exception ex)
             {
+                Console.Error.WriteLine($"Error en UpdateAuthenticationState: {ex.Message}");
+            }
+        }
+
+        public async Task Logout()
+        {
+            try
+            {
+                // Eliminar la sesión almacenada
                 await _sessionStorage.DeleteAsync("UserSession");
 
-                claimsPrincipal = _anonymous;
+                // Cambiar el estado de autenticación a anónimo
+                NotifyAuthenticationStateChanged(Task.FromResult(new AuthenticationState(_anonymous)));
             }
-
-            NotifyAuthenticationStateChanged(Task.FromResult(new AuthenticationState(claimsPrincipal)));
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"Error al cerrar sesión: {ex.Message}");
+            }
         }
+
     }
 }

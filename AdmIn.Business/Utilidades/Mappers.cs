@@ -2,6 +2,7 @@
 using AdmIn.Data.Entidades;
 using AdmIn.Data.Repositorios;
 using AdmIn.Data.Repositorios.AdmIn.Data.Repositorios;
+using System.Linq.Expressions;
 
 namespace AdmIn.Business.Utilidades
 {
@@ -21,6 +22,7 @@ namespace AdmIn.Business.Utilidades
                 Nombre = dataUsuario.USU_NOMBRE,
                 Password = dataUsuario.USU_PASSWORD,
                 Email = dataUsuario.USU_EMAIL,
+                Activo = dataUsuario.USU_ACTIVO,
                 Roles = new List<Rol>()        // Inicializa para evitar null
             };
 
@@ -75,7 +77,7 @@ namespace AdmIn.Business.Utilidades
             if (permisosAsociados.Correcto && permisosAsociados.Datos != null)
             {
                 // Obtener todos los permisos para mapear nombres
-                var todosPermisos = repPermiso.Obtener_todos();
+                var todosPermisos = repPermiso.Obtener_todos().Result;
                 if (todosPermisos.Correcto && todosPermisos.Datos != null)
                 {
                     // Convertir los permisos a objetos de negocio
@@ -89,7 +91,6 @@ namespace AdmIn.Business.Utilidades
 
             return rol;
         }
-
 
         public static USUARIO ToDataUSUARIO(this Usuario data)
         {

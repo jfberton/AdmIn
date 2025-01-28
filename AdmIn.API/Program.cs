@@ -39,6 +39,8 @@ builder.Services.AddCors(options =>
 
 // Register application services
 builder.Services.AddScoped<IServ_Usuario, Serv_Usuario>();
+builder.Services.AddScoped<IServ_Rol, Serv_Rol>();
+builder.Services.AddScoped<IServ_Permiso, Serv_Permiso>();
 
 var app = builder.Build();
 

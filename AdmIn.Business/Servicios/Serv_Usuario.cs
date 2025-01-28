@@ -24,6 +24,7 @@ namespace AdmIn.Business.Servicios
         {
             //encripto la contraseña para guardarla en la base de datos
             usuario.Password = MiHash.GenerarHash(usuario.Password);
+            usuario.Creacion = DateTime.Now;
 
             var resultado = await _repUsuario.Crear(usuario.ToDataUSUARIO());
 
@@ -141,6 +142,7 @@ namespace AdmIn.Business.Servicios
             if (usuarioRepo.Correcto && usuarioRepo.Datos != null)
             {
                 usuarioData.Datos = usuarioRepo.Datos.ToBusinessUsuario();
+                usuarioData.Correcto = true;
             }
 
             return usuarioData;

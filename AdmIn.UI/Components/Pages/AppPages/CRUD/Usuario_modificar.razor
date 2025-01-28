@@ -1,4 +1,4 @@
-﻿@page "/usuarios/new"
+﻿@page "/usuarios/update/{id}"
 @inherits BaseComponent
 
 @using AdmIn.Business.Entidades
@@ -24,16 +24,17 @@
             </RadzenFormField>
         </RadzenColumn>
     </RadzenRow>
-
+    
+    <!-- Nuevo campo Activo -->
     <RadzenRow class="rz-mx-2 rz-mb-8">
         <RadzenColumn>
-            <RadzenFormField Text="Password" Variant="Variant.Outlined" Style="width:100%">
+            <RadzenFormField Text="Estado">
+                <Start>
+                    <RadzenCheckBox @bind-Value="usuario.Activo" Name="componente_activo" />
+                </Start>
                 <ChildContent>
-                    <RadzenPassword @bind-Value=usuario.Password Name="componente_password" TValue="string" />
+                    <RadzenLabel Text="Activo" Component="CheckBox1" Class="rz-mx-4" />
                 </ChildContent>
-                <Helper>
-                    <RadzenCustomValidator Component="componente_password" Validator="@(() => Validar_Password(usuario.Password))" Text="Ingrese la contraseña" Popup=true />
-                </Helper>
             </RadzenFormField>
         </RadzenColumn>
     </RadzenRow>
@@ -51,36 +52,21 @@
         </RadzenColumn>
     </RadzenRow>
 
-    <!-- Nuevo campo Activo -->
-    <RadzenRow class="rz-mx-2 rz-mb-8">
-        <RadzenColumn>
-            <RadzenFormField Text="Estado">
-                <Start>
-                    <RadzenCheckBox @bind-Value="usuario.Activo" Name="componente_activo" />
-                </Start>
-                <ChildContent>
-                    <RadzenLabel Text="Activo" Component="CheckBox1" Class="rz-mx-4" />
-                </ChildContent>
-            </RadzenFormField>
-        </RadzenColumn>
-    </RadzenRow>
-
     <RadzenRow class="rz-mx-2 rz-mb-8">
         <RadzenColumn Size="6">
             <RadzenLabel Text="Roles" />
-            <RadzenListBox @bind-Value="valuesRoles" TValue="IEnumerable<int>" Change="@(args => PermisosRolesSeleccionados(args as IEnumerable<int>))" Data="@roles" AllowSelectAll="false"
-                           TextProperty="Nombre" ValueProperty="Id" Style="width:100%" Multiple="true" />
+            <RadzenListBox @bind-Value="valuesRoles" TValue="IEnumerable<int>" Change="@(args => PermisosRolesSeleccionados(args as IEnumerable<int>))" Data="@roles" ons AllowSelectAll="false"
+            TextProperty="Nombre" ValueProperty="Id" Style="width:100%" Multiple="true" />
         </RadzenColumn>
         <RadzenColumn Size="6">
             <RadzenLabel Text="Permisos asociados a los roles seleccionados" />
-            @if (permisos != null && permisos.Any())
+            @if (permisos == null || permisos.Count == 0)
             {
-                <RadzenListBox TValue="int" Data="@permisos" Style="width: 100%; height:200px"
-                               TextProperty="Nombre" ValueProperty="Id" AllowSelectAll="false" ReadOnly="true" />
+                <RadzenText Text="No existen permisos asociados.-" />
             }
             else
             {
-                <RadzenText Text="No existen permisos asociados.-" />
+                <RadzenListBox @bind-Value=@valuesPermisos ReadOnly TValue="IEnumerable<int>" Data="@permisos" Style="width: 100%; height:200px" TextProperty="Nombre" ValueProperty="Id" />
             }
         </RadzenColumn>
     </RadzenRow>
@@ -97,17 +83,21 @@
     RadzenTemplateForm<Usuario> form;
     Usuario usuario = new Usuario();
 
-    private List<Permiso> permisos { get; set; } = new List<Permiso>();
+    private List<Permiso> permisos { get; set; }
 
     private List<Rol> roles { get; set; }
 
     IEnumerable<int> valuesPermisos;
     IEnumerable<int> valuesRoles;
 
+    [Parameter]
+    public string id { get; set; }
+
     #region Validaciones
 
     public bool Is_valid()
     {
+
         form.EditContext.Validate();
         return form.IsValid;
     }
@@ -119,6 +109,7 @@
 
     bool Validar_Password(string password)
     {
+        //aca se pueden aplicar las restricciones para considerar el password valido
         return !string.IsNullOrEmpty(password);
     }
 
@@ -137,12 +128,9 @@
     {
         await base.OnInitializedAsync();
 
-        base.EstablecerTituloPagina("Usuarios", "Nuevo");
+        EstablecerTituloPagina("Usuarios", "Modificar");
 
-        if (usuario.Roles == null)
-        {
-            usuario.Roles = new List<Rol>();
-        }
+        int id_usuario;
 
         var rta_roles = await serv_rol.Obtener_todos();
 
@@ -150,18 +138,36 @@
         {
             roles = rta_roles.Datos.ToList();
         }
+
+        if (int.TryParse(id, out id_usuario))
+        {
+            var rta_usuario = await serv_usuario.Obtener_por_id(id_usuario);
+            if (rta_usuario.Correcto)
+            {
+                usuario = rta_usuario.Datos;
+                valuesRoles = usuario.Roles.Select(r => r.Id).AsEnumerable();
+
+                await PermisosRolesSeleccionados(valuesRoles);
+
+                StateHasChanged();
+            }
+        }
     }
 
     async Task PermisosRolesSeleccionados(IEnumerable<int> idRoles)
     {
+        // HashSet para evitar duplicados
         var permisosUnicos = new HashSet<Permiso>();
 
         foreach (int idRol in idRoles)
         {
             var rta_permisos = await serv_permiso.Obtener_por_rol(idRol);
-            if (rta_permisos.Correcto && rta_permisos.Datos != null)
+            if (rta_permisos.Correcto)
             {
-                permisosUnicos.UnionWith(rta_permisos.Datos.Where(p => p != null && p.Id > 0));
+                foreach (var permiso in rta_permisos.Datos) // Suponiendo que Data contiene la lista de permisos
+                {
+                    permisosUnicos.Add(permiso); // HashSet evita duplicados automáticamente
+                }
             }
             else
             {
@@ -169,8 +175,10 @@
             }
         }
 
+        // Convertir HashSet a List si es necesario
         permisos = permisosUnicos.ToList();
     }
+
 
     async Task OnSubmit()
     {
@@ -186,19 +194,19 @@
                     usuario.Roles.Add(rol);
                 }
 
-                DTO<Usuario> usuario_respuesta = await serv_usuario.Crear(usuario);
+                DTO<Usuario> usuario_respuesta = await serv_usuario.Actualizar(usuario);
                 if (usuario_respuesta != null && usuario_respuesta.Correcto)
                 {
-                    base.MostrarNotificacion(NotificationSeverity.Success, "Alta correcta", "Se ha agregado un nuevo usuario al sistema", "/usuarios");
+                    base.MostrarNotificacion(NotificationSeverity.Success, "Modificación exitosa", "Los cambios se realizaron correctamente.", "/usuarios");
                 }
                 else
                 {
-                    base.MostrarNotificacion(NotificationSeverity.Error, "Error!", $"Error al agregar el usuario: {usuario_respuesta.Mensaje}");
+                    base.MostrarNotificacion(NotificationSeverity.Error, "Error!", $"Error al guardar los cambios: {usuario_respuesta.Mensaje}");
                 }
             }
             catch (Exception ex)
             {
-                base.MostrarNotificacion(NotificationSeverity.Error, "Error!", $"Error al agregar el usuario: {ex.Message}");
+                base.MostrarNotificacion(NotificationSeverity.Error, "Error!", $"Error al guardar los cambios: {ex.Message}");
             }
         }
     }
@@ -207,4 +215,5 @@
     {
         base.IrA("/usuarios");
     }
+
 }
