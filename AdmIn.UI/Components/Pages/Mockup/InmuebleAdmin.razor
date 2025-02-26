@@ -1,0 +1,63 @@
+﻿@page "/m/inmuebles"
+@using Radzen.Blazor
+@using AdmIn.Business.Entidades
+@using Services
+@using Services.UtilityServices
+@inject IServ_Mock MockData
+
+@inherits BaseComponent
+
+<RadzenRow>
+    <RadzenColumn Size="12">
+        <RadzenStack Orientation="Orientation.Horizontal" Gap="10px">
+            <RadzenBadge Text="Todos" BadgeStyle="BadgeStyle.Primary" Style="cursor: pointer;" @onclick="() => FiltrarInmuebles(null)" />
+            <RadzenBadge Text="Disponible" BadgeStyle="BadgeStyle.Success" Style="cursor: pointer;" @onclick="@(() => FiltrarInmuebles("Disponible"))" />
+            <RadzenBadge Text="Ocupado" BadgeStyle="BadgeStyle.Dark" Style="cursor: pointer;" @onclick="@(() => FiltrarInmuebles("Ocupado"))" />
+            <RadzenBadge Text="En reparación" BadgeStyle="BadgeStyle.Warning" Style="cursor: pointer;" @onclick="@(() => FiltrarInmuebles("En reparación"))" />
+        </RadzenStack>
+    </RadzenColumn>
+</RadzenRow>
+
+<RadzenRow>
+    @if (InmueblesFiltrados != null)
+    {
+        @foreach (var inmueble in InmueblesFiltrados)
+        {
+            <RadzenColumn Size="12" SizeMD="6" SizeLG="4" SizeXL="3" Style="display: flex; justify-content: center;">
+                <InmuebleCard Inmueble="inmueble" OnVerDetalle="VerDetalleInmueble" />
+            </RadzenColumn>
+        }
+    }
+</RadzenRow>
+
+@code {
+    private IEnumerable<Inmueble> Inmuebles;
+    private IEnumerable<Inmueble> InmueblesFiltrados;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+
+        base.EstablecerTituloPagina("Inmuebles", "Listado");
+
+        Inmuebles = await MockData.ObtenerInmuebles();
+        InmueblesFiltrados = Inmuebles; // Mostrar todos al inicio
+    }
+
+    private void FiltrarInmuebles(string? estado)
+    {
+        if (string.IsNullOrEmpty(estado))
+        {
+            InmueblesFiltrados = Inmuebles; // Mostrar todos
+        }
+        else
+        {
+            InmueblesFiltrados = Inmuebles.Where(i => i.Estado.Estado == estado);
+        }
+    }
+
+    private void VerDetalleInmueble(int inmuebleId)
+    {
+        base.IrA($"/inmueble/{inmuebleId}");
+    }
+}

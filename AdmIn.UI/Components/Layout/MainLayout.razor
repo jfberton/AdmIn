@@ -91,6 +91,7 @@
         <RadzenPanelMenu>
 
             <MenuItem Text="Usuarios" Icon="groups" Path="/usuarios" Roles="admin_usuario" OnMenuItemClick="@OnMenuItemClick" />
+            <MenuItem Text="Inmuebles" Icon="store" Path="/m/inmuebles" Roles="admin_propiedad" OnMenuItemClick="@OnMenuItemClick" />
 
             @if (DeviceService.IsMobileDevice())
             {
@@ -100,6 +101,7 @@
                     <RadzenPanelMenuItem Text="Cerrar sesión" Icon="logout" Click="@(() => Logout())"></RadzenPanelMenuItem>
                 </RadzenPanelMenuItem>
             }
+
         </RadzenPanelMenu>
     </RadzenSidebar>
 
@@ -174,35 +176,19 @@
         var authState = await authStateProvider.GetAuthenticationStateAsync();
         usuario.Email = authState.User.Identity.Name;
 
-        var rta_usuario = await serv_Usuario.Obtener_usuario_por_email(usuario.Email);
-
-        if (rta_usuario.Correcto)
+        if (usuario.Email.Contains("@mock.com"))
         {
-            usuario = rta_usuario.Datos;
-            navManager.NavigateTo($"/usuarios/update-password/{usuario.Id}/home");
+            notificationService.Notify(NotificationSeverity.Warning, "Atención!", "No se puede editar contraseña de usuario mock");
         }
+        else
+        {
+            var rta_usuario = await serv_Usuario.Obtener_usuario_por_email(usuario.Email);
 
-        // sidebar1Expanded = false;
-
-        // Respuesta_dialogo rd = (Respuesta_dialogo)await dialogService.OpenAsync<Dialog_cambio_clave_usuario>($"Modificar contraseña",
-        // new Dictionary<string, object>() { { "usuario", usuario } },
-        // new DialogOptions()
-        //     {
-        //         Width = "600px",
-        //         Height = "auto",
-        //         Resizable = true,
-        //         Draggable = true,
-        //         ShowClose = false
-        //     }
-        // );
-
-        // if (rd != null && rd.Nombre_dialogo == "Modificar contraseña" && !rd.Error)
-        // {
-        //     notificationService.Notify(NotificationSeverity.Success, "Contraseña actualizada correctamente", $"La contraseña del usuario {rd.Valor_respuesta.Nombre} se modificó correctamente.-");
-        // }
-
-        // if (rd != null && rd.Nombre_dialogo == "Modificar contraseña" && rd.Error)
-        //     notificationService.Notify(NotificationSeverity.Error, "Error al modificar la contraseña", $"Error: {rd.Error_mensaje}");
-
+            if (rta_usuario.Correcto)
+            {
+                usuario = rta_usuario.Datos;
+                navManager.NavigateTo($"/usuarios/update-password/{usuario.Id}/home");
+            }
+        }
     }
 }

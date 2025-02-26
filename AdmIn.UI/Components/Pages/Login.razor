@@ -71,7 +71,28 @@ else
                 Password = args.Password
             };
 
-        Usuario user = await serv_Auth.Login(model);
+
+        Usuario user = null;
+
+        switch (args.Username)
+        {
+            case "propietario":
+                user = new Usuario()
+                    {
+                        Nombre = "Propietario",
+                        Email = "propietario@mock.com",
+                        Roles = new List<Rol> { new Rol { Nombre = "MockPropietario", Permisos = new List<Permiso> { new Permiso { Nombre = "propietario" } } } },
+                        Token = "mock token",
+                        Password = "123456",
+                        Activo = true,
+                        Creacion = DateTime.Now
+                    };
+                break;
+            default:
+                user = await serv_Auth.Login(model);
+                break;
+        }
+
         if (user == null)
         {
             await dialogService.Alert("Usuario o contraseña incorrecta", "Credenciales inválidas");

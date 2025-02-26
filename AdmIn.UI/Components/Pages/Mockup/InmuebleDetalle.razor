@@ -1,0 +1,151 @@
+﻿@page "/inmueble/{inmuebleId:int}"
+
+
+@inherits BaseComponent
+
+@using Radzen.Blazor
+@using AdmIn.Business.Entidades
+@using AdmIn.UI.Services
+@inject IServ_Mock MockData
+
+@inject DialogService DialogService
+
+@if (inmueble == null)
+{
+    <RadzenAlert Text="Cargando..." Style="margin: 20px;" />
+}
+else
+{
+    <div style="max-width: 1200px; margin: 0 auto;">
+        <!-- Botones de acción -->
+        <div style="margin-bottom: 20px;">
+            <RadzenButton Text="Editar" Icon="edit" Click="@EditarInmueble" Style="margin-right: 10px;" />
+            <RadzenButton Text="Eliminar" Icon="delete" ButtonStyle="ButtonStyle.Danger" Click="@(async () => await EliminarInmueble())" />
+        </div>
+
+        <!-- Información principal -->
+        <RadzenCard>
+            <Header>
+                <h3>@inmueble.Descripcion</h3>
+            </Header>
+            <Content>
+                <RadzenRow>
+                    <RadzenColumn Size="12" MD="6">
+                        <p><strong>Dirección:</strong> @inmueble.Direccion.ToString()</p>
+                        <p><strong>Valor:</strong> @inmueble.Valor.ToString("C")</p>
+                        <p><strong>Superficie:</strong> @inmueble.Superficie m²</p>
+                        <p><strong>Construido:</strong> @inmueble.Construido m²</p>
+                        <RadzenBadge Text="@inmueble.Estado.Estado" 
+                        BadgeStyle="@(inmueble.Estado.Estado == "Disponible" ? BadgeStyle.Success : BadgeStyle.Warning)" />
+                    </RadzenColumn>
+                    <RadzenColumn Size="12" MD="6">
+                        <!-- Imagen principal -->
+                        @if (inmueble.ImagenPrincipal != null)
+                        {
+                            <img src="@inmueble.ImagenPrincipal.Url" style="width: 100%; border-radius: 5px;" />
+                        }
+                        else
+                        {
+                            <div style="width: 100%; height: 200px; background-color: #f0f0f0; display: flex; align-items: center; justify-content: center;">
+                                <span>Sin imagen principal</span>
+                            </div>
+                        }
+
+                        <!-- Galería de imágenes -->
+                        <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px;">
+                            @foreach (var imagen in inmueble.Imagenes)
+                            {
+                                <img src="@imagen.Url" 
+                                style="width: 100px; height: 75px; object-fit: cover; cursor: pointer;" 
+                                @onclick="() => CambiarImagenPrincipal(imagen.Id)" />
+                            }
+                        </div>
+                    </RadzenColumn>
+                </RadzenRow>
+            </Content>
+        </RadzenCard>
+
+        <!-- Tabs para más secciones -->
+        <RadzenTabs Style="margin-top: 20px;">
+            <Tabs>
+                <RadzenTabsItem Text="Características">
+                    <RadzenDataGrid Data="@inmueble.Caracteristicas" TItem="CaracteristicaInmueble" Style="margin-top: 10px;">
+                        <Columns>
+                            <RadzenDataGridColumn Title="Nombre" Property="Nombre" />
+                            <RadzenDataGridColumn Title="Valor" Property="Valor" />
+                        </Columns>
+                    </RadzenDataGrid>
+                </RadzenTabsItem>
+
+                <RadzenTabsItem Text="Inquilinos">
+                    <RadzenDataGrid Data="@inmueble.Inquilinos" TItem="Inquilino" Style="margin-top: 10px;">
+                        <Columns>
+                            <RadzenDataGridColumn Title="Nombre" Property="Nombre" />
+                            <RadzenDataGridColumn Title="Correo" Property="Email" />
+                            <RadzenDataGridColumn Title="Teléfono" Property="Telefonos[0].Numero" />
+                        </Columns>
+                    </RadzenDataGrid>
+                </RadzenTabsItem>
+
+                <RadzenTabsItem Text="Pagos">
+                    <RadzenDataGrid Data="@inmueble.Pagos" TItem="Pago">
+                        <Columns>
+                            <RadzenDataGridColumn Title="Fecha Vencimiento" Property="FechaVencimiento" FormatString="d" />
+                            <RadzenDataGridColumn Title="Monto" Property="Monto" FormatString="C" />
+                            <RadzenDataGridColumn Title="Estado" Property="Estado.Estado" />
+                        </Columns>
+                    </RadzenDataGrid>
+                </RadzenTabsItem>
+
+                <RadzenTabsItem Text="Reparaciones">
+                    <RadzenDataGrid Data="@inmueble.Reparaciones" TItem="Reparacion">
+                        <Columns>
+                            <RadzenDataGridColumn Title="Descripción" Property="Descripcion" />
+                            <RadzenDataGridColumn Title="Costo Final" Property="CostoFinal" FormatString="C" />
+                            <RadzenDataGridColumn Title="Estado" Property="Estado.Estado" />
+                        </Columns>
+                    </RadzenDataGrid>
+                </RadzenTabsItem>
+            </Tabs>
+        </RadzenTabs>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public int InmuebleId { get; set; }
+
+    private Inmueble? inmueble;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        inmueble = await MockData.ObtenerInmueblePorId(InmuebleId);
+
+        base.EstablecerTituloPagina("Inmuebles", $"Detalle inmueble # {inmueble.Id.ToString()}");
+    }
+
+    private void EditarInmueble()
+    {
+        NavigationManager.NavigateTo($"/editar-inmueble/{inmueble.Id}");
+    }
+
+    private async Task EliminarInmueble()
+    {
+        bool? confirmar = await DialogService.Confirm("¿Estás seguro de eliminar este inmueble?", "Eliminar");
+        if (confirmar == true)
+        {
+            // Lógica para eliminar el inmueble
+            NavigationManager.NavigateTo("/");
+        }
+    }
+
+    private void CambiarImagenPrincipal(Guid imagenId)
+    {
+        inmueble.ImagenPrincipalId = imagenId;
+    }
+}
