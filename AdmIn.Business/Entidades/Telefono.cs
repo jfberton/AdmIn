@@ -11,6 +11,11 @@ namespace AdmIn.Business.Entidades
         public int TelefonoId { get; set; } // ID del teléfono
         public string Numero { get; set; } = string.Empty; // Número de teléfono
         public TipoTelefono Tipo { get; set; } = new(); // Asociación con el tipo de teléfono
+
+        public override string ToString()
+        {
+            return $"({Tipo.Descripcion}) {this.Numero}";
+        }
     }
 
     public class TipoTelefono

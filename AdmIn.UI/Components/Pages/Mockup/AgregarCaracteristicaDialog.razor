@@ -1,0 +1,37 @@
+﻿@using Radzen.Blazor
+@using AdmIn.Business.Entidades
+
+@inject DialogService DialogService
+
+<RadzenTemplateForm TItem="CaracteristicaInmueble">
+    <RadzenFieldset Text="@(Caracteristica.Id == 0 ? "Agregar Característica" : "Editar Característica")">
+        <RadzenFormField Text="Nombre" Variant="Variant.Text" Style="width: 100%;">
+            <RadzenTextBox @bind-Value="Caracteristica.Nombre" Placeholder="Ingrese el nombre" />
+        </RadzenFormField>
+        <RadzenFormField Text="Valor" Variant="Variant.Text" Style="width: 100%;">
+            <RadzenTextBox @bind-Value="Caracteristica.Valor" Placeholder="Ingrese el valor" />
+        </RadzenFormField>
+    </RadzenFieldset>
+
+    <RadzenButton Text="Guardar" Icon="save" Click="@OnGuardar" Style="margin-right: 10px;" />
+    <RadzenButton Text="Cancelar" Icon="cancel" Click="@OnCancelar" />
+</RadzenTemplateForm>
+
+@code {
+    [Parameter]
+    public CaracteristicaInmueble Caracteristica { get; set; } = new CaracteristicaInmueble();
+
+    [Parameter]
+    public EventCallback<CaracteristicaInmueble> OnGuardarCallback { get; set; }
+
+    private async Task OnGuardar()
+    {
+        await OnGuardarCallback.InvokeAsync(Caracteristica);
+        DialogService.Close();
+    }
+
+    private void OnCancelar()
+    {
+        DialogService.Close();
+    }
+}

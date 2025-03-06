@@ -1,0 +1,233 @@
+﻿@page "/editar-inmueble/{inmuebleId:int}"
+
+@inherits BaseComponent
+
+@using Radzen.Blazor
+@using AdmIn.Business.Entidades
+@using AdmIn.UI.Services
+
+@inject IServ_Mock MockData
+@inject NavigationManager NavigationManager
+@inject DialogService DialogService
+
+<h3>Editar Inmueble</h3>
+
+@if (inmueble == null)
+{
+    <RadzenAlert Text="Cargando..." Style="margin: 20px;" />
+}
+else
+{
+    <EditForm Model="@inmueble" OnValidSubmit="@GuardarInmueble">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <RadzenTemplateForm TItem="Inmueble" Context="templateContext">
+            <!-- Información del Inmueble -->
+            <RadzenFieldset Text="Información del Inmueble">
+                <RadzenRow>
+                    <RadzenColumn Size="12" SizeMD="6" SizeLG="4">
+                        <RadzenFormField Text="Descripción" Variant="Variant.Text" Style="width: 100%;">
+                            <RadzenTextBox @bind-Value="inmueble.Descripcion" Placeholder="Ingrese la descripción" />
+                        </RadzenFormField>
+                    </RadzenColumn>
+                    <RadzenColumn Size="12" SizeMD="6" SizeLG="4">
+                        <RadzenFormField Text="Dirección" Variant="Variant.Text" Style="width: 100%;">
+                            <RadzenTextBox @bind-Value="inmueble.Direccion.CalleNumero" Placeholder="Ingrese la dirección" />
+                        </RadzenFormField>
+                    </RadzenColumn>
+                    <RadzenColumn Size="12" SizeMD="6" SizeLG="4">
+                        <RadzenFormField Text="Valor" Variant="Variant.Text" Style="width: 100%;">
+                            <RadzenNumeric @bind-Value="inmueble.Valor" Placeholder="Ingrese el valor" />
+                        </RadzenFormField>
+                    </RadzenColumn>
+                    <RadzenColumn Size="12" SizeMD="6" SizeLG="4">
+                        <RadzenFormField Text="Superficie" Variant="Variant.Text" Style="width: 100%;">
+                            <RadzenNumeric @bind-Value="inmueble.Superficie" Placeholder="Ingrese la superficie" />
+                        </RadzenFormField>
+                    </RadzenColumn>
+                    <RadzenColumn Size="12" SizeMD="6" SizeLG="4">
+                        <RadzenFormField Text="Construido" Variant="Variant.Text" Style="width: 100%;">
+                            <RadzenNumeric @bind-Value="inmueble.Construido" Placeholder="Ingrese el área construida" />
+                        </RadzenFormField>
+                    </RadzenColumn>
+                </RadzenRow>
+            </RadzenFieldset>
+
+            <!-- Características del Inmueble -->
+            <RadzenFieldset Text="Características del Inmueble">
+                <RadzenDataGrid Data="@inmueble.Caracteristicas" TItem="CaracteristicaInmueble" RowSelect="@OnCaracteristicaSelect">
+                    <Columns>
+                        <RadzenDataGridColumn TItem="CaracteristicaInmueble" Property="Nombre" Title="Nombre" />
+                        <RadzenDataGridColumn TItem="CaracteristicaInmueble" Property="Valor" Title="Valor" />
+                        <RadzenDataGridColumn TItem="CaracteristicaInmueble">
+                            <Template Context="caracteristica">
+                                <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Primary" Click="@(() => EditarCaracteristica(caracteristica))" Style="margin-right: 5px;" />
+                                <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Click="@(async () => await EliminarCaracteristica(caracteristica.Id))" />
+                            </Template>
+                        </RadzenDataGridColumn>
+                    </Columns>
+                </RadzenDataGrid>
+                <RadzenButton Text="Agregar Característica" Icon="add" Click="@AgregarCaracteristica" Style="margin-top: 10px;" />
+            </RadzenFieldset>
+
+            <!-- Imágenes del Inmueble -->
+            <RadzenFieldset Text="Imágenes del Inmueble">
+                <RadzenDataGrid Data="@inmueble.Imagenes" TItem="Imagen" RowSelect="@OnImagenSelect">
+                    <Columns>
+                        <RadzenDataGridColumn TItem="Imagen" Property="Descripcion" Title="Descripción">
+                            <Template Context="imagen">
+                                <div style="max-width: 200px; white-space: normal; word-wrap: break-word;">
+                                    @imagen.Descripcion
+                                </div>
+                            </Template>
+                        </RadzenDataGridColumn>
+                        <RadzenDataGridColumn TItem="Imagen" Title="Imagen">
+                            <Template Context="imagen">
+                                <RadzenImage Path="@imagen.Url"
+                                             Style="width: 100px; height: auto; border-radius: 4px;"
+                                             Class="@(imagen.Id == inmueble.ImagenPrincipalId ? "imagen-principal" : "")" />
+                            </Template>
+                        </RadzenDataGridColumn>
+                        <RadzenDataGridColumn TItem="Imagen">
+                            <Template Context="imagen">
+                                <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Click="@(async () => await EliminarImagen(imagen.Id))" Style="margin-right: 5px;" />
+                                <RadzenButton Icon="@(imagen.Id == inmueble.ImagenPrincipalId ? "hotel_class" : "star")"
+                                              ButtonStyle="ButtonStyle.Primary"
+                                              Click="@(async () => await EstablecerImagenPrincipal(imagen.Id))" />
+                            </Template>
+                        </RadzenDataGridColumn>
+                    </Columns>
+                </RadzenDataGrid>
+                <RadzenButton Text="Agregar Imagen" Icon="add" Click="@AgregarImagen" Style="margin-top: 10px;" />
+            </RadzenFieldset>
+
+            <!-- Botones de Guardar y Cancelar -->
+            <RadzenButton Text="Guardar" Icon="save" Type="Submit" Style="margin-right: 10px;" />
+            <RadzenButton Text="Cancelar" Icon="cancel" Click="@Cancelar" />
+        </RadzenTemplateForm>
+    </EditForm>
+}
+
+<style>
+    .imagen-principal {
+        border: 3px solid #ffc107; /* Borde amarillo */
+        box-shadow: 0 0 10px rgba(255, 193, 7, 0.5); /* Sombra */
+    }
+</style>
+
+@code {
+    [Parameter]
+    public int InmuebleId { get; set; }
+
+    private Inmueble? inmueble;
+
+    protected override async Task OnInitializedAsync() => await ObtenerInmueble();
+
+    private async Task ObtenerInmueble()
+    {
+        inmueble = await MockData.ObtenerInmueblePorId(InmuebleId);
+        StateHasChanged();
+    }
+
+    private async Task GuardarInmueble()
+    {
+        await MockData.ActualizarInmueble(inmueble);
+        NavigationManager.NavigateTo("/inmueblesadmin");
+    }
+
+    private void Cancelar()
+    {
+        NavigationManager.NavigateTo("/inmueblesadmin");
+    }
+
+    private void OnCaracteristicaSelect(CaracteristicaInmueble caracteristica)
+    {
+        // Lógica para seleccionar una característica
+    }
+
+    private async Task AgregarCaracteristica()
+    {
+        var nuevaCaracteristica = new CaracteristicaInmueble();
+        await DialogService.OpenAsync<AgregarCaracteristicaDialog>("Agregar Característica",
+            new Dictionary<string, object> { { "Caracteristica", nuevaCaracteristica } },
+            new DialogOptions { Width = "500px", Height = "auto" });
+
+        if (!string.IsNullOrEmpty(nuevaCaracteristica.Nombre))
+        {
+            await MockData.AgregarCaracteristica(inmueble.Id, nuevaCaracteristica);
+        }
+
+        await ObtenerInmueble();
+    }
+
+    private async Task EditarCaracteristica(CaracteristicaInmueble caracteristica)
+    {
+        var copiaCaracteristica = new CaracteristicaInmueble
+            {
+                Id = caracteristica.Id,
+                Nombre = caracteristica.Nombre,
+                Valor = caracteristica.Valor
+            };
+
+        await DialogService.OpenAsync<AgregarCaracteristicaDialog>("Editar Característica",
+            new Dictionary<string, object> { { "Caracteristica", copiaCaracteristica } },
+            new DialogOptions { Width = "500px", Height = "auto" });
+
+        if (!string.IsNullOrEmpty(copiaCaracteristica.Nombre))
+        {
+            var index = inmueble.Caracteristicas.FindIndex(c => c.Id == copiaCaracteristica.Id);
+            if (index != -1)
+            {
+                await MockData.ActualizarCaracteristica(inmueble.Id, copiaCaracteristica);
+            }
+        }
+
+        await ObtenerInmueble();
+    }
+
+    private async Task EliminarCaracteristica(int caracteristicaId)
+    {
+        await MockData.EliminarCaracteristica(inmueble.Id, caracteristicaId);
+        await ObtenerInmueble();
+    }
+
+    private void OnImagenSelect(Imagen imagen)
+    {
+        // Lógica para seleccionar una imagen
+    }
+
+    private async Task AgregarImagen()
+    {
+        var nuevaImagen = new Imagen();
+        await DialogService.OpenAsync<AgregarImagenDialog>("Agregar Imagen",
+            new Dictionary<string, object> { { "Imagen", nuevaImagen } },
+            new DialogOptions { Width = "500px", Height = "auto" });
+
+        if (!string.IsNullOrEmpty(nuevaImagen.Url))
+        {
+            await MockData.AgregarImagen(inmueble.Id, nuevaImagen);
+        }
+
+        await ObtenerInmueble();
+    }
+
+    private async Task EliminarImagen(Guid imagenId)
+    {
+        await MockData.EliminarImagen(inmueble.Id, imagenId);
+
+        var imagen = inmueble.Imagenes.FirstOrDefault(i => i.Id == imagenId);
+        if (imagen != null)
+        {
+            inmueble.Imagenes.Remove(imagen);
+        }
+
+        await ObtenerInmueble();
+    }
+
+    private async Task EstablecerImagenPrincipal(Guid imagenId)
+    {
+        await MockData.EstablecerImagenPrincipal(inmueble.Id, imagenId);
+        inmueble.ImagenPrincipalId = imagenId;
+    }
+}

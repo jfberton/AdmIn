@@ -1,0 +1,36 @@
+﻿@using Radzen.Blazor
+@using AdmIn.Business.Entidades
+@inject DialogService DialogService
+
+<RadzenTemplateForm TItem="Imagen">
+    <RadzenFieldset Text="Agregar Imagen">
+        <RadzenFormField Text="Descripción" Variant="Variant.Text" Style="width: 100%;">
+            <RadzenTextBox @bind-Value="Imagen.Descripcion" Placeholder="Ingrese la descripción" />
+        </RadzenFormField>
+        <RadzenFormField Text="URL" Variant="Variant.Text" Style="width: 100%;">
+            <RadzenTextBox @bind-Value="Imagen.Url" Placeholder="Ingrese la URL de la imagen" />
+        </RadzenFormField>
+    </RadzenFieldset>
+
+    <RadzenButton Text="Guardar" Icon="save" Click="@OnGuardar" Style="margin-right: 10px;" />
+    <RadzenButton Text="Cancelar" Icon="cancel" Click="@OnCancelar" />
+</RadzenTemplateForm>
+
+@code {
+    [Parameter]
+    public Imagen Imagen { get; set; } = new Imagen();
+
+    [Parameter]
+    public EventCallback<Imagen> OnGuardarCallback { get; set; }
+
+    private async Task OnGuardar()
+    {
+        await OnGuardarCallback.InvokeAsync(Imagen);
+        DialogService.Close();
+    }
+
+    private void OnCancelar()
+    {
+        DialogService.Close();
+    }
+}

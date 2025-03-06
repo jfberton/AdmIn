@@ -19,6 +19,8 @@ else
     <div style="max-width: 1200px; margin: 0 auto;">
         <!-- Botones de acción -->
         <div style="margin-bottom: 20px;">
+            <RadzenButton Text="Volver" Icon="arrow_back" Click="@Volver" Style="margin-right: 10px;" />
+
             <RadzenButton Text="Editar" Icon="edit" Click="@EditarInmueble" Style="margin-right: 10px;" />
             <RadzenButton Text="Eliminar" Icon="delete" ButtonStyle="ButtonStyle.Danger" Click="@(async () => await EliminarInmueble())" />
         </div>
@@ -35,8 +37,8 @@ else
                         <p><strong>Valor:</strong> @inmueble.Valor.ToString("C")</p>
                         <p><strong>Superficie:</strong> @inmueble.Superficie m²</p>
                         <p><strong>Construido:</strong> @inmueble.Construido m²</p>
-                        <RadzenBadge Text="@inmueble.Estado.Estado" 
-                        BadgeStyle="@(inmueble.Estado.Estado == "Disponible" ? BadgeStyle.Success : BadgeStyle.Warning)" />
+                        <RadzenBadge Text="@inmueble.Estado.Estado"
+                                     BadgeStyle="@(inmueble.Estado.Estado == "Disponible" ? BadgeStyle.Success : BadgeStyle.Warning)" />
                     </RadzenColumn>
                     <RadzenColumn Size="12" MD="6">
                         <!-- Imagen principal -->
@@ -55,9 +57,9 @@ else
                         <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px;">
                             @foreach (var imagen in inmueble.Imagenes)
                             {
-                                <img src="@imagen.Url" 
-                                style="width: 100px; height: 75px; object-fit: cover; cursor: pointer;" 
-                                @onclick="() => CambiarImagenPrincipal(imagen.Id)" />
+                                <img src="@imagen.Url"
+                                     style="width: 100px; height: 75px; object-fit: cover; cursor: pointer;"
+                                     @onclick="() => CambiarImagenPrincipal(imagen.Id)" />
                             }
                         </div>
                     </RadzenColumn>
@@ -82,7 +84,18 @@ else
                         <Columns>
                             <RadzenDataGridColumn Title="Nombre" Property="Nombre" />
                             <RadzenDataGridColumn Title="Correo" Property="Email" />
-                            <RadzenDataGridColumn Title="Teléfono" Property="Telefonos[0].Numero" />
+                            <RadzenDataGridColumn Title="Teléfono">
+                                <Template Context="inquilino">
+                                    @if (inquilino.Telefonos != null && inquilino.Telefonos.Any())
+                                    {
+                                        @inquilino.Telefonos[0].ToString() <!-- Muestra el primer teléfono -->
+                                    }
+                                    else
+                                    {
+                                        <span>Sin teléfono</span>
+                                    }
+                                </Template>
+                            </RadzenDataGridColumn>
                         </Columns>
                     </RadzenDataGrid>
                 </RadzenTabsItem>
@@ -90,8 +103,20 @@ else
                 <RadzenTabsItem Text="Pagos">
                     <RadzenDataGrid Data="@inmueble.Pagos" TItem="Pago">
                         <Columns>
-                            <RadzenDataGridColumn Title="Fecha Vencimiento" Property="FechaVencimiento" FormatString="d" />
-                            <RadzenDataGridColumn Title="Monto" Property="Monto" FormatString="C" />
+                            <RadzenDataGridColumn TItem="Pago" Title="Fecha Vencimiento">
+                                <Template Context="pago">
+                                    @(
+                                        (pago.FechaVencimiento).ToString("d")
+                                        )
+                                </Template>
+                            </RadzenDataGridColumn>
+                            <RadzenDataGridColumn TItem="Pago" Title="Monto">
+                                <Template Context="pago">
+                                    @(
+                                        (pago.Monto).ToString("C")
+                                        )
+                                </Template>
+                            </RadzenDataGridColumn>
                             <RadzenDataGridColumn Title="Estado" Property="Estado.Estado" />
                         </Columns>
                     </RadzenDataGrid>
@@ -101,7 +126,13 @@ else
                     <RadzenDataGrid Data="@inmueble.Reparaciones" TItem="Reparacion">
                         <Columns>
                             <RadzenDataGridColumn Title="Descripción" Property="Descripcion" />
-                            <RadzenDataGridColumn Title="Costo Final" Property="CostoFinal" FormatString="C" />
+                            <RadzenDataGridColumn TItem="Reparacion" Title="Costo Final">
+                                <Template Context="reparacion">
+                                    @(
+                                        (reparacion.CostoFinal ?? 0).ToString("C")
+                                        )
+                                </Template>
+                            </RadzenDataGridColumn>
                             <RadzenDataGridColumn Title="Estado" Property="Estado.Estado" />
                         </Columns>
                     </RadzenDataGrid>
@@ -148,4 +179,10 @@ else
     {
         inmueble.ImagenPrincipalId = imagenId;
     }
+
+    private void Volver()
+    {
+        NavigationManager.NavigateTo("m/inmuebles");
+    }
+
 }
