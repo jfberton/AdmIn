@@ -1,0 +1,137 @@
+﻿@using Radzen.Blazor
+@using AdmIn.Business.Entidades
+@using AdmIn.UI.Services
+
+@inject DialogService DialogService
+@inject IServ_Mock MockData
+
+<RadzenTemplateForm TItem="Reparacion" Context="reparacionContext">
+    <RadzenFieldset Text="@(Reparacion.Id == 0 ? "Agregar Reparación" : "Editar Reparación")">
+        <!-- Campos del formulario -->
+        <RadzenFormField Text="Descripción" Variant="Variant.Text" Style="width: 100%;">
+            <RadzenTextBox @bind-Value="ReparacionTemporal.Descripcion" Placeholder="Ingrese la descripción" />
+        </RadzenFormField>
+        <br />
+        <RadzenFormField Text="Fecha de Solicitud" Variant="Variant.Text" Style="width: 100%;">
+            <RadzenDatePicker @bind-Value="ReparacionTemporal.FechaSolicitud" />
+        </RadzenFormField>
+        <br />
+        <RadzenFormField Text="Fecha de Inicio" Variant="Variant.Text" Style="width: 100%;">
+            <RadzenDatePicker @bind-Value="ReparacionTemporal.FechaInicio" />
+        </RadzenFormField>
+        <br />
+        <RadzenFormField Text="Fecha de Finalización" Variant="Variant.Text" Style="width: 100%;">
+            <RadzenDatePicker @bind-Value="ReparacionTemporal.FechaFin" />
+        </RadzenFormField>
+        <br />
+        <RadzenFormField Text="Costo Estimado" Variant="Variant.Text" Style="width: 100%;">
+            <RadzenNumeric @bind-Value="ReparacionTemporal.CostoEstimado" />
+        </RadzenFormField>
+        <br />
+        <RadzenFormField Text="Costo Final" Variant="Variant.Text" Style="width: 100%;">
+            <RadzenNumeric @bind-Value="ReparacionTemporal.CostoFinal" />
+        </RadzenFormField>
+        <br />
+        <RadzenFormField Text="Estado" Variant="Variant.Text" Style="width: 100%;">
+            <RadzenDropDown @bind-Value="ReparacionTemporal.EstadoId" Data="@estadosReparacion" TextProperty="Estado" ValueProperty="Id" />
+        </RadzenFormField>
+        <br />
+        <RadzenFormField Text="Empleado Asignado" Variant="Variant.Text" Style="width: 100%;">
+            <RadzenDropDown @bind-Value="ReparacionTemporal.EmpleadoId" Data="@empleados" TextProperty="Nombre" ValueProperty="EmpleadoId" />
+        </RadzenFormField>
+        <br />
+    </RadzenFieldset>
+
+    <RadzenButton Text="Guardar" Icon="save" Click="@OnGuardar" Style="margin-right: 10px;" />
+    <RadzenButton Text="Cancelar" Icon="cancel" Click="@OnCancelar" />
+</RadzenTemplateForm>
+
+@code {
+    [Parameter]
+    public Reparacion Reparacion { get; set; } = new Reparacion();
+
+    [Parameter]
+    public int InmuebleId { get; set; }
+
+    [Parameter]
+    public EventCallback<Reparacion> OnGuardarCallback { get; set; }
+
+    private Reparacion ReparacionTemporal { get; set; } = new Reparacion();
+
+    private List<ReparacionEstado> estadosReparacion = new List<ReparacionEstado>
+    {
+        new ReparacionEstado { Id = 1, Estado = "Pendiente" },
+        new ReparacionEstado { Id = 2, Estado = "En proceso" },
+        new ReparacionEstado { Id = 3, Estado = "Finalizado" }
+    };
+
+    private List<Empleado> empleados = new List<Empleado>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Cargar empleados
+        var empleadoslst = await MockData.ObtenerEmpleados();
+        empleados = empleadoslst.ToList();
+
+        // Inicializar ReparacionTemporal con los valores de Reparacion
+        ReparacionTemporal = new Reparacion
+        { 
+            Id = Reparacion.Id,
+            Descripcion = Reparacion.Descripcion,
+            FechaSolicitud = Reparacion.FechaSolicitud,
+            FechaInicio = Reparacion.FechaInicio,
+            FechaFin = Reparacion.FechaFin,
+            CostoEstimado = Reparacion.CostoEstimado,
+            CostoFinal = Reparacion.CostoFinal,
+            Estado = Reparacion.Estado,
+            EmpleadoId = Reparacion.Empleado?.EmpleadoId ?? 0 // Usar EmpleadoId en lugar de Empleado
+        };
+    }
+
+    private async Task OnGuardar()
+    {
+        if (ReparacionTemporal.Id == 0)  // Nueva reparación
+        {
+            Reparacion nuevaReparacion = new Reparacion
+                {
+                    Descripcion = ReparacionTemporal.Descripcion,
+                    FechaSolicitud = ReparacionTemporal.FechaSolicitud,
+                    FechaInicio = ReparacionTemporal.FechaInicio,
+                    FechaFin = ReparacionTemporal.FechaFin,
+                    CostoEstimado = ReparacionTemporal.CostoEstimado,
+                    CostoFinal = ReparacionTemporal.CostoFinal,
+                    Estado = estadosReparacion.FirstOrDefault(e => e.Id == ReparacionTemporal.EstadoId),
+                    Empleado = empleados.FirstOrDefault(e => e.EmpleadoId == ReparacionTemporal.EmpleadoId),
+                };
+
+            // Llamar al método para agregar la nueva reparación
+            await MockData.AgregarReparacion(InmuebleId, nuevaReparacion);
+        }
+        else  // Si es una reparación existente, se actualiza
+        {
+            Reparacion.Descripcion = ReparacionTemporal.Descripcion;
+            Reparacion.FechaSolicitud = ReparacionTemporal.FechaSolicitud;
+            Reparacion.FechaInicio = ReparacionTemporal.FechaInicio;
+            Reparacion.FechaFin = ReparacionTemporal.FechaFin;
+            Reparacion.CostoEstimado = ReparacionTemporal.CostoEstimado;
+            Reparacion.CostoFinal = ReparacionTemporal.CostoFinal;
+            Reparacion.Estado = estadosReparacion.FirstOrDefault(e => e.Id == ReparacionTemporal.EstadoId);
+            Reparacion.Empleado = empleados.FirstOrDefault(e => e.EmpleadoId == ReparacionTemporal.EmpleadoId);
+
+            // Llamar al método para actualizar la reparación
+            await MockData.ActualizarReparacion(Reparacion);
+        }
+
+        // Invocar el callback para actualizar la vista principal
+        await OnGuardarCallback.InvokeAsync(Reparacion);
+
+        // Cerrar el diálogo de edición
+        DialogService.Close();
+    }
+
+
+    private void OnCancelar()
+    {
+        DialogService.Close();
+    }
+}

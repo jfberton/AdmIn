@@ -1,0 +1,261 @@
+﻿@page "/agregar-inmueble"
+
+@inherits BaseComponent
+
+@using Radzen.Blazor
+@using AdmIn.Business.Entidades
+@using AdmIn.UI.Components.Pages.Mockup.ComponentesDialogos
+@using AdmIn.UI.Services
+
+@inject IServ_Mock MockData
+@inject NavigationManager NavigationManager
+@inject DialogService DialogService
+
+<EditForm Model="@inmueble" OnValidSubmit="@GuardarInmueble">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <!-- Información básica del Inmueble -->
+    <RadzenFieldset Text="Información del Inmueble">
+        <RadzenRow>
+            <RadzenColumn Size="12" SizeMD="6" SizeLG="4">
+                <RadzenFormField Text="Descripción" Variant="Variant.Text" Style="width: 100%;">
+                    <RadzenTextBox @bind-Value="inmueble.Descripcion" />
+                </RadzenFormField>
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeMD="6" SizeLG="4">
+                <RadzenFormField Text="Dirección" Variant="Variant.Text" Style="width: 100%;">
+                    <RadzenTextBox @bind-Value="inmueble.Direccion.CalleNumero" />
+                </RadzenFormField>
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeMD="6" SizeLG="4">
+                <RadzenFormField Text="Valor" Variant="Variant.Text" Style="width: 100%;">
+                    <RadzenNumeric @bind-Value="inmueble.Valor" />
+                </RadzenFormField>
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeMD="6" SizeLG="4">
+                <RadzenFormField Text="Superficie" Variant="Variant.Text" Style="width: 100%;">
+                    <RadzenNumeric @bind-Value="inmueble.Superficie" />
+                </RadzenFormField>
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeMD="6" SizeLG="4">
+                <RadzenFormField Text="Construido" Variant="Variant.Text" Style="width: 100%;">
+                    <RadzenNumeric @bind-Value="inmueble.Construido" />
+                </RadzenFormField>
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeMD="6" SizeLG="4">
+                <RadzenFormField Text="Estado" Variant="Variant.Text" Style="width: 100%;">
+                    <RadzenDropDown @bind-Value="inmueble.Estado.Estado" Data="@estadosInmueble" TextProperty="Estado" ValueProperty="Estado" />
+                </RadzenFormField>
+            </RadzenColumn>
+        </RadzenRow>
+    </RadzenFieldset>
+    @if (inmueble.Id == 0)
+    {
+        <!-- Botón para guardar -->
+        <RadzenButton Text="Guardar" Icon="save" Type="submit" Style="margin-top: 10px;" />
+    }
+</EditForm>
+
+<!-- Características del Inmueble (habilitado solo si el inmueble tiene ID) -->
+@if (inmueble.Id > 0)
+{
+    <RadzenFieldset Text="Características del Inmueble">
+        <RadzenDataGrid Data="@inmueble.Caracteristicas" TItem="CaracteristicaInmueble">
+            <Columns>
+                <RadzenDataGridColumn TItem="CaracteristicaInmueble" Property="Nombre" Title="Nombre" />
+                <RadzenDataGridColumn TItem="CaracteristicaInmueble" Property="Valor" Title="Valor" />
+                <RadzenDataGridColumn TItem="CaracteristicaInmueble">
+                    <Template Context="caracteristica">
+                        <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Primary" Click="@(() => EditarCaracteristica(caracteristica))" Style="margin-right: 5px;" />
+                        <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Click="@(async () => await EliminarCaracteristica(caracteristica.Id))" />
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+        <RadzenButton Text="Agregar Característica" Icon="add" Click="@AgregarCaracteristica" Style="margin-top: 10px;" />
+    </RadzenFieldset>
+}
+
+<!-- Imágenes del Inmueble (habilitado solo si el inmueble tiene ID) -->
+@if (inmueble.Id > 0)
+{
+    <RadzenFieldset Text="Imágenes del Inmueble">
+        <RadzenDataGrid Data="@inmueble.Imagenes" TItem="Imagen">
+            <Columns>
+                <RadzenDataGridColumn TItem="Imagen" Property="Descripcion" Title="Descripción" />
+                <RadzenDataGridColumn TItem="Imagen" Title="Imagen">
+                    <Template Context="imagen">
+                        <RadzenImage Path="@imagen.Url"
+                        Style="width: 100px; height: auto; border-radius: 4px;"
+                        Class="@(imagen.Id == inmueble.ImagenPrincipalId ? "imagen-principal" : "")" />
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="Imagen">
+                    <Template Context="imagen">
+                        <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Click="@(async () => await EliminarImagen(imagen.Id))" Style="margin-right: 5px;" />
+                        <RadzenButton Icon="@(imagen.Id == inmueble.ImagenPrincipalId ? "hotel_class" : "star")"
+                        ButtonStyle="ButtonStyle.Primary"
+                        Click="@(async () => await EstablecerImagenPrincipal(imagen.Id))" />
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+        <RadzenButton Text="Agregar Imagen" Icon="add" Click="@AgregarImagen" Style="margin-top: 10px;" />
+    </RadzenFieldset>
+}
+
+<!-- Botón para cancelar -->
+<RadzenButton Text="Cancelar" Icon="cancel" ButtonStyle="ButtonStyle.Secondary" Click="@Cancelar" Style="margin-top: 10px;" />
+
+@code {
+    private Inmueble inmueble = new Inmueble
+        {
+            Direccion = new Direccion(), // Inicializar Direccion para evitar errores
+            Estado = new EstadoInmueble(), // Inicializar Estado para evitar errores
+            Caracteristicas = new List<CaracteristicaInmueble>(),
+            Imagenes = new List<Imagen>()
+        };
+
+    private string direccionTemporal; // Campo temporal para la dirección
+    private bool inmuebleCreado = false; // Indica si el inmueble ya fue creado
+
+    // Lista de estados de inmueble
+    private List<EstadoInmueble> estadosInmueble = new List<EstadoInmueble>
+    {
+        new EstadoInmueble { Estado = "Disponible" },
+        new EstadoInmueble { Estado = "Ocupado" },
+        new EstadoInmueble { Estado = "En reparación" }
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        base.EstablecerTituloPagina("Inmuebles", "Agregar inmueble");
+    }
+
+    private async Task GuardarInmueble()
+    {
+        // Asignar la dirección temporal al objeto Direccion
+        inmueble.Direccion.CalleNumero = direccionTemporal;
+
+        // Crear el inmueble en el servicio Mock y obtener el ID generado
+        int idGenerado = await MockData.CrearInmueble(inmueble);
+
+        // Asignar el ID generado al inmueble
+        inmueble.Id = idGenerado;
+
+        // Marcar que el inmueble fue creado
+        inmuebleCreado = true;
+
+        // Recargar el inmueble para obtener los datos completos (opcional)
+        inmueble = await MockData.ObtenerInmueblePorId(inmueble.Id);
+    }
+
+    private async Task Cancelar()
+    {
+        if (inmuebleCreado)
+        {
+            // Si el inmueble ya fue creado, eliminarlo
+            await MockData.EliminarInmueble(inmueble.Id);
+        }
+
+        // Navegar a la pantalla de administración de inmuebles
+        NavigationManager.NavigateTo("m/inmuebles");
+    }
+
+    private async Task AgregarCaracteristica()
+    {
+        var nuevaCaracteristica = new CaracteristicaInmueble();
+        await DialogService.OpenAsync<AgregarCaracteristicaDialog>("Agregar Característica",
+            new Dictionary<string, object> { { "Caracteristica", nuevaCaracteristica } },
+            new DialogOptions { Width = "500px", Height = "auto" });
+
+        if (!string.IsNullOrEmpty(nuevaCaracteristica.Nombre))
+        {
+            await MockData.AgregarCaracteristica(inmueble.Id, nuevaCaracteristica);
+        }
+
+        await ObtenerInmueble();
+    }
+
+    private async Task EditarCaracteristica(CaracteristicaInmueble caracteristica)
+    {
+        var copiaCaracteristica = new CaracteristicaInmueble
+            {
+                Id = caracteristica.Id,
+                Nombre = caracteristica.Nombre,
+                Valor = caracteristica.Valor
+            };
+
+        await DialogService.OpenAsync<AgregarCaracteristicaDialog>("Editar Característica",
+            new Dictionary<string, object> { { "Caracteristica", copiaCaracteristica } },
+            new DialogOptions { Width = "500px", Height = "auto" });
+
+        if (!string.IsNullOrEmpty(copiaCaracteristica.Nombre))
+        {
+            await MockData.ActualizarCaracteristica(inmueble.Id, copiaCaracteristica);
+        }
+
+        await ObtenerInmueble();
+    }
+
+    private async Task EliminarCaracteristica(int caracteristicaId)
+    {
+        await MockData.EliminarCaracteristica(inmueble.Id, caracteristicaId);
+
+        await ObtenerInmueble();
+    }
+
+    private async Task AgregarImagen()
+    {
+        var nuevaImagen = new Imagen();
+        await DialogService.OpenAsync<AgregarImagenDialog>("Agregar Imagen",
+            new Dictionary<string, object> { { "Imagen", nuevaImagen } },
+            new DialogOptions { Width = "500px", Height = "auto" });
+
+        if (!string.IsNullOrEmpty(nuevaImagen.Url))
+        {
+            await MockData.AgregarImagen(inmueble.Id, nuevaImagen);
+        }
+
+        await ObtenerInmueble();
+    }
+
+    private async Task EliminarImagen(Guid imagenId)
+    {
+        await MockData.EliminarImagen(inmueble.Id, imagenId);
+
+        inmueble = await MockData.ObtenerInmueblePorId(inmueble.Id);
+    }
+
+    private async Task EstablecerImagenPrincipal(Guid imagenId)
+    {
+        await MockData.EstablecerImagenPrincipal(inmueble.Id, imagenId);
+        await ObtenerInmueble();
+    }
+
+    private async Task ObtenerInmueble()
+    {
+        // Recargar el inmueble para actualizar la lista de características
+        var inmuebleActualizado = await MockData.ObtenerInmueblePorId(inmueble.Id);
+
+        // Asignar una nueva instancia para forzar la actualización
+        inmueble = new Inmueble
+            {
+                Id = inmuebleActualizado.Id,
+                Descripcion = inmuebleActualizado.Descripcion,
+                Direccion = inmuebleActualizado.Direccion,
+                Valor = inmuebleActualizado.Valor,
+                Superficie = inmuebleActualizado.Superficie,
+                Construido = inmuebleActualizado.Construido,
+                Estado = inmuebleActualizado.Estado,
+                Caracteristicas = inmuebleActualizado.Caracteristicas,
+                Imagenes = inmuebleActualizado.Imagenes,
+                ImagenPrincipalId = inmuebleActualizado.ImagenPrincipalId
+            };
+
+        // Forzar la actualización del componente
+        StateHasChanged();
+    }
+}

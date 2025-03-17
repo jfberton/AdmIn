@@ -114,8 +114,10 @@ namespace AdmIn.Business.Servicios
 
                 return new DTO<IEnumerable<Rol>> { Datos = roles, Correcto = true, Mensaje = "Roles obtenidos correctamente" };
             }
-
-            return new DTO<IEnumerable<Rol>> { Correcto = false, Mensaje = "No se encontraron roles" };
+            else 
+            {
+                return new DTO<IEnumerable<Rol>> { Correcto = false, Mensaje = resultado.Mensaje };
+            }
         }
 
         public async Task<DTO<IEnumerable<Rol>>> Obtener_por_usuario(int usuarioId)

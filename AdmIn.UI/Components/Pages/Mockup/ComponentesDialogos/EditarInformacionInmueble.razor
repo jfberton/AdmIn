@@ -1,0 +1,60 @@
+﻿@using Radzen.Blazor
+@using AdmIn.Business.Entidades
+
+@inject DialogService DialogService
+
+<RadzenTemplateForm TItem="Inmueble" Context="templateContext">
+    <RadzenFieldset Text="Información del Inmueble">
+        <RadzenRow>
+            <RadzenColumn Size="12" SizeMD="6" SizeLG="4">
+                <RadzenFormField Text="Descripción" Variant="Variant.Text" Style="width: 100%;">
+                    <RadzenTextBox @bind-Value="Inmueble.Descripcion" Placeholder="Ingrese la descripción" />
+                </RadzenFormField>
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeMD="6" SizeLG="4">
+                <RadzenFormField Text="Dirección" Variant="Variant.Text" Style="width: 100%;">
+                    <RadzenTextBox @bind-Value="Inmueble.Direccion.CalleNumero" Placeholder="Ingrese la dirección" />
+                </RadzenFormField>
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeMD="6" SizeLG="4">
+                <RadzenFormField Text="Valor" Variant="Variant.Text" Style="width: 100%;">
+                    <RadzenNumeric @bind-Value="Inmueble.Valor" Placeholder="Ingrese el valor" />
+                </RadzenFormField>
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeMD="6" SizeLG="4">
+                <RadzenFormField Text="Superficie" Variant="Variant.Text" Style="width: 100%;">
+                    <RadzenNumeric @bind-Value="Inmueble.Superficie" Placeholder="Ingrese la superficie" />
+                </RadzenFormField>
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeMD="6" SizeLG="4">
+                <RadzenFormField Text="Construido" Variant="Variant.Text" Style="width: 100%;">
+                    <RadzenNumeric @bind-Value="Inmueble.Construido" Placeholder="Ingrese el área construida" />
+                </RadzenFormField>
+            </RadzenColumn>
+        </RadzenRow>
+    </RadzenFieldset>
+
+    <RadzenButton Text="Guardar" Icon="save" Click="@OnGuardar" Style="margin-right: 10px;" />
+    <RadzenButton Text="Cancelar" Icon="cancel" Click="@OnCancelar" />
+</RadzenTemplateForm>
+
+@code {
+    [Parameter]
+    public Inmueble? Inmueble { get; set; }
+
+    [Parameter]
+    public EventCallback<Inmueble> OnGuardarCallback { get; set; }
+
+
+
+    private async Task OnGuardar()
+    {
+        await OnGuardarCallback.InvokeAsync(Inmueble);
+        DialogService.Close();
+    }
+
+    private void OnCancelar()
+    {
+        DialogService.Close();
+    }
+}

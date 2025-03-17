@@ -5,7 +5,6 @@
         public int AdministradorId { get; set; } // ID propio del Administrador
         public int? SuperiorId { get; set; } // ID del Administrador superior (puede ser null)
     }
-
     public class Direccion
     {
         public int DireccionId { get; set; } // ID de la dirección
@@ -41,7 +40,6 @@
             return string.Join(", ", partes);
         }
     }
-
     public class Empleado : PersonaBase
     {
         public int EmpleadoId { get; set; }
@@ -52,13 +50,11 @@
         // Agenda de disponibilidad del empleado
         public List<EmpleadoAgenda> Agenda { get; set; } = new();
     }
-
     public class EmpleadoEspecialidad
     {
         public int Id { get; set; }
         public string Especialidad { get; set; } // Ej: Plomería, Electricidad, Albañilería
     }
-
     public class EmpleadoAgenda
     {
         public int Id { get; set; }
@@ -75,7 +71,6 @@
         // Empleado asignado al turno
         public Empleado Empleado { get; set; }
     }
-
     public class Imagen
     {
         public Guid Id { get; set; } = Guid.NewGuid(); // Identificador único de la imagen
@@ -83,7 +78,6 @@
         public string Url { get; set; } // URL de la imagen en tamaño completo
         public string? ThumbnailUrl { get; set; } // URL de la imagen en tamaño reducido (opcional)
     }
-
     public class Propiedad
     {
         public int Id { get; set; } // ID de la propiedad
@@ -100,13 +94,11 @@
         public Propietario Propietario { get; set; } // ID del cliente asociado
         public TipoPropiedad Tipo { get; set; } // ID del tipo de propiedad
     }
-
     public class TipoPropiedad
     {
         public int Id { get; set; }
         public string Tipo { get; set; }
     }
-
     public class Inmueble
     {
         public int Id { get; set; }
@@ -134,26 +126,23 @@
         public List<Contrato> Contratos { get; set; } = new();
         public List<CaracteristicaInmueble> Caracteristicas { get; set; } = new();
     }
-
+    //Habitaciones, baños, pileta, garage, etc el valor es indica cantidad o estado
     public class CaracteristicaInmueble
     {
         public int Id { get; set; }
         public string Nombre { get; set; }
         public string Valor { get; set; }
     }
-
     public class EstadoInmueble
     {
         public int Id { get; set; }
         public string Estado { get; set; }
     }
-
     public class Inquilino : PersonaBase
     {
         public int Id { get; set; }
         public Inmueble Inmueble { get; set; } // Relación con Inmueble
     }
-
     public class DetallePago
     {
         public int Id { get; set; }
@@ -164,7 +153,6 @@
         // Monto asociado a este detalle
         public decimal Monto { get; set; }
     }
-
     public class DetalleDistribucion
     {
         public int Id { get; set; }
@@ -175,7 +163,6 @@
         // Monto asociado a esta distribución
         public decimal Monto { get; set; }
     }
-
     public class Pago
     {
         public int Id { get; set; }
@@ -207,13 +194,11 @@
         // Lista de detalles que describen cómo se distribuye el monto
         public List<DetalleDistribucion> DetallesDistribucion { get; set; } = new();
     }
-
     public class PagoEstado
     {
         public int Id { get; set; }
         public string Estado { get; set; } = string.Empty;
     }
-
     public class Contrato
     {
         public int Id { get; set; }
@@ -242,13 +227,11 @@
         // Lista de pagos programados (Agenda de pagos)
         public List<Pago> Pagos { get; set; } = new();
     }
-
     public class ContratoEstado
     {
         public int Id { get; set; }
         public string Descripcion { get; set; } = string.Empty;
     }
-
     public class Permiso
     {
         #region Propiedades
@@ -257,7 +240,6 @@
 
         #endregion
     }
-
     public class PersonaBase
     {
         public int PersonaId { get; set; } // ID del registro en PERSONA
@@ -274,12 +256,10 @@
         public List<Direccion> Direcciones { get; set; } = new(); // Lista de direcciones
         public List<Telefono> Telefonos { get; set; } = new(); // Lista de teléfonos
     }
-
     public class Propietario : PersonaBase
     {
         public int PropietarioId { get; set; }
     }
-
     public class Reparacion
     {
         public int Id { get; set; }
@@ -299,23 +279,24 @@
 
         // Relación con el inmueble donde se realiza la reparación
         public Inmueble Inmueble { get; set; }
+        public int InmuebleId { get; set; }
 
         // Estado de la reparación (Pendiente, En proceso, Finalizado)
         public ReparacionEstado Estado { get; set; }
+        public int EstadoId { get; set; }
 
         // Empleado responsable de la reparación
         public Empleado Empleado { get; set; }
+        public int EmpleadoId { get; set; }
 
         // Detalles de la reparación (Materiales, Mano de obra, etc.)
         public List<ReparacionDetalle> Detalles { get; set; } = new();
     }
-
     public class ReparacionEstado
     {
         public int Id { get; set; }
         public string Estado { get; set; } // Ej: Pendiente, En proceso, Finalizado
     }
-
     public class ReparacionDetalle
     {
         public int Id { get; set; }
@@ -332,7 +313,6 @@
         // Fecha en que se realizó esta parte de la reparación
         public DateTime Fecha { get; set; }
     }
-
     public class Rol
     {
         #region Propiedades
@@ -346,20 +326,22 @@
 
         #endregion
     }
-
     public class Telefono
     {
         public int TelefonoId { get; set; } // ID del teléfono
         public string Numero { get; set; } = string.Empty; // Número de teléfono
         public TipoTelefono Tipo { get; set; } = new(); // Asociación con el tipo de teléfono
-    }
 
+        public override string ToString()
+        {
+            return $"({Tipo.Descripcion}) {this.Numero}";
+        }
+    }
     public class TipoTelefono
     {
         public int TipoTelefonoId { get; set; } // ID del tipo de teléfono
         public string Descripcion { get; set; } = string.Empty; // Descripción del tipo (Ej.: "Móvil", "Fijo")
     }
-
     public class Usuario
     {
         #region Propiedades

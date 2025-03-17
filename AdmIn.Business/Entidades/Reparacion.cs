@@ -25,12 +25,15 @@ namespace AdmIn.Business.Entidades
 
         // Relación con el inmueble donde se realiza la reparación
         public Inmueble Inmueble { get; set; }
+        public int InmuebleId { get; set; }
 
         // Estado de la reparación (Pendiente, En proceso, Finalizado)
         public ReparacionEstado Estado { get; set; }
+        public int EstadoId { get; set; }
 
         // Empleado responsable de la reparación
         public Empleado Empleado { get; set; }
+        public int EmpleadoId { get; set; }
 
         // Detalles de la reparación (Materiales, Mano de obra, etc.)
         public List<ReparacionDetalle> Detalles { get; set; } = new();

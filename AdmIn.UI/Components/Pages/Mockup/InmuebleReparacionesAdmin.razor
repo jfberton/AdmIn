@@ -1,0 +1,94 @@
+﻿@page "/inmueble/{inmuebleId:int}/reparaciones"
+
+@inherits BaseComponent
+
+@using Radzen.Blazor
+@using AdmIn.Business.Entidades
+@using AdmIn.UI.Components.Pages.Mockup.ComponentesDialogos
+@using AdmIn.UI.Services
+
+@inject IServ_Mock MockData
+@inject DialogService DialogService
+
+<h3>Reparaciones del Inmueble</h3>
+
+@if (inmueble == null)
+{
+    <RadzenAlert Text="Cargando..." Style="margin: 20px;" />
+}
+else
+{
+    <RadzenButton Text="Agregar Reparación" Icon="add" Click="@AgregarReparacion" Style="margin-bottom: 20px;" />
+
+    <RadzenDataGrid Data="@inmueble.Reparaciones" TItem="Reparacion">
+        <Columns>
+            <RadzenDataGridColumn TItem="Reparacion" Property="Descripcion" Title="Descripción" />
+            <RadzenDataGridColumn TItem="Reparacion" Property="Estado.Estado" Title="Estado" />
+            <RadzenDataGridColumn TItem="Reparacion" Title="Fecha de Solicitud">
+                <Template Context="reparacion">
+                    @(
+                        reparacion.FechaSolicitud.ToString("d")
+                    )
+                </Template>
+            </RadzenDataGridColumn>
+
+            <RadzenDataGridColumn TItem="Reparacion" Title="Costo Final">
+                <Template Context="reparacion">
+                    @(
+                        (reparacion.CostoFinal ?? 0).ToString("C")
+                        )
+                </Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="Reparacion">
+                <Template Context="reparacion">
+                    <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Primary" Click="@(() => EditarReparacion(reparacion))" Style="margin-right: 5px;" />
+                    <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Click="@(() => EliminarReparacion(reparacion))" />
+                </Template>
+            </RadzenDataGridColumn>
+        </Columns>
+    </RadzenDataGrid>
+}
+
+@code {
+    [Parameter]
+    public int InmuebleId { get; set; }
+
+    private Inmueble? inmueble;
+
+    protected override async Task OnInitializedAsync() => await ObtenerInmueble();
+
+    private async Task ObtenerInmueble()
+    {
+        inmueble = await MockData.ObtenerInmueblePorId(InmuebleId);
+    }
+
+    private async Task AgregarReparacion()
+    {
+        await DialogService.OpenAsync<InmuebleReparacionesNuevoEditar>("Agregar Reparación",
+            new Dictionary<string, object> { { "InmuebleId", InmuebleId } },
+            new DialogOptions { Width = "600px", Height = "auto" });
+
+        // Actualizar el inmueble después de agregar la reparación
+        await ObtenerInmueble();
+    }
+
+    private async Task EditarReparacion(Reparacion reparacion)
+    {
+        await DialogService.OpenAsync<InmuebleReparacionesNuevoEditar>("Editar Reparación",
+            new Dictionary<string, object> { { "Reparacion", reparacion } },
+            new DialogOptions { Width = "600px", Height = "auto" });
+
+        // Actualizar el inmueble después de editar la reparación
+        await ObtenerInmueble();
+    }
+
+    private async Task EliminarReparacion(Reparacion reparacion)
+    {
+        bool confirmar = await DialogService.Confirm("¿Estás seguro de eliminar esta reparación?", "Eliminar Reparación") == true;
+        if (confirmar)
+        {
+            await MockData.EliminarReparacion(reparacion.Id);
+            await ObtenerInmueble();
+        }
+    }
+}

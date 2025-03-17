@@ -1,6 +1,7 @@
 ﻿@page "/m/inmuebles"
 @using Radzen.Blazor
 @using AdmIn.Business.Entidades
+@using AdmIn.UI.Components.Pages.Mockup.ComponentesDialogos
 @using Services
 @using Services.UtilityServices
 @inject IServ_Mock MockData
@@ -10,6 +11,7 @@
 <RadzenRow>
     <RadzenColumn Size="12">
         <RadzenStack Orientation="Orientation.Horizontal" Gap="10px">
+            <RadzenButton Text="Agregar Inmueble" Icon="add" Click="@(() => IrA("/agregar-inmueble"))" />
             <RadzenBadge Text="Todos" BadgeStyle="BadgeStyle.Primary" Style="cursor: pointer;" @onclick="() => FiltrarInmuebles(null)" />
             <RadzenBadge Text="Disponible" BadgeStyle="BadgeStyle.Success" Style="cursor: pointer;" @onclick="@(() => FiltrarInmuebles("Disponible"))" />
             <RadzenBadge Text="Ocupado" BadgeStyle="BadgeStyle.Dark" Style="cursor: pointer;" @onclick="@(() => FiltrarInmuebles("Ocupado"))" />
@@ -58,6 +60,6 @@
 
     private void VerDetalleInmueble(int inmuebleId)
     {
-        base.IrA($"/inmueble/{inmuebleId}");
+        IrA($"/inmueble/{inmuebleId}");
     }
 }

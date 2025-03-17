@@ -11,7 +11,14 @@
 
         public bool IsMobileDevice()
         {
-            var userAgent = _httpContextAccessor.HttpContext.Request.Headers["User-Agent"].ToString();
+            var httpContext = _httpContextAccessor.HttpContext;
+            if (httpContext == null)
+            {
+                Console.WriteLine("HttpContext is null. Ensure that the IHttpContextAccessor is properly configured.");
+                return false;
+            }
+
+            var userAgent = httpContext.Request.Headers["User-Agent"].ToString();
             return userAgent.Contains("Mobi");
         }
     }

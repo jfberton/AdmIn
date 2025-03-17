@@ -10,9 +10,12 @@ namespace AdmIn.UI.Services
         Task<IEnumerable<Inmueble>> ObtenerInmuebles();
         Task<Inmueble?> ObtenerInmueblePorId(int id);
 
-        Task CrearInmueble(Inmueble inmueble);
+        Task<int> CrearInmueble(Inmueble inmueble);
         Task ActualizarInmueble(Inmueble inmueble);
         Task EliminarInmueble(int id);
+
+        Task<IEnumerable<EstadoInmueble>> ObtenerEstadosInmueble();
+        Task<EstadoInmueble?> ObtenerEstadoInmueblePorId(int id);
 
         Task AgregarCaracteristica(int inmuebleId, CaracteristicaInmueble caracteristica);
         Task ActualizarCaracteristica(int inmuebleId, CaracteristicaInmueble caracteristica);
@@ -32,10 +35,17 @@ namespace AdmIn.UI.Services
         Task<Pago?> ObtenerPagoPorId(int id);
 
         Task<IEnumerable<Reparacion>> ObtenerReparaciones();
+        Task<IEnumerable<ReparacionEstado>> ObtenerEstadosReparacion();
+
         Task<Reparacion?> ObtenerReparacionPorId(int id);
 
         Task<IEnumerable<Empleado>> ObtenerEmpleados();
         Task<Empleado?> ObtenerEmpleadoPorId(int id);
+
+        Task<IEnumerable<Reparacion>> ObtenerReparacionesPorInmueble(int inmuebleId);
+        Task AgregarReparacion(int inmuebleId, Reparacion reparacion);
+        Task ActualizarReparacion(Reparacion reparacion);
+        Task EliminarReparacion(int reparacionId);
 
     }
 
@@ -47,21 +57,48 @@ namespace AdmIn.UI.Services
         private readonly List<Pago> _pagos;
         private readonly List<Reparacion> _reparaciones;
         private readonly List<Empleado> _empleados;
+        private readonly List<ReparacionEstado> _reparacionEstados;
+        private readonly List<EstadoInmueble> _estadosInmueble;
 
         private static readonly Random random = new Random();
 
         public MockData()
         {
             // Generar listas en el orden correcto
+            _estadosInmueble = GenerarEstadosInmueble().ToList();
             _inmuebles = GenerarInmuebles().ToList();
             _inquilinos = GenerarInquilinos().ToList();
             _empleados = GenerarEmpleados().ToList();
             _contratos = GenerarContratos().ToList();
             _pagos = GenerarPagos().ToList();
+            _reparacionEstados = GenerarReparacionEstados().ToList();
             _reparaciones = GenerarReparaciones().ToList();
+            
 
             // Relacionar datos después de que todas las listas estén inicializadas
             RelacionarDatos();
+        }
+
+        private IEnumerable<EstadoInmueble> GenerarEstadosInmueble()
+        {
+            return new List<EstadoInmueble>
+        {
+            new EstadoInmueble { Id = 1, Estado = "Disponible" },
+            new EstadoInmueble { Id = 2, Estado = "Ocupado" },
+            new EstadoInmueble { Id = 3, Estado = "En reparación" }
+        };
+        }
+
+        // Método para obtener todos los estados de inmueble
+        public async Task<IEnumerable<EstadoInmueble>> ObtenerEstadosInmueble()
+        {
+            return await Task.FromResult(_estadosInmueble);
+        }
+
+        // Método para obtener un estado de inmueble por su ID
+        public async Task<EstadoInmueble?> ObtenerEstadoInmueblePorId(int id)
+        {
+            return await Task.FromResult(_estadosInmueble.FirstOrDefault(e => e.Id == id));
         }
 
         private IEnumerable<Inmueble> GenerarInmuebles()
@@ -69,20 +106,20 @@ namespace AdmIn.UI.Services
             for (int i = 1; i <= 15; i++)
             {
                 // Asignar estado según la probabilidad
-                string estado;
                 int probabilidad = random.Next(1, 101); // Número aleatorio entre 1 y 100
+                EstadoInmueble estado;
 
                 if (probabilidad <= 10) // 10% de probabilidad
                 {
-                    estado = "En reparación";
+                    estado = _estadosInmueble.First(e => e.Estado == "En reparación");
                 }
                 else if (probabilidad <= 60) // 50% de probabilidad (10% + 50%)
                 {
-                    estado = "Ocupado";
+                    estado = _estadosInmueble.First(e => e.Estado == "Ocupado");
                 }
                 else // 40% de probabilidad (restante)
                 {
-                    estado = "Disponible";
+                    estado = _estadosInmueble.First(e => e.Estado == "Disponible");
                 }
 
                 List<Imagen> imagenes = GenerarImagenes(i).ToList();
@@ -96,7 +133,7 @@ namespace AdmIn.UI.Services
                     Superficie = random.Next(50, 500),
                     Construido = random.Next(30, 450),
                     Telefono = new Telefono { Numero = $"+54 9 {random.Next(1000, 9999)}-{random.Next(100000, 999999)}" },
-                    Estado = new EstadoInmueble { Id = i, Estado = estado },
+                    Estado = estado, // Asignar el estado generado
                     Direccion = new Direccion
                     {
                         DireccionId = i,
@@ -108,11 +145,11 @@ namespace AdmIn.UI.Services
                         Pais = "México"
                     },
                     Caracteristicas = new List<CaracteristicaInmueble>
-                    {
-                        new CaracteristicaInmueble { Id = 1, Nombre = "Habitaciones", Valor = random.Next(1, 5).ToString() },
-                        new CaracteristicaInmueble { Id = 2, Nombre = "Baños", Valor = random.Next(1, 3).ToString() },
-                        new CaracteristicaInmueble { Id = 3, Nombre = "Estacionamiento", Valor = random.Next(0, 2).ToString() }
-                    },
+                {
+                    new CaracteristicaInmueble { Id = 1, Nombre = "Habitaciones", Valor = random.Next(1, 5).ToString() },
+                    new CaracteristicaInmueble { Id = 2, Nombre = "Baños", Valor = random.Next(1, 3).ToString() },
+                    new CaracteristicaInmueble { Id = 3, Nombre = "Estacionamiento", Valor = random.Next(0, 2).ToString() }
+                },
                     Imagenes = imagenes,
                     ImagenPrincipalId = imagenes.First().Id
                 };
@@ -226,20 +263,76 @@ namespace AdmIn.UI.Services
         {
             for (int i = 1; i <= 10; i++)
             {
+                // Generar fechas aleatorias
+                var fechaSolicitud = DateTime.Now.AddDays(-random.Next(1, 30));
+                var fechaInicio = fechaSolicitud.AddDays(random.Next(1, 10));
+                var fechaFin = fechaInicio.AddDays(random.Next(1, 15));
+
+                // Generar detalles de reparación
+                var detalles = new List<ReparacionDetalle>
+        {
+            new ReparacionDetalle
+            {
+                Id = 1,
+                Descripcion = "Cambio de tuberías",
+                Costo = random.Next(500, 2000),
+                Fecha = fechaInicio.AddDays(1)
+            },
+            new ReparacionDetalle
+            {
+                Id = 2,
+                Descripcion = "Pintura de paredes",
+                Costo = random.Next(300, 1500),
+                Fecha = fechaInicio.AddDays(2)
+            }
+        };
+
+                // Obtener un índice aleatorio para Inmueble, Empleado y Estado
+                int inmuebleIndex = random.Next(0, _inmuebles.Count);
+                int empleadoIndex = random.Next(0, _empleados.Count);
+                int estadoIndex = random.Next(1, 3); // Estados: 1, 2, 3
+
                 yield return new Reparacion
                 {
                     Id = i,
-                    Inmueble = _inmuebles[random.Next(0, _inmuebles.Count)],
-                    FechaSolicitud = DateTime.Now.AddDays(-random.Next(1, 30)),
-                    FechaInicio = DateTime.Now.AddDays(-random.Next(1, 15)),
-                    FechaFin = DateTime.Now.AddDays(random.Next(1, 15)),
+                    FechaSolicitud = fechaSolicitud,
+                    FechaInicio = fechaInicio,
+                    FechaFin = fechaFin,
                     Descripcion = $"Reparación #{i}",
                     CostoEstimado = random.Next(1000, 5000),
                     CostoFinal = random.Next(1000, 5000),
-                    Estado = new ReparacionEstado { Estado = "Finalizado" },
-                    Empleado = _empleados[random.Next(0, _empleados.Count)]
+                    Inmueble = _inmuebles[inmuebleIndex], // Mismo objeto
+                    InmuebleId = _inmuebles[inmuebleIndex].Id, // Mismo ID
+                    Estado = ObtenerEstadoReparacion(estadoIndex).Result,
+                    EstadoId = estadoIndex, // Mismo ID
+                    Empleado = _empleados[empleadoIndex], // Mismo objeto
+                    EmpleadoId = _empleados[empleadoIndex].EmpleadoId, // Mismo ID
+                    Detalles = detalles
                 };
             }
+        }
+
+        public IEnumerable<ReparacionEstado> GenerarReparacionEstados()
+        {
+            var estados = new List<ReparacionEstado>
+            {
+                new ReparacionEstado { Id = 1, Estado = "Pendiente" },
+                new ReparacionEstado { Id = 2, Estado = "En proceso" },
+                new ReparacionEstado { Id = 3, Estado = "Finalizado" }
+            };
+
+                // Devolver la lista como una tarea completada
+                return estados.AsEnumerable();
+        }
+
+        public async Task<IEnumerable<ReparacionEstado>> ObtenerEstadosReparacion()
+        { 
+            return await Task.FromResult(_reparacionEstados);
+        }
+
+        public async Task<ReparacionEstado> ObtenerEstadoReparacion(int estadoId)
+        {
+            return await Task.FromResult(_reparacionEstados.FirstOrDefault(e => e.Id == estadoId));
         }
 
         private IEnumerable<Empleado> GenerarEmpleados()
@@ -249,6 +342,7 @@ namespace AdmIn.UI.Services
                 yield return new Empleado
                 {
                     EmpleadoId = i,
+                    PersonaId = i,
                     Nombre = $"Empleado #{i}",
                     Especialidad = new EmpleadoEspecialidad { Especialidad = $"Especialidad #{i}" },
                     Agenda = new List<EmpleadoAgenda>()
@@ -271,11 +365,16 @@ namespace AdmIn.UI.Services
             }
         }
 
-        public async Task CrearInmueble(Inmueble inmueble)
+        public async Task<int> CrearInmueble(Inmueble inmueble)
         {
-            inmueble.Id = _inmuebles.Max(i => i.Id) + 1;
+            // Generar un nuevo ID para el inmueble
+            inmueble.Id = _inmuebles.Any() ? _inmuebles.Max(i => i.Id) + 1 : 1;
+
+            // Agregar el inmueble a la lista
             _inmuebles.Add(inmueble);
-            await Task.CompletedTask;
+
+            // Devolver el ID generado
+            return inmueble.Id;
         }
 
         public async Task ActualizarInmueble(Inmueble inmueble)
@@ -303,7 +402,19 @@ namespace AdmIn.UI.Services
             var inmueble = _inmuebles.FirstOrDefault(i => i.Id == inmuebleId);
             if (inmueble != null)
             {
-                caracteristica.Id = inmueble.Caracteristicas.Max(c => c.Id) + 1;
+                // Verificar si la lista de características está vacía
+                if (inmueble.Caracteristicas.Any())
+                {
+                    // Si hay características, obtener el máximo ID y sumar 1
+                    caracteristica.Id = inmueble.Caracteristicas.Max(c => c.Id) + 1;
+                }
+                else
+                {
+                    // Si no hay características, asignar un ID inicial (por ejemplo, 1)
+                    caracteristica.Id = 1;
+                }
+
+                // Agregar la característica al inmueble
                 inmueble.Caracteristicas.Add(caracteristica);
             }
             await Task.CompletedTask;
@@ -377,26 +488,78 @@ namespace AdmIn.UI.Services
         public async Task<Inmueble> ObtenerInmueblePorId(int id)
         {
             var inmueble = _inmuebles.FirstOrDefault(i => i.Id == id);
+            return inmueble;
+        }
+
+        // Implementación de los nuevos métodos para reparaciones
+        public async Task<IEnumerable<Reparacion>> ObtenerReparacionesPorInmueble(int inmuebleId)
+        {
+            var inmueble = _inmuebles.FirstOrDefault(i => i.Id == inmuebleId);
             if (inmueble != null)
             {
-                return new Inmueble
-                {
-                    Id = inmueble.Id,
-                    Descripcion = inmueble.Descripcion,
-                    Comentario = inmueble.Comentario,
-                    Valor = inmueble.Valor,
-                    Superficie = inmueble.Superficie,
-                    Construido = inmueble.Construido,
-                    Telefono = inmueble.Telefono,
-                    Estado = inmueble.Estado,
-                    Direccion = inmueble.Direccion,
-                    Caracteristicas = new List<CaracteristicaInmueble>(inmueble.Caracteristicas),
-                    Imagenes = new List<Imagen>(inmueble.Imagenes),
-                    ImagenPrincipalId = inmueble.ImagenPrincipalId
-                };
+                return await Task.FromResult(inmueble.Reparaciones);
             }
-            return null;
+            return new List<Reparacion>();
         }
+
+        public async Task AgregarReparacion(int inmuebleId, Reparacion reparacion)
+        {
+            var inmueble = _inmuebles.FirstOrDefault(i => i.Id == inmuebleId);
+            if (inmueble != null)
+            {
+                // Asignar un nuevo ID a la reparación
+                reparacion.Id = _reparaciones.Any() ? _reparaciones.Max(r => r.Id) + 1 : 1;
+
+                // Asignar el inmueble a la reparación
+                reparacion.Inmueble = inmueble;
+                reparacion.InmuebleId = inmueble.Id;
+
+                // Agregar la reparación a la lista global
+                _reparaciones.Add(reparacion);
+
+                // Agregar la reparación al inmueble
+                inmueble.Reparaciones.Add(reparacion);
+            }
+            await Task.CompletedTask;
+        }
+
+        public async Task ActualizarReparacion(Reparacion reparacion)
+        {
+            var reparacionExistente = _reparaciones.FirstOrDefault(r => r.Id == reparacion.Id);
+            if (reparacionExistente != null)
+            {
+                // Actualizar los campos de la reparación
+                reparacionExistente.Descripcion = reparacion.Descripcion;
+                reparacionExistente.FechaSolicitud = reparacion.FechaSolicitud;
+                reparacionExistente.FechaInicio = reparacion.FechaInicio;
+                reparacionExistente.FechaFin = reparacion.FechaFin;
+                reparacionExistente.CostoEstimado = reparacion.CostoEstimado;
+                reparacionExistente.CostoFinal = reparacion.CostoFinal;
+                reparacionExistente.Estado = reparacion.Estado;
+                reparacionExistente.Empleado = reparacion.Empleado;
+                reparacionExistente.EmpleadoId = reparacion.EmpleadoId;
+            }
+            await Task.CompletedTask;
+        }
+
+        public async Task EliminarReparacion(int reparacionId)
+        {
+            var reparacion = _reparaciones.FirstOrDefault(r => r.Id == reparacionId);
+            if (reparacion != null)
+            {
+                // Eliminar la reparación de la lista global
+                _reparaciones.Remove(reparacion);
+
+                // Eliminar la reparación del inmueble correspondiente
+                var inmueble = _inmuebles.FirstOrDefault(i => i.Reparaciones.Any(r => r.Id == reparacionId));
+                if (inmueble != null)
+                {
+                    inmueble.Reparaciones.Remove(reparacion);
+                }
+            }
+            await Task.CompletedTask;
+        }
+
 
         public async Task<IEnumerable<Contrato>> ObtenerContratos() => await Task.FromResult(_contratos);
         public async Task<Contrato?> ObtenerContratoPorId(int id) => await Task.FromResult(_contratos.FirstOrDefault(c => c.Id == id));
