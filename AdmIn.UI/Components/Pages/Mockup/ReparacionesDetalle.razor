@@ -1,0 +1,117 @@
+﻿@page "/reparaciones/detalle/{id:int}"
+@using AdmIn.Business.Entidades
+@using AdmIn.UI.Services
+
+@inject IServ_Mock ServicioReparaciones
+@inject IServ_Mock ServicioEmpleados
+@inject NavigationManager NavigationManager
+
+<h3>Detalle de Reparación #@reparacion?.Id</h3>
+
+@if (reparacion == null)
+{
+    <p>Cargando...</p>
+}
+else
+{
+    <div class="card">
+        <div class="card-body">
+            <h5 class="card-title">@reparacion.Descripcion</h5>
+            <h6 class="card-subtitle mb-2 text-muted">Estado: @reparacion.Estado?.Estado</h6>
+
+            <p class="card-text">
+                <strong>Inmueble:</strong> @reparacion.Inmueble?.Direccion?.ToString()<br>
+                <strong>Fecha Solicitud:</strong> @reparacion.FechaSolicitud.ToShortDateString()<br>
+                @if (reparacion.FechaInicio.HasValue)
+                {
+                    <text><strong>Fecha Inicio:</strong> @reparacion.FechaInicio.Value.ToShortDateString()<br></text>
+                }
+                @if (reparacion.FechaFin.HasValue)
+                {
+                    <text><strong>Fecha Fin:</strong> @reparacion.FechaFin.Value.ToShortDateString()<br></text>
+                }
+                <strong>Costo Estimado:</strong> @reparacion.CostoEstimado?.ToString("C")<br>
+                <strong>Costo Final:</strong> @reparacion.CostoFinal?.ToString("C")<br>
+                <strong>Empleado:</strong> @(reparacion.Empleado?.Nombre ?? "No asignado")
+            </p>
+
+            @if (reparacion.EstadoId == 0 || reparacion.EstadoId == 1) // Pendiente sin/asignado
+            {
+                <button class="btn btn-primary" @onclick="AsignarEmpleado">Asignar Empleado</button>
+            }
+
+            @if (reparacion.EstadoId == 2 && esEmpleadoAsignado) // Iniciado
+            {
+                <button class="btn btn-info" @onclick="AgregarDetalle">Agregar Detalle</button>
+                <button class="btn btn-success" @onclick="FinalizarReparacion">Finalizar</button>
+            }
+
+            @if (reparacion.EstadoId == 5 && puedeAprobar) // Finalizado por aprobar
+            {
+                <button class="btn btn-warning" @onclick="AprobarReparacion">Aprobar Reparación</button>
+            }
+        </div>
+    </div>
+
+    <h4 class="mt-4">Detalles de Trabajo</h4>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Fecha</th>
+                <th>Descripción</th>
+                <th>Costo</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var detalle in reparacion.Detalles)
+            {
+                <tr>
+                    <td>@detalle.Fecha.ToShortDateString()</td>
+                    <td>@detalle.Descripcion</td>
+                    <td>@detalle.Costo.ToString("C")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private Reparacion reparacion;
+    private bool esEmpleadoAsignado = false;
+    private bool puedeAprobar = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        reparacion = await ServicioReparaciones.ObtenerReparacionPorId(Id);
+
+        // Verificar si el usuario actual es el empleado asignado
+        // (Aquí deberías implementar la lógica según tu sistema de autenticación)
+        // esEmpleadoAsignado = ...;
+
+        // Verificar si el usuario actual puede aprobar
+        // puedeAprobar = ...;
+    }
+
+    private void AsignarEmpleado()
+    {
+        // Implementar lógica para asignar empleado
+    }
+
+    private void AgregarDetalle()
+    {
+        // Implementar lógica para agregar detalle
+    }
+
+    private async Task FinalizarReparacion()
+    {
+        await ServicioReparaciones.FinalizarReparacion(reparacion.Id);
+        NavigationManager.NavigateTo($"/reparaciones/detalle/{reparacion.Id}", forceLoad: true);
+    }
+
+    private void AprobarReparacion()
+    {
+        // Implementar lógica para aprobar reparación
+    }
+}

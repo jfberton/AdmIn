@@ -35,17 +35,22 @@ namespace AdmIn.UI.Services
         Task<Pago?> ObtenerPagoPorId(int id);
 
         Task<IEnumerable<Reparacion>> ObtenerReparaciones();
-        Task<IEnumerable<ReparacionEstado>> ObtenerEstadosReparacion();
-
         Task<Reparacion?> ObtenerReparacionPorId(int id);
 
+        Task<IEnumerable<ReparacionEstado>> ObtenerEstadosReparacion();
+        Task<ReparacionEstado> ObtenerEstadoReparacion(int id);
         Task<IEnumerable<Empleado>> ObtenerEmpleados();
         Task<Empleado?> ObtenerEmpleadoPorId(int id);
-
         Task<IEnumerable<Reparacion>> ObtenerReparacionesPorInmueble(int inmuebleId);
         Task AgregarReparacion(int inmuebleId, Reparacion reparacion);
         Task ActualizarReparacion(Reparacion reparacion);
         Task EliminarReparacion(int reparacionId);
+        Task<bool> AceptarReparacion(int reparacionId, int empleadoId, decimal costoEstimado, DateTime fechaInicio);
+        Task<bool> RechazarReparacion(int reparacionId, int empleadoId);
+        Task<bool> AgregarDetalleReparacion(int reparacionId, ReparacionDetalle detalle);
+        Task<bool> FinalizarReparacion(int reparacionId);
+        Task<bool> AprobarReparacion(int reparacionId, EmpleadoCalificacion calificacion);
+        Task<IEnumerable<EmpleadoCalificacion>> ObtenerCalificacionesEmpleado(int empleadoId);
 
     }
 
@@ -56,8 +61,10 @@ namespace AdmIn.UI.Services
         private readonly List<Inquilino> _inquilinos;
         private readonly List<Pago> _pagos;
         private readonly List<Reparacion> _reparaciones;
+        private readonly List<ReparacionEstado> _reparacionEstados = new();
+        private readonly List<ReparacionCategoria> _reparacionCategorias = new();
         private readonly List<Empleado> _empleados;
-        private readonly List<ReparacionEstado> _reparacionEstados;
+        private readonly List<EmpleadoCalificacion> _calificaciones = new();
         private readonly List<EstadoInmueble> _estadosInmueble;
 
         private static readonly Random random = new Random();
@@ -72,21 +79,34 @@ namespace AdmIn.UI.Services
             _contratos = GenerarContratos().ToList();
             _pagos = GenerarPagos().ToList();
             _reparacionEstados = GenerarReparacionEstados().ToList();
+            _reparacionCategorias = GenerarCategoriasReparacion();
             _reparaciones = GenerarReparaciones().ToList();
-            
+
 
             // Relacionar datos después de que todas las listas estén inicializadas
             RelacionarDatos();
         }
 
+        private List<ReparacionCategoria> GenerarCategoriasReparacion()
+        {
+            return new List<ReparacionCategoria>
+            {
+                new ReparacionCategoria { Id = 1, Categoria = "Plomería" },
+                new ReparacionCategoria { Id = 2, Categoria = "Electricidad" },
+                new ReparacionCategoria { Id = 3, Categoria = "Pintura" },
+                new ReparacionCategoria { Id = 4, Categoria = "Albañilería" },
+                new ReparacionCategoria { Id = 5, Categoria = "Carpintería" }
+            };
+        }
+
         private IEnumerable<EstadoInmueble> GenerarEstadosInmueble()
         {
             return new List<EstadoInmueble>
-        {
-            new EstadoInmueble { Id = 1, Estado = "Disponible" },
-            new EstadoInmueble { Id = 2, Estado = "Ocupado" },
-            new EstadoInmueble { Id = 3, Estado = "En reparación" }
-        };
+            {
+                new EstadoInmueble { Id = 1, Estado = "Disponible" },
+                new EstadoInmueble { Id = 2, Estado = "Ocupado" },
+                new EstadoInmueble { Id = 3, Estado = "En reparación" }
+            };
         }
 
         // Método para obtener todos los estados de inmueble
@@ -264,28 +284,29 @@ namespace AdmIn.UI.Services
             for (int i = 1; i <= 10; i++)
             {
                 // Generar fechas aleatorias
+
                 var fechaSolicitud = DateTime.Now.AddDays(-random.Next(1, 30));
                 var fechaInicio = fechaSolicitud.AddDays(random.Next(1, 10));
                 var fechaFin = fechaInicio.AddDays(random.Next(1, 15));
 
                 // Generar detalles de reparación
                 var detalles = new List<ReparacionDetalle>
-        {
-            new ReparacionDetalle
-            {
-                Id = 1,
-                Descripcion = "Cambio de tuberías",
-                Costo = random.Next(500, 2000),
-                Fecha = fechaInicio.AddDays(1)
-            },
-            new ReparacionDetalle
-            {
-                Id = 2,
-                Descripcion = "Pintura de paredes",
-                Costo = random.Next(300, 1500),
-                Fecha = fechaInicio.AddDays(2)
-            }
-        };
+                                {
+                                    new ReparacionDetalle
+                                    {
+                                        Id = 1,
+                                        Descripcion = "Descripcion trabajo realizado",
+                                        Costo = random.Next(500, 2000),
+                                        Fecha = fechaInicio.AddDays(1)
+                                    },
+                                    new ReparacionDetalle
+                                    {
+                                        Id = 2,
+                                        Descripcion = "Otra tarea realizada para la reparacion",
+                                        Costo = random.Next(300, 1500),
+                                        Fecha = fechaInicio.AddDays(2)
+                                    }
+                                };
 
                 // Obtener un índice aleatorio para Inmueble, Empleado y Estado
                 int inmuebleIndex = random.Next(0, _inmuebles.Count);
@@ -298,6 +319,7 @@ namespace AdmIn.UI.Services
                     FechaSolicitud = fechaSolicitud,
                     FechaInicio = fechaInicio,
                     FechaFin = fechaFin,
+                    Categoria = _reparacionCategorias[random.Next(0, _reparacionCategorias.Count)],
                     Descripcion = $"Reparación #{i}",
                     CostoEstimado = random.Next(1000, 5000),
                     CostoFinal = random.Next(1000, 5000),
@@ -321,12 +343,12 @@ namespace AdmIn.UI.Services
                 new ReparacionEstado { Id = 3, Estado = "Finalizado" }
             };
 
-                // Devolver la lista como una tarea completada
-                return estados.AsEnumerable();
+            // Devolver la lista como una tarea completada
+            return estados.AsEnumerable();
         }
 
         public async Task<IEnumerable<ReparacionEstado>> ObtenerEstadosReparacion()
-        { 
+        {
             return await Task.FromResult(_reparacionEstados);
         }
 
@@ -558,6 +580,90 @@ namespace AdmIn.UI.Services
                 }
             }
             await Task.CompletedTask;
+        }
+
+        public async Task<IEnumerable<Reparacion>> ObtenerReparacionesPorEstado(int estadoId)
+        {
+            return await Task.FromResult(_reparaciones.Where(r => r.EstadoId == estadoId));
+        }
+
+        public async Task<bool> AceptarReparacion(int reparacionId, int empleadoId, decimal costoEstimado, DateTime fechaInicio)
+        {
+            var reparacion = _reparaciones.FirstOrDefault(r => r.Id == reparacionId);
+            if (reparacion == null) return false;
+
+            reparacion.EstadoId = 2; // Iniciado
+            reparacion.Estado = await ObtenerEstadoReparacion(2);
+            reparacion.EmpleadoId = empleadoId;
+            reparacion.Empleado = _empleados.First(e => e.EmpleadoId == empleadoId);
+            reparacion.CostoEstimado = costoEstimado;
+            reparacion.FechaInicio = fechaInicio;
+
+            return true;
+        }
+
+        public async Task<bool> RechazarReparacion(int reparacionId, int empleadoId)
+        {
+            var reparacion = _reparaciones.FirstOrDefault(r => r.Id == reparacionId);
+            if (reparacion == null) return false;
+
+            reparacion.EstadoId = 4; // Rechazado
+            reparacion.Estado = await ObtenerEstadoReparacion(4);
+            return true;
+        }
+
+        public async Task<bool> AgregarDetalleReparacion(int reparacionId, ReparacionDetalle detalle)
+        {
+            var reparacion = _reparaciones.FirstOrDefault(r => r.Id == reparacionId);
+            if (reparacion == null) return false;
+
+            detalle.Id = reparacion.Detalles.Any() ? reparacion.Detalles.Max(d => d.Id) + 1 : 1;
+            detalle.Reparacion = reparacion;
+            detalle.Fecha = DateTime.Now;
+            reparacion.Detalles.Add(detalle);
+
+            // Actualizar estado si es la primera vez que se agrega un detalle
+            if (reparacion.EstadoId == 2) // Si estaba "Iniciado"
+            {
+                reparacion.EstadoId = 3; // En proceso
+                reparacion.Estado = await ObtenerEstadoReparacion(3);
+            }
+
+            return true;
+        }
+
+        public async Task<bool> FinalizarReparacion(int reparacionId)
+        {
+            var reparacion = _reparaciones.FirstOrDefault(r => r.Id == reparacionId);
+            if (reparacion == null) return false;
+
+            reparacion.EstadoId = 5; // Finalizado por aprobar
+            reparacion.Estado = await ObtenerEstadoReparacion(5);
+            reparacion.FechaFin = DateTime.Now;
+            reparacion.CostoFinal = reparacion.Detalles.Sum(d => d.Costo);
+
+            return true;
+        }
+
+        public async Task<bool> AprobarReparacion(int reparacionId, EmpleadoCalificacion calificacion)
+        {
+            var reparacion = _reparaciones.FirstOrDefault(r => r.Id == reparacionId);
+            if (reparacion == null) return false;
+
+            reparacion.EstadoId = 6; // Finalizado
+            reparacion.Estado = await ObtenerEstadoReparacion(6);
+
+            calificacion.Id = _calificaciones.Any() ? _calificaciones.Max(c => c.Id) + 1 : 1;
+            calificacion.ReparacionId = reparacionId;
+            calificacion.EmpleadoId = reparacion.EmpleadoId;
+            _calificaciones.Add(calificacion);
+
+            return true;
+        }
+
+        public async Task<IEnumerable<EmpleadoCalificacion>> ObtenerCalificacionesEmpleado(int empleadoId)
+        {
+            return await Task.FromResult(_calificaciones.Where(c => c.EmpleadoId == empleadoId));
         }
 
 

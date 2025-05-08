@@ -126,6 +126,8 @@ else
     private async Task ObtenerInmueble()
     {
         inmueble = await MockData.ObtenerInmueblePorId(InmuebleId);
+        inmueble.Caracteristicas = inmueble.Caracteristicas.ToList();
+        inmueble.Imagenes = inmueble.Imagenes.ToList();
         StateHasChanged();
     }
 

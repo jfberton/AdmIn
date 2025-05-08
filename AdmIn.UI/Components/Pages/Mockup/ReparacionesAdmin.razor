@@ -1,0 +1,65 @@
+﻿@page "/m/reparaciones"
+@using AdmIn.Business.Entidades
+@using AdmIn.UI.Services
+
+@inject IServ_Mock ServicioReparaciones
+
+<h3>Reparaciones</h3>
+
+<div class="mb-3">
+    <button class="btn btn-primary" @onclick="NuevaReparacion">Nueva Reparación</button>
+</div>
+
+@if (reparaciones == null)
+{
+    <p>Cargando reparaciones...</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Descripción</th>
+                <th>Inmueble</th>
+                <th>Estado</th>
+                <th>Fecha Solicitud</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var reparacion in reparaciones)
+            {
+                <tr>
+                    <td>@reparacion.Id</td>
+                    <td>@reparacion.Descripcion</td>
+                    <td>@reparacion.Inmueble?.Direccion?.ToString()</td>
+                    <td>@reparacion.Estado?.Estado</td>
+                    <td>@reparacion.FechaSolicitud.ToShortDateString()</td>
+                    <td>
+                        <button class="btn btn-sm btn-info" @onclick="() => VerDetalle(reparacion.Id)">Detalle</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private IEnumerable<Reparacion> reparaciones;
+
+    protected override async Task OnInitializedAsync()
+    {
+        reparaciones = await ServicioReparaciones.ObtenerReparaciones();
+    }
+
+    private void NuevaReparacion()
+    {
+        //NavigationManager.NavigateTo("/reparaciones/nueva");
+    }
+
+    private void VerDetalle(int id)
+    {
+        //NavigationManager.NavigateTo($"/reparaciones/detalle/{id}");
+    }
+}

@@ -1,0 +1,89 @@
+﻿@page "/reparaciones/nueva"
+@using AdmIn.Business.Entidades
+@using AdmIn.UI.Services
+
+@inject IServ_Mock ServicioReparaciones
+@inject IServ_Mock ServicioInmuebles
+@inject IServ_Mock ServicioEmpleados
+@inject NavigationManager NavigationManager
+
+<h3>Nueva Reparación</h3>
+
+<EditForm Model="@nuevaReparacion" OnValidSubmit="@GuardarReparacion">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="form-group">
+        <label for="descripcion">Descripción:</label>
+        <InputTextArea id="descripcion" class="form-control" @bind-Value="nuevaReparacion.Descripcion" />
+    </div>
+
+    <div class="form-group">
+        <label for="inmueble">Inmueble:</label>
+        <InputSelect id="inmueble" class="form-control" @bind-Value="inmuebleSeleccionado">
+            <option value="">Seleccione un inmueble</option>
+            @foreach (var inmueble in inmuebles)
+            {
+                <option value="@inmueble.Id">@inmueble.Direccion?.ToString()</option>
+            }
+        </InputSelect>
+    </div>
+
+    <div class="form-group">
+        <label for="empleado">Empleado (opcional):</label>
+        <InputSelect id="empleado" class="form-control" @bind-Value="empleadoSeleccionado">
+            <option value="0">No asignar aún</option>
+            @foreach (var empleado in empleados)
+            {
+                <option value="@empleado.EmpleadoId">@empleado.Nombre (@empleado.Especialidad?.Especialidad)</option>
+            }
+        </InputSelect>
+    </div>
+
+    <div class="form-group">
+        <button type="submit" class="btn btn-primary">Guardar</button>
+        <button type="button" class="btn btn-secondary" @onclick="Cancelar">Cancelar</button>
+    </div>
+</EditForm>
+
+@code {
+    private Reparacion nuevaReparacion = new();
+    private List<Inmueble> inmuebles = new();
+    private List<Empleado> empleados = new();
+    private int inmuebleSeleccionado;
+    private int empleadoSeleccionado;
+
+    protected override async Task OnInitializedAsync()
+    {
+        inmuebles = (await ServicioInmuebles.ObtenerInmuebles()).ToList();
+        empleados = (await ServicioEmpleados.ObtenerEmpleados()).ToList();
+    }
+
+    private async Task GuardarReparacion()
+    {
+        nuevaReparacion.Inmueble = await ServicioInmuebles.ObtenerInmueblePorId(inmuebleSeleccionado);
+        nuevaReparacion.InmuebleId = inmuebleSeleccionado;
+        nuevaReparacion.FechaSolicitud = DateTime.Now;
+
+        if (empleadoSeleccionado > 0)
+        {
+            nuevaReparacion.Empleado = await ServicioEmpleados.ObtenerEmpleadoPorId(empleadoSeleccionado);
+            nuevaReparacion.EmpleadoId = empleadoSeleccionado;
+            nuevaReparacion.EstadoId = 1; // Pendiente asignado
+        }
+        else
+        {
+            nuevaReparacion.EstadoId = 0; // Pendiente sin asignar
+        }
+
+        nuevaReparacion.Estado = await ServicioReparaciones.ObtenerEstadoReparacion(nuevaReparacion.EstadoId);
+
+        await ServicioReparaciones.AgregarReparacion(inmuebleSeleccionado, nuevaReparacion);
+        NavigationManager.NavigateTo("/reparaciones");
+    }
+
+    private void Cancelar()
+    {
+        NavigationManager.NavigateTo("/reparaciones");
+    }
+}

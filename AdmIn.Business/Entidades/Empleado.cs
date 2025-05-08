@@ -40,4 +40,13 @@ namespace AdmIn.Business.Entidades
         public Empleado Empleado { get; set; }
     }
 
+    public class EmpleadoCalificacion
+    {
+        public int Id { get; set; }
+        public int ReparacionId { get; set; }
+        public int EmpleadoId { get; set; }
+        public int CalificacionTrabajo { get; set; } // 1-5
+        public int CalificacionComportamiento { get; set; } // 1-5
+        public string Comentario { get; set; }
+    }
 }

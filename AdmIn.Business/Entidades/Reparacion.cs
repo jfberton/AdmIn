@@ -9,6 +9,7 @@ namespace AdmIn.Business.Entidades
     public class Reparacion
     {
         public int Id { get; set; }
+        public ReparacionCategoria Categoria { get; set; } // Categoría de la reparación (Ej: Plomería, Electricidad, etc.)
 
         // Fecha en la que se solicita la reparación
         public DateTime FechaSolicitud { get; set; }
@@ -37,6 +38,13 @@ namespace AdmIn.Business.Entidades
 
         // Detalles de la reparación (Materiales, Mano de obra, etc.)
         public List<ReparacionDetalle> Detalles { get; set; } = new();
+    }
+
+
+    public class ReparacionCategoria
+    {
+        public int Id { get; set; }
+        public string Categoria { get; set; } // Ej: Plomería, Electricidad, etc.
     }
 
     public class ReparacionEstado
