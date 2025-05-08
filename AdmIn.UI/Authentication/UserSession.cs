@@ -2,10 +2,10 @@
 {
     public class UserSession
     {
-        public string Email { get; set; }
-        public string Nombre { get; set; }
-        public string Password { get; set; }
-        public string Token { get; set; }
-        public string Roles { get; set; } // Roles en formato "Role1, Role2, Role3"
+        public required string Email { get; set; }
+        public required string Nombre { get; set; }
+        public required string Password { get; set; }
+        public required string Token { get; set; }
+        public required string Roles { get; set; } // Roles en formato "Role1, Role2, Role3"
     }
 }

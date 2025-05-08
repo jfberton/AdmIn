@@ -1,5 +1,6 @@
 ﻿using AdmIn.Business.Entidades;
 using System.Collections.Generic;
+using System.Data.SqlTypes;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -38,6 +39,7 @@ namespace AdmIn.UI.Services
         Task<Reparacion?> ObtenerReparacionPorId(int id);
 
         Task<IEnumerable<ReparacionEstado>> ObtenerEstadosReparacion();
+        Task<IEnumerable<ReparacionCategoria>> ObtenerCategoriasReparacion();
         Task<ReparacionEstado> ObtenerEstadoReparacion(int id);
         Task<IEnumerable<Empleado>> ObtenerEmpleados();
         Task<Empleado?> ObtenerEmpleadoPorId(int id);
@@ -86,6 +88,8 @@ namespace AdmIn.UI.Services
             // Relacionar datos después de que todas las listas estén inicializadas
             RelacionarDatos();
         }
+
+        
 
         private List<ReparacionCategoria> GenerarCategoriasReparacion()
         {
@@ -587,6 +591,11 @@ namespace AdmIn.UI.Services
             return await Task.FromResult(_reparaciones.Where(r => r.EstadoId == estadoId));
         }
 
+        public async Task<IEnumerable<ReparacionCategoria>> ObtenerCategoriasReparacion()
+        {
+            return await Task.FromResult(_reparacionCategorias);
+        }
+
         public async Task<bool> AceptarReparacion(int reparacionId, int empleadoId, decimal costoEstimado, DateTime fechaInicio)
         {
             var reparacion = _reparaciones.FirstOrDefault(r => r.Id == reparacionId);
@@ -665,7 +674,6 @@ namespace AdmIn.UI.Services
         {
             return await Task.FromResult(_calificaciones.Where(c => c.EmpleadoId == empleadoId));
         }
-
 
         public async Task<IEnumerable<Contrato>> ObtenerContratos() => await Task.FromResult(_contratos);
         public async Task<Contrato?> ObtenerContratoPorId(int id) => await Task.FromResult(_contratos.FirstOrDefault(c => c.Id == id));

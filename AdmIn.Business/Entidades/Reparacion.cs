@@ -38,6 +38,8 @@ namespace AdmIn.Business.Entidades
 
         // Detalles de la reparación (Materiales, Mano de obra, etc.)
         public List<ReparacionDetalle> Detalles { get; set; } = new();
+
+        public List<Imagen> Imagenes { get; set; } = new();
     }
 
 
@@ -68,6 +70,8 @@ namespace AdmIn.Business.Entidades
 
         // Fecha en que se realizó esta parte de la reparación
         public DateTime Fecha { get; set; }
+
+        public List<Imagen> Imagenes { get; set; } = new();
     }
 
 

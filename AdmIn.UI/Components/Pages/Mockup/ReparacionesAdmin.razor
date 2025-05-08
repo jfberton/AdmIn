@@ -1,65 +1,142 @@
 ﻿@page "/m/reparaciones"
 @using AdmIn.Business.Entidades
+@using AdmIn.Common
 @using AdmIn.UI.Services
+@using System.Linq.Dynamic.Core
 
 @inject IServ_Mock ServicioReparaciones
+@inherits BaseComponent
 
-<h3>Reparaciones</h3>
+<AuthorizeView Roles="add_reparacion">
+	<Authorized>
+		<div class="mb-3">
+			<button class="btn btn-primary" @onclick="NuevaReparacion">Nueva Reparación</button>
+		</div>
+	</Authorized>
+</AuthorizeView>
 
-<div class="mb-3">
-    <button class="btn btn-primary" @onclick="NuevaReparacion">Nueva Reparación</button>
-</div>
 
 @if (reparaciones == null)
 {
-    <p>Cargando reparaciones...</p>
+	<p>Cargando reparaciones...</p>
 }
 else
 {
-    <table class="table">
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Descripción</th>
-                <th>Inmueble</th>
-                <th>Estado</th>
-                <th>Fecha Solicitud</th>
-                <th>Acciones</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var reparacion in reparaciones)
-            {
-                <tr>
-                    <td>@reparacion.Id</td>
-                    <td>@reparacion.Descripcion</td>
-                    <td>@reparacion.Inmueble?.Direccion?.ToString()</td>
-                    <td>@reparacion.Estado?.Estado</td>
-                    <td>@reparacion.FechaSolicitud.ToShortDateString()</td>
-                    <td>
-                        <button class="btn btn-sm btn-info" @onclick="() => VerDetalle(reparacion.Id)">Detalle</button>
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
+	<RadzenDataGrid class="rz-m-2" @ref="grilla" IsLoading=@isLoading Count="@count" Data="@items" EmptyText="No hay registros para mostrar"
+					LoadData="@LoadData" AllowSorting="true" AllowFiltering="true" FilterMode="FilterMode.Simple" AllowPaging="true" PageSize="5"
+					PagerHorizontalAlign="HorizontalAlign.Center" TItem="Reparacion">
+		<Columns>
+			<RadzenDataGridColumn TItem="Reparacion" Title="#" MinWidth="200px">
+				<Template Context="data">
+					@data.Id
+				</Template>
+			</RadzenDataGridColumn>
+
+			<RadzenDataGridColumn TItem="Reparacion" Title="Descripción" MinWidth="200px">
+				<Template Context="data">
+					@data.Descripcion
+				</Template>
+			</RadzenDataGridColumn>
+
+			<RadzenDataGridColumn TItem="Reparacion" Title="Inmueble" MinWidth="200px">
+				<Template Context="data">
+					@data.Inmueble?.Direccion?.ToString()
+				</Template>
+			</RadzenDataGridColumn>
+
+			<RadzenDataGridColumn TItem="Reparacion" Title="Estado" MinWidth="200px">
+				<Template Context="data">
+					@data.Estado?.Estado
+				</Template>
+			</RadzenDataGridColumn>
+
+			<RadzenDataGridColumn TItem="Reparacion" Title="Fecha Solicitud" MinWidth="200px">
+				<Template Context="data">
+					@data.FechaSolicitud.ToShortDateString()
+				</Template>
+			</RadzenDataGridColumn>
+
+			<RadzenDataGridColumn TItem="Reparacion" Title="Acciones" MinWidth="120px">
+				<Template Context="data">
+					<RadzenButton Icon="search" Size="ButtonSize.Small" Style="margin-right: 5px"
+								  Click="@(() => VerDetalle(data.Id))"
+								  Tooltip="Ver detalle" />
+				</Template>
+			</RadzenDataGridColumn>
+		</Columns>
+	</RadzenDataGrid>
 }
 
 @code {
-    private IEnumerable<Reparacion> reparaciones;
 
-    protected override async Task OnInitializedAsync()
-    {
-        reparaciones = await ServicioReparaciones.ObtenerReparaciones();
-    }
+	private bool isLoading = false;
+	private RadzenDataGrid<Reparacion> grilla;
+	private int count;
+	private IEnumerable<Reparacion> items;
+	private IEnumerable<Reparacion> reparaciones;
 
-    private void NuevaReparacion()
-    {
-        //NavigationManager.NavigateTo("/reparaciones/nueva");
-    }
+	protected override async Task OnInitializedAsync()
+	{
+		base.EstablecerTituloPagina("Reparaciones", "Listado");
+		reparaciones = await ServicioReparaciones.ObtenerReparaciones();
+	}
 
-    private void VerDetalle(int id)
-    {
-        //NavigationManager.NavigateTo($"/reparaciones/detalle/{id}");
-    }
+	private async Task LoadData(LoadDataArgs args)
+	{
+		if (!isLoading)
+		{
+			isLoading = true;
+
+			await Task.Yield();
+
+			Filtros_paginado filtros = new Filtros_paginado
+				{
+					Filter = args.Filter != "" ? args.Filter : null,
+					OrderBy = args.OrderBy != "" ? args.OrderBy : null,
+					Skip = args.Skip != null ? args.Skip.Value : 0,
+					Top = args.Top != null ? args.Top.Value : 5
+				};
+
+
+			// Filtrado manual
+			IEnumerable<Reparacion> query = reparaciones;
+
+			if (!string.IsNullOrEmpty(args.Filter))
+			{
+				// Acá deberías ajustar según las columnas que tenés
+				query = query.Where(r =>
+					(r.Descripcion != null && r.Descripcion.Contains(args.Filter, StringComparison.OrdinalIgnoreCase)) ||
+					(r.Estado != null && r.Estado.Estado.Contains(args.Filter, StringComparison.OrdinalIgnoreCase))
+				);
+			}
+
+			// Ordenamiento
+			if (!string.IsNullOrEmpty(args.OrderBy))
+			{
+				query = query.AsQueryable().OrderBy(args.OrderBy);
+			}
+
+			count = query.Count();
+
+			// Paginación
+			if (args.Skip.HasValue)
+				query = query.Skip(args.Skip.Value);
+			if (args.Top.HasValue)
+				query = query.Take(args.Top.Value);
+
+			items = query.ToList();
+		}
+
+		isLoading = false;
+	}
+
+	private void NuevaReparacion()
+	{
+		IrA("/m/reparaciones/nueva");
+	}
+
+	private void VerDetalle(int id)
+	{
+		IrA($"/m/reparaciones/detalle/{id}");
+	}
 }

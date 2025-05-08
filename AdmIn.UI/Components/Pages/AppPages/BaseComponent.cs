@@ -6,22 +6,22 @@ using System.Threading.Tasks;
 public abstract class BaseComponent : ComponentBase
 {
     [Inject]
-    protected ITokenService TokenService { get; set; }
+    public required ITokenService TokenService { get; set; }
 
     [Inject]
-    protected NavigationManager NavigationManager { get; set; }
+    public required NavigationManager NavigationManager { get; set; }
 
     [Inject]
-    protected NotificationService NotificationService { get; set; }
+    public required NotificationService NotificationService { get; set; }
 
     [Inject]
-    protected PageTitleService PageTitleService { get; set; }
+    public required PageTitleService PageTitleService { get; set; }
 
     [Inject]
-    protected DeviceService Device_Service { get; set; }
+    public required DeviceService Device_Service { get; set; }
 
     [Inject]
-    protected LogHelper LogHelper { get; set; } // Inyección de LogHelper
+    public required LogHelper LogHelper { get; set; } // Inyección de LogHelper
 
     protected override async Task OnInitializedAsync()
     {
@@ -74,7 +74,7 @@ public abstract class BaseComponent : ComponentBase
         }
     }
 
-    protected void EstablecerTituloPagina(string titulo, string subtitulo = null)
+    protected void EstablecerTituloPagina(string titulo, string? subtitulo = null)
     {
         PageTitleService.SetTitle(titulo, subtitulo);
         LogHelper.Info($"Título de página establecido: {titulo}, Subtítulo: {subtitulo ?? "N/A"}").ConfigureAwait(false);
