@@ -71,6 +71,9 @@ namespace AdmIn.Business.Entidades
         // Fecha en que se realizó esta parte de la reparación
         public DateTime Fecha { get; set; }
 
+        public bool ACargoDePropietario { get; set; } = false;
+        public bool ACargoDeInquilino { get; set; } = false;
+
         public List<Imagen> Imagenes { get; set; } = new();
     }
 

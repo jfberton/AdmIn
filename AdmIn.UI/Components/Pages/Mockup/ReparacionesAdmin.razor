@@ -8,135 +8,170 @@
 @inherits BaseComponent
 
 <AuthorizeView Roles="add_reparacion">
-	<Authorized>
-		<div class="mb-3">
-			<button class="btn btn-primary" @onclick="NuevaReparacion">Nueva Reparación</button>
-		</div>
-	</Authorized>
+    <Authorized>
+        <div class="mb-3">
+            <button class="btn btn-primary" @onclick="NuevaReparacion">Nueva Reparación</button>
+        </div>
+    </Authorized>
 </AuthorizeView>
-
 
 @if (reparaciones == null)
 {
-	<p>Cargando reparaciones...</p>
+    <p>Cargando reparaciones...</p>
 }
 else
 {
-	<RadzenDataGrid class="rz-m-2" @ref="grilla" IsLoading=@isLoading Count="@count" Data="@items" EmptyText="No hay registros para mostrar"
-					LoadData="@LoadData" AllowSorting="true" AllowFiltering="true" FilterMode="FilterMode.Simple" AllowPaging="true" PageSize="5"
-					PagerHorizontalAlign="HorizontalAlign.Center" TItem="Reparacion">
-		<Columns>
-			<RadzenDataGridColumn TItem="Reparacion" Title="#" MinWidth="200px">
-				<Template Context="data">
-					@data.Id
-				</Template>
-			</RadzenDataGridColumn>
+    <RadzenDataGrid class="rz-m-2" @ref="grilla" IsLoading=@isLoading Count="@count" Data="@items" EmptyText="No hay registros para mostrar"
+                    LoadData="@LoadData" AllowSorting="true" AllowFiltering="true" FilterMode="FilterMode.Simple" AllowPaging="true" PageSize="5"
+                    PagerHorizontalAlign="HorizontalAlign.Center" TItem="Reparacion">
+        <Columns>
+            <RadzenDataGridColumn TItem="Reparacion" Title="ID" MinWidth="100px">
+                <Template Context="data">
+                    @data.Id
+                </Template>
+            </RadzenDataGridColumn>
 
-			<RadzenDataGridColumn TItem="Reparacion" Title="Descripción" MinWidth="200px">
-				<Template Context="data">
-					@data.Descripcion
-				</Template>
-			</RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="Reparacion" Title="Inmueble" MinWidth="200px">
+                <Template Context="data">
+                    @data.Inmueble?.Direccion?.ToString()
+                </Template>
+            </RadzenDataGridColumn>
 
-			<RadzenDataGridColumn TItem="Reparacion" Title="Inmueble" MinWidth="200px">
-				<Template Context="data">
-					@data.Inmueble?.Direccion?.ToString()
-				</Template>
-			</RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="Reparacion" Title="Categoría" MinWidth="150px">
+                <Template Context="data">
+                    @data.Categoria?.Categoria
+                </Template>
+            </RadzenDataGridColumn>
 
-			<RadzenDataGridColumn TItem="Reparacion" Title="Estado" MinWidth="200px">
-				<Template Context="data">
-					@data.Estado?.Estado
-				</Template>
-			</RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="Reparacion" Title="Estado" MinWidth="150px">
+                <Template Context="data">
+                    <RadzenBadge Text="@data.Estado?.Estado" BadgeStyle="@GetBadgeStyle(data.Estado?.Estado)"/>
+                </Template>
+            </RadzenDataGridColumn>
 
-			<RadzenDataGridColumn TItem="Reparacion" Title="Fecha Solicitud" MinWidth="200px">
-				<Template Context="data">
-					@data.FechaSolicitud.ToShortDateString()
-				</Template>
-			</RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="Reparacion" Title="Profesional" MinWidth="200px">
+                <Template Context="data">
+                    @if (data.Empleado != null)
+                    {
+                        <span>@data.Empleado.Nombre (@data.Empleado.Especialidad.Especialidad)</span>
+                    }
+                    else
+                    {
+                        <span class="text-muted">No asignado</span>
+                    }
+                </Template>
+            </RadzenDataGridColumn>
 
-			<RadzenDataGridColumn TItem="Reparacion" Title="Acciones" MinWidth="120px">
-				<Template Context="data">
-					<RadzenButton Icon="search" Size="ButtonSize.Small" Style="margin-right: 5px"
-								  Click="@(() => VerDetalle(data.Id))"
-								  Tooltip="Ver detalle" />
-				</Template>
-			</RadzenDataGridColumn>
-		</Columns>
-	</RadzenDataGrid>
+            <RadzenDataGridColumn TItem="Reparacion" Title="Fecha Solicitud" MinWidth="150px">
+                <Template Context="data">
+                    @data.FechaSolicitud.ToShortDateString()
+                </Template>
+            </RadzenDataGridColumn>
+
+            <RadzenDataGridColumn TItem="Reparacion" Title="Acciones" MinWidth="150px">
+                <Template Context="data">
+                    <RadzenButton Icon="search" Size="ButtonSize.Small" Style="margin-right: 5px"
+                                  Click="@(() => VerDetalle(data.Id))"
+                                  Tooltip="Ver detalle" />
+                    
+                    <AuthorizeView Roles="edit_reparacion">
+                        <Authorized>
+                            <RadzenButton Icon="edit" Size="ButtonSize.Small" Style="margin-right: 5px"
+                                          Click="@(() => EditarReparacion(data.Id))"
+                                          Tooltip="Editar" />
+                        </Authorized>
+                    </AuthorizeView>
+                </Template>
+            </RadzenDataGridColumn>
+        </Columns>
+    </RadzenDataGrid>
 }
 
 @code {
+    private bool isLoading = false;
+    private RadzenDataGrid<Reparacion> grilla;
+    private int count;
+    private IEnumerable<Reparacion> items;
+    private IEnumerable<Reparacion> reparaciones;
 
-	private bool isLoading = false;
-	private RadzenDataGrid<Reparacion> grilla;
-	private int count;
-	private IEnumerable<Reparacion> items;
-	private IEnumerable<Reparacion> reparaciones;
+    protected override async Task OnInitializedAsync()
+    {
+        EstablecerTituloPagina("Reparaciones", "Listado");
+        await CargarReparaciones();
+    }
 
-	protected override async Task OnInitializedAsync()
-	{
-		base.EstablecerTituloPagina("Reparaciones", "Listado");
-		reparaciones = await ServicioReparaciones.ObtenerReparaciones();
-	}
+    private async Task CargarReparaciones()
+    {
+        reparaciones = await ServicioReparaciones.ObtenerReparaciones();
+    }
 
-	private async Task LoadData(LoadDataArgs args)
-	{
-		if (!isLoading)
-		{
-			isLoading = true;
+    private async Task LoadData(LoadDataArgs args)
+    {
+        if (!isLoading)
+        {
+            isLoading = true;
 
-			await Task.Yield();
+            await Task.Yield();
 
-			Filtros_paginado filtros = new Filtros_paginado
-				{
-					Filter = args.Filter != "" ? args.Filter : null,
-					OrderBy = args.OrderBy != "" ? args.OrderBy : null,
-					Skip = args.Skip != null ? args.Skip.Value : 0,
-					Top = args.Top != null ? args.Top.Value : 5
-				};
+            // Filtrado manual
+            IEnumerable<Reparacion> query = reparaciones;
 
+            if (!string.IsNullOrEmpty(args.Filter))
+            {
+                query = query.Where(r =>
+                    (r.Descripcion != null && r.Descripcion.Contains(args.Filter, StringComparison.OrdinalIgnoreCase)) ||
+                    (r.Estado != null && r.Estado.Estado.Contains(args.Filter, StringComparison.OrdinalIgnoreCase)) ||
+                    (r.Inmueble != null && r.Inmueble.Direccion.ToString().Contains(args.Filter, StringComparison.OrdinalIgnoreCase)) ||
+                    (r.Categoria != null && r.Categoria.Categoria.Contains(args.Filter, StringComparison.OrdinalIgnoreCase)) ||
+                    (r.Empleado != null && r.Empleado.Nombre.Contains(args.Filter, StringComparison.OrdinalIgnoreCase))
+                );
+            }
 
-			// Filtrado manual
-			IEnumerable<Reparacion> query = reparaciones;
+            // Ordenamiento
+            if (!string.IsNullOrEmpty(args.OrderBy))
+            {
+                query = query.AsQueryable().OrderBy(args.OrderBy);
+            }
 
-			if (!string.IsNullOrEmpty(args.Filter))
-			{
-				// Acá deberías ajustar según las columnas que tenés
-				query = query.Where(r =>
-					(r.Descripcion != null && r.Descripcion.Contains(args.Filter, StringComparison.OrdinalIgnoreCase)) ||
-					(r.Estado != null && r.Estado.Estado.Contains(args.Filter, StringComparison.OrdinalIgnoreCase))
-				);
-			}
+            count = query.Count();
 
-			// Ordenamiento
-			if (!string.IsNullOrEmpty(args.OrderBy))
-			{
-				query = query.AsQueryable().OrderBy(args.OrderBy);
-			}
+            // Paginación
+            if (args.Skip.HasValue)
+                query = query.Skip(args.Skip.Value);
+            if (args.Top.HasValue)
+                query = query.Take(args.Top.Value);
 
-			count = query.Count();
+            items = query.ToList();
+        }
 
-			// Paginación
-			if (args.Skip.HasValue)
-				query = query.Skip(args.Skip.Value);
-			if (args.Top.HasValue)
-				query = query.Take(args.Top.Value);
+        isLoading = false;
+    }
 
-			items = query.ToList();
-		}
+    private BadgeStyle GetBadgeStyle(string estado)
+    {
+        return estado switch
+        {
+            "Pendiente" => BadgeStyle.Warning,
+            "En proceso" => BadgeStyle.Primary,
+            "Finalizado" => BadgeStyle.Success,
+            "Rechazado" => BadgeStyle.Danger,
+            "En disputa" => BadgeStyle.Danger,
+            _ => BadgeStyle.Info
+        };
+    }
 
-		isLoading = false;
-	}
+    private void NuevaReparacion()
+    {
+        IrA("/m/reparaciones/nueva");
+    }
 
-	private void NuevaReparacion()
-	{
-		IrA("/m/reparaciones/nueva");
-	}
+    private void VerDetalle(int id)
+    {
+        IrA($"/m/reparaciones/detalle/{id}");
+    }
 
-	private void VerDetalle(int id)
-	{
-		IrA($"/m/reparaciones/detalle/{id}");
-	}
+    private void EditarReparacion(int id)
+    {
+        IrA($"/m/reparaciones/editar/{id}");
+    }
 }

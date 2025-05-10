@@ -1,178 +1,24 @@
 ﻿@page "/m/reparaciones/nueva"
-@using AdmIn.Business.Entidades
-@using AdmIn.UI.Services
-@inject IServ_Mock ServicioReparaciones
-@inject IServ_Mock ServicioInmuebles
-@inject IServ_Mock ServicioEmpleados
+@inherits ReparacionForm
 
-@inherits BaseComponent
-
-<h3 class="mb-4">Nueva Reparación</h3>
-
-<RadzenTemplateForm Data="@nuevaReparacion" TItem="Reparacion" Submit="@GuardarReparacion">
-    <RadzenFieldset Text="Datos de la reparación">
-        <div class="row">
-            <div class="col-md-12 mb-3">
-                <RadzenLabel Text="Descripción" />
-                <RadzenTextArea @bind-Value="nuevaReparacion.Descripcion" Style="width:100%" Name="descripcion" />
-            </div>
-
-            <div class="col-md-6 mb-3">
-                <RadzenLabel Text="Categoría" />
-                <RadzenDropDown @bind-Value="categoriaSeleccionada"
-                                Data="@categorias"
-                                TextProperty="Categoria"
-                                ValueProperty="Id"
-                                Placeholder="Seleccione una categoría"
-                                Style="width:100%" />
-            </div>
-
-            <div class="col-md-6 mb-3">
-                <RadzenLabel Text="Inmueble" />
-                <RadzenDropDown @bind-Value="inmuebleSeleccionado"
-                                Data="@inmuebles"
-                                TextProperty="Direccion.CalleNumero"
-                                ValueProperty="Id"
-                                Placeholder="Seleccione un inmueble"
-                                Style="width:100%" />
-            </div>
-
-            <div class="col-md-6 mb-3">
-                <RadzenLabel Text="Empleado (opcional)" />
-                <RadzenDropDown @bind-Value="empleadoSeleccionado"
-                                Data="@empleados"
-                                TextProperty="Nombre"
-                                ValueProperty="EmpleadoId"
-                                AllowClear="true"
-                                Placeholder="No asignar aún"
-                                Style="width:100%" />
-            </div>
-
-            <div class="col-md-12 mb-3">
-                <RadzenLabel Text="Imágenes (opcional)" />
-                <RadzenFileInput Multiple="true" Accept="image/*" Change="@CargarImagenes" Style="width:100%" />
-            </div>
-            @if (imagenesAdjuntas.Any())
-            {
-                <div class="row">
-                    @foreach (var imagen in imagenesAdjuntas)
-                    {
-                        <div class="col-md-2 mb-2">
-                            <img src="@imagen.ThumbnailUrl" class="img-thumbnail" />
-                            <div class="text-muted small">@imagen.Descripcion</div>
-                        </div>
-                    }
-                </div>
-            }
-
-        </div>
-
-        <div class="d-flex justify-content-end">
-            <RadzenButton Text="Guardar" Icon="save" ButtonStyle="ButtonStyle.Primary" Style="margin-right: 10px" Type="Submit" />
-            <RadzenButton Text="Cancelar" Icon="close" Click="Cancelar" ButtonStyle="ButtonStyle.Secondary" />
-        </div>
-    </RadzenFieldset>
-</RadzenTemplateForm>
 
 @code {
-    private Reparacion nuevaReparacion = new();
-    private List<Inmueble> inmuebles = new();
-    private List<Empleado> empleados = new();
-    private List<ReparacionCategoria> categorias = new();
-    private List<Imagen> imagenesAdjuntas = new();
-
-    private int inmuebleSeleccionado;
-    private int empleadoSeleccionado;
-    private int categoriaSeleccionada;
-
-    protected override async Task OnInitializedAsync()
-    {
-        inmuebles = (await ServicioInmuebles.ObtenerInmuebles()).ToList();
-        empleados = (await ServicioEmpleados.ObtenerEmpleados()).ToList();
-        categorias = (await ServicioReparaciones.ObtenerCategoriasReparacion()).ToList();
-    }
-
-    private async Task CargarImagenes(IEnumerable<IBrowserFile> archivos)
-{
-    try
-    {
-        foreach (var archivo in archivos)
-        {
-            using var stream = archivo.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024);
-            using var ms = new MemoryStream();
-            await stream.CopyToAsync(ms);
-            var base64 = Convert.ToBase64String(ms.ToArray());
-
-            imagenesAdjuntas.Add(new Imagen
-            {
-                Descripcion = archivo.Name,
-                Url = $"data:{archivo.ContentType};base64,{base64}",
-                ThumbnailUrl = $"data:{archivo.ContentType};base64,{base64}"
-            });
-        }
-    }
-    catch (Exception ex)
-    {
-        MostrarNotificacion(NotificationSeverity.Error, "Error al cargar imágenes", ex.Message);
-    }
-}
-
-    private async Task GuardarReparacion()
+    protected override async Task GuardarReparacion()
     {
         try
         {
-            if (categoriaSeleccionada == 0)
-            {
-                MostrarNotificacion(NotificationSeverity.Warning, "Falta Categoría", "Debe seleccionar una categoría.");
-                return;
-            }
+            reparacion.FechaSolicitud = DateTime.Now;
+            reparacion.Estado = await base.ServicioReparaciones.ObtenerEstadoReparacion(1); // Pendiente
 
-            var categoria = categorias.FirstOrDefault(c => c.Id == categoriaSeleccionada);
-            var inmueble = await ServicioInmuebles.ObtenerInmueblePorId(inmuebleSeleccionado);
-            if (inmueble is null || categoria is null)
-            {
-                MostrarNotificacion(NotificationSeverity.Error, "Error", "Datos incompletos o inválidos.");
-                return;
-            }
+            await base.ServicioReparaciones.AgregarReparacion(reparacion.InmuebleId, reparacion);
 
-            nuevaReparacion.Categoria = categoria;
-            nuevaReparacion.Inmueble = inmueble;
-            nuevaReparacion.InmuebleId = inmueble.Id;
-            nuevaReparacion.FechaSolicitud = DateTime.Now;
-            nuevaReparacion.Imagenes = imagenesAdjuntas; 
-
-            if (empleadoSeleccionado > 0)
-            {
-                var empleado = await ServicioEmpleados.ObtenerEmpleadoPorId(empleadoSeleccionado);
-                if (empleado == null)
-                {
-                    MostrarNotificacion(NotificationSeverity.Error, "Error", "El empleado seleccionado no existe.");
-                    return;
-                }
-
-                nuevaReparacion.Empleado = empleado;
-                nuevaReparacion.EmpleadoId = empleado.EmpleadoId;
-                nuevaReparacion.EstadoId = 1; // Pendiente asignado
-            }
-            else
-            {
-                nuevaReparacion.EstadoId = 1; // Pendiente sin asignar
-            }
-
-            nuevaReparacion.Estado = await ServicioReparaciones.ObtenerEstadoReparacion(nuevaReparacion.EstadoId);
-
-            await ServicioReparaciones.AgregarReparacion(inmueble.Id, nuevaReparacion);
-
-            MostrarNotificacion(NotificationSeverity.Success, "Guardado", "Reparación guardada correctamente.", "/m/reparaciones");
+            MostrarNotificacion(NotificationSeverity.Success, "Éxito", "Reparación creada correctamente");
+            base.VolverAListado();
         }
         catch (Exception ex)
         {
-            MostrarNotificacion(NotificationSeverity.Error, "Error inesperado", ex.Message);
+            MostrarNotificacion(NotificationSeverity.Error, "Error", $"No se pudo crear la reparación: {ex.Message}");
+            await LogHelper.Error($"Error al crear reparación: {ex.Message}. Detalle {ex}");
         }
-    }
-
-    private void Cancelar()
-    {
-        IrA("/m/reparaciones");
     }
 }

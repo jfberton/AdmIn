@@ -1,0 +1,34 @@
+﻿@page "/m/reparaciones/editar/{Id:int}"
+@inherits ReparacionForm
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        var reparacionExistente = await ServicioReparaciones.ObtenerReparacionPorId(Id);
+        if (reparacionExistente != null)
+        {
+            reparacion = reparacionExistente;
+        }
+        Titulo = $"Editar Reparación #{Id}";
+    }
+
+    protected override async Task GuardarReparacion()
+    {
+        try
+        {
+            await ServicioReparaciones.ActualizarReparacion(reparacion);
+
+            MostrarNotificacion(NotificationSeverity.Success, "Éxito", "Reparación actualizada correctamente");
+            VolverAListado();
+        }
+        catch (Exception ex)
+        {
+            MostrarNotificacion(NotificationSeverity.Error, "Error", $"No se pudo actualizar la reparación: {ex.Message}");
+            await LogHelper.Error($"Error al actualizar reparación: {ex.Message}. Detalle {ex}");
+        }
+    }
+}
