@@ -348,13 +348,13 @@ namespace AdmIn.UI.Services
         {
             return new List<ReparacionEstado>
             {
-                new ReparacionEstado { Id = 1, Estado = "Pendiente sin asignar" },
-                new ReparacionEstado { Id = 2, Estado = "Pendiente" },
-                new ReparacionEstado { Id = 3, Estado = "En proceso" },
-                new ReparacionEstado { Id = 4, Estado = "En disputa" },
-                new ReparacionEstado { Id = 5, Estado = "Finalizado por aprobar" },
-                new ReparacionEstado { Id = 6, Estado = "Finalizado" },
-                new ReparacionEstado { Id = 7, Estado = "Rechazado" }
+                new ReparacionEstado { Id = 1, Estado = "Pendiente", Descripcion ="Nueva reparación pendiente de aceptar o rechazar por el empleado" },
+                new ReparacionEstado { Id = 2, Estado = "Pendiente sin asignar", Descripcion = "Reparación pendiente rechazada por el empleado" },
+                new ReparacionEstado { Id = 3, Estado = "En proceso", Descripcion = "Reparación aceptada por el empleado, tiene fecha de inicio y costo aproximado" },
+                new ReparacionEstado { Id = 4, Estado = "En disputa", Descripcion = "El inquilino dice que un detalle de reparación no le corresponde abonar a él" },
+                new ReparacionEstado { Id = 5, Estado = "Finalizado por aprobar", Descripcion = "Reparación marcada como finalizada por el empleado pendiente de aprobación poe el solicitante" },
+                new ReparacionEstado { Id = 6, Estado = "Finalizado", Descripcion = "Reparación finalizada y aprobada por el solicitante, aquí el empleado obtuvo una calificacion"},
+                new ReparacionEstado { Id = 7, Estado = "Cancelado", Descripcion = "Reparación pendiente sin asignar cancelada por el administrador" }
             };
         }
 

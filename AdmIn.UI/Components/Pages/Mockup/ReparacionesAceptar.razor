@@ -1,0 +1,87 @@
+﻿@page "/m/reparaciones/aceptar/{ReparacionId}"
+@using AdmIn.Business.Entidades
+@using AdmIn.UI.Services
+@inject IServ_Mock ServicioReparaciones
+@inherits BaseComponent
+
+<div class="card">
+    <div class="card-header">
+        <h5>Responder a Solicitud de Reparación</h5>
+    </div>
+    <div class="card-body">
+        @if (reparacion == null)
+        {
+            <p>Cargando...</p>
+        }
+        else if (reparacion.EstadoId != 1)
+        {
+            <div class="alert alert-warning">
+                Esta reparación no está pendiente de aceptación
+            </div>
+        }
+        else
+        {
+            <!-- Mostrar detalles de la reparación -->
+            <div class="mb-4">
+                <h6>Detalles de la Reparación</h6>
+                <p><strong>Inmueble:</strong> @reparacion.Inmueble?.Direccion?.ToString()</p>
+                <p><strong>Descripción:</strong> @reparacion.Descripcion</p>
+                <p><strong>Categoría:</strong> @reparacion.Categoria?.Categoria</p>
+            </div>
+
+            <!-- Botones de acción -->
+            <div class="row">
+                <div class="col-md-6 mb-2">
+                    <button class="btn btn-success w-100" @onclick="AceptarReparacion">
+                        <i class="fas fa-check"></i> Aceptar Reparación
+                    </button>
+                </div>
+                <div class="col-md-6 mb-2">
+                    <button class="btn btn-danger w-100" @onclick="RechazarReparacion">
+                        <i class="fas fa-times"></i> Rechazar Reparación
+                    </button>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public int ReparacionId { get; set; }
+
+    private Reparacion? reparacion;
+
+    protected override async Task OnInitializedAsync()
+    {
+        reparacion = await ServicioReparaciones.ObtenerReparacionPorId(ReparacionId);
+    }
+
+    private async Task AceptarReparacion()
+    {
+        var success = await ServicioReparaciones.AceptarReparacion(ReparacionId, 1); // ID del empleado actual
+        if (success)
+        {
+            MostrarNotificacion(NotificationSeverity.Success, "Éxito", "Reparación aceptada");
+            IrA($"/m/reparaciones/detalle/{ReparacionId}");
+        }
+        else
+        {
+            MostrarNotificacion(NotificationSeverity.Error, "Error", "No se pudo aceptar la reparación");
+        }
+    }
+
+    private async Task RechazarReparacion()
+    {
+        var success = await ServicioReparaciones.RechazarReparacion(ReparacionId, 1); // ID del empleado actual
+        if (success)
+        {
+            MostrarNotificacion(NotificationSeverity.Success, "Éxito", "Reparación rechazada");
+            IrA("/m/reparaciones");
+        }
+        else
+        {
+            MostrarNotificacion(NotificationSeverity.Error, "Error", "No se pudo rechazar la reparación");
+        }
+    }
+}

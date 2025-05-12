@@ -1,0 +1,90 @@
+﻿@page "/m/reparaciones/cancelar/{ReparacionId}"
+@using AdmIn.Business.Entidades
+@using AdmIn.UI.Services
+@using System.ComponentModel.DataAnnotations
+
+@inject IServ_Mock ServicioReparaciones
+@inherits BaseComponent
+
+<EditForm Model="@model" OnValidSubmit="@CancelarReparacion">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="card">
+        <div class="card-header">
+            <h5>Cancelar Reparación</h5>
+        </div>
+        <div class="card-body">
+            @if (reparacion == null)
+            {
+                <p>Cargando...</p>
+            }
+            else if (reparacion.EstadoId != 2)
+            {
+                <div class="alert alert-warning">
+                    Solo se pueden cancelar reparaciones en estado "Pendiente sin asignar"
+                </div>
+            }
+            else
+            {
+                <div class="mb-3">
+                    <label class="form-label">Motivo de cancelación *</label>
+                    <RadzenTextArea @bind-Value="@model.Motivo" Style="width:100%" Rows="3" />
+                    <ValidationMessage For="@(() => model.Motivo)" />
+                </div>
+
+                <div class="text-end">
+                    <button type="submit" class="btn btn-danger me-2">
+                        <i class="fas fa-ban"></i> Confirmar Cancelación
+                    </button>
+                    <button type="button" class="btn btn-secondary" @onclick="Volver">
+                        <i class="fas fa-times"></i> Cancelar
+                    </button>
+                </div>
+            }
+        </div>
+    </div>
+</EditForm>
+
+@code {
+    [Parameter]
+    public int ReparacionId { get; set; }
+
+    private Reparacion? reparacion;
+    private CancelacionModel model = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        reparacion = await ServicioReparaciones.ObtenerReparacionPorId(ReparacionId);
+    }
+
+    private async Task CancelarReparacion()
+    {
+        var success = await ServicioReparaciones.CancelarReparacion(
+            ReparacionId,
+            1, // ID del admin actual
+            model.Motivo);
+
+        if (success)
+        {
+            MostrarNotificacion(NotificationSeverity.Success, "Éxito", "Reparación cancelada");
+            Volver();
+        }
+        else
+        {
+            MostrarNotificacion(NotificationSeverity.Error, "Error", "No se pudo cancelar la reparación");
+        }
+    }
+
+    private void Volver()
+    {
+        IrA($"/m/reparaciones/detalle/{ReparacionId}");
+    }
+
+    private class CancelacionModel
+    {
+        [Required(ErrorMessage = "Debe ingresar un motivo")]
+        [MinLength(10, ErrorMessage = "El motivo debe tener al menos 10 caracteres")]
+        public string Motivo { get; set; } = string.Empty;
+    }
+}

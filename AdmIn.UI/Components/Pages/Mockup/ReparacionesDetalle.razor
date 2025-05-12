@@ -36,9 +36,7 @@
                                 
                                 <dt class="col-sm-4">Estado:</dt>
                                 <dd class="col-sm-8">
-                                    <span class="badge bg-@GetBadgeClass(reparacion.Estado?.Estado)">
-                                        @reparacion.Estado?.Estado
-                                    </span>
+                                    <RadzenBadge Text="@reparacion.Estado?.Estado" BadgeStyle="@GetBadgeStyle(reparacion.Estado?.Estado)" />
                                 </dd>
                             </dl>
                         </div>
@@ -105,10 +103,21 @@
                                 <h6>Detalles de Trabajo</h6>
                                 <RadzenDataGrid TItem="ReparacionDetalle" Data="@reparacion.Detalles" AllowPaging="true" PageSize="5">
                                     <Columns>
-                                        <RadzenDataGridColumn TItem="ReparacionDetalle" Title="Fecha" Property="Fecha" Format="dd/MM/yyyy" />
+                                        <RadzenDataGridColumn TItem="ReparacionDetalle" Title="Fecha" Width="120px">
+                                            <Template Context="detalle">
+                                                @detalle.Fecha.ToShortDateString()
+                                            </Template>
+                                        </RadzenDataGridColumn>
+                                        
                                         <RadzenDataGridColumn TItem="ReparacionDetalle" Title="Descripción" Property="Descripcion" />
-                                        <RadzenDataGridColumn TItem="ReparacionDetalle" Title="Costo" Property="Costo" Format="C" />
-                                        <RadzenDataGridColumn TItem="ReparacionDetalle" Title="Responsable">
+                                        
+                                        <RadzenDataGridColumn TItem="ReparacionDetalle" Title="Costo" Width="120px">
+                                            <Template Context="detalle">
+                                                @detalle.Costo.ToString("C")
+                                            </Template>
+                                        </RadzenDataGridColumn>
+                                        
+                                        <RadzenDataGridColumn TItem="ReparacionDetalle" Title="Responsable" Width="150px">
                                             <Template Context="detalle">
                                                 @if (detalle.ACargoDePropietario)
                                                 {
@@ -177,16 +186,16 @@
         reparacion = await ServicioReparaciones.ObtenerReparacionPorId(Id);
     }
 
-    private string GetBadgeClass(string estado)
+    private BadgeStyle GetBadgeStyle(string estado)
     {
         return estado switch
         {
-            "Pendiente" => "warning",
-            "En proceso" => "primary",
-            "Finalizado" => "success",
-            "Rechazado" => "danger",
-            "En disputa" => "danger",
-            _ => "info"
+            "Pendiente" => BadgeStyle.Warning,
+            "En proceso" => BadgeStyle.Primary,
+            "Finalizado" => BadgeStyle.Success,
+            "Rechazado" => BadgeStyle.Danger,
+            "En disputa" => BadgeStyle.Danger,
+            _ => BadgeStyle.Info
         };
     }
 

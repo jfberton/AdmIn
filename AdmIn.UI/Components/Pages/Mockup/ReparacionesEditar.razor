@@ -1,5 +1,29 @@
 ﻿@page "/m/reparaciones/editar/{Id:int}"
 @inherits ReparacionForm
+@using AdmIn.Business.Entidades
+
+<EditForm Model="@reparacion" OnValidSubmit="@OnValidSubmit">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="card">
+        <div class="card-header">
+            <h5>@Titulo</h5>
+        </div>
+        <div class="card-body">
+            <!-- Renderizamos el contenido del formulario base -->
+            @RenderFormContent()
+        </div>
+        <div class="card-footer text-end">
+            <button type="submit" class="btn btn-primary me-2">
+                <i class="fas fa-save"></i> Guardar
+            </button>
+            <button type="button" class="btn btn-secondary" @onclick="VolverAListado">
+                <i class="fas fa-times"></i> Cancelar
+            </button>
+        </div>
+    </div>
+</EditForm>
 
 @code {
     [Parameter]
@@ -12,14 +36,46 @@
         if (reparacionExistente != null)
         {
             reparacion = reparacionExistente;
+            // Cargamos las imágenes existentes en la lista de seleccionadas
+            if (reparacion.Imagenes != null)
+            {
+                imagenesSeleccionadas = reparacion.Imagenes.ToList();
+            }
         }
         Titulo = $"Editar Reparación #{Id}";
+    }
+
+    private async Task RemoveExistingImage(Guid imageId)
+    {
+        var imageToRemove = reparacion.Imagenes.FirstOrDefault(i => i.Id == imageId);
+        if (imageToRemove != null)
+        {
+            reparacion.Imagenes.Remove(imageToRemove);
+            StateHasChanged();
+        }
     }
 
     protected override async Task GuardarReparacion()
     {
         try
         {
+            // Combinamos imágenes existentes con nuevas  
+                       if (imagenesSeleccionadas.Any())  
+                       {  
+                           if (reparacion.Imagenes == null)  
+                           {  
+                               reparacion.Imagenes = new List<Imagen>();  
+                           }  
+
+                           foreach (var img in imagenesSeleccionadas)  
+                           {  
+                               if (!reparacion.Imagenes.Any(i => i.Id == img.Id))  
+                               {  
+                                   reparacion.Imagenes.Add(img);  
+                               }  
+                           }  
+                       }
+
             await ServicioReparaciones.ActualizarReparacion(reparacion);
             MostrarNotificacion(NotificationSeverity.Success, "Éxito", "Reparación actualizada correctamente");
             VolverAListado();
