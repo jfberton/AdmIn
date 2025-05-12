@@ -36,6 +36,15 @@ namespace AdmIn.Business.Entidades
         public Empleado Empleado { get; set; }
         public int EmpleadoId { get; set; }
 
+        // Agregar motivo de cancelación
+        public string? MotivoCancelacion { get; set; }
+
+        // Agregar fecha de cancelación
+        public DateTime? FechaCancelacion { get; set; }
+
+        // Agregar ID de quien canceló (admin/empleado)
+        public int? CanceladoPorId { get; set; }
+
         // Detalles de la reparación (Materiales, Mano de obra, etc.)
         public List<ReparacionDetalle> Detalles { get; set; } = new();
 
@@ -53,6 +62,7 @@ namespace AdmIn.Business.Entidades
     {
         public int Id { get; set; }
         public string Estado { get; set; } // Ej: Pendiente, En proceso, Finalizado
+        public string Descripcion { get; set; } // Descripción más detallada
     }
 
     public class ReparacionDetalle
