@@ -9,12 +9,14 @@ namespace AdmIn.Business.Entidades
     public class Empleado : PersonaBase
     {
         public int EmpleadoId { get; set; }
-
-        // Especialidad del empleado (Ej: Plomería, Electricidad, Albañilería)
         public EmpleadoEspecialidad Especialidad { get; set; }
-
-        // Agenda de disponibilidad del empleado
         public List<EmpleadoAgenda> Agenda { get; set; } = new();
+
+        // Nuevo campo para distinguir entre interno/externo
+        public bool EsContratistaExterno { get; set; }
+
+        // Propiedad calculada para mostrar el tipo
+        public string TipoEmpleado => EsContratistaExterno ? "Contratista" : "Reparador";
     }
 
     public class EmpleadoEspecialidad

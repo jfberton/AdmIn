@@ -50,6 +50,8 @@ namespace AdmIn.UI.Services
         Task<bool> AceptarReparacion(int reparacionId, int empleadoId, decimal costoEstimado, DateTime fechaInicio);
         Task<bool> RechazarReparacion(int reparacionId, int empleadoId);
         Task<bool> AgregarDetalleReparacion(int reparacionId, ReparacionDetalle detalle);
+        Task<bool> DisputarDetalle(int reparacionId, int detalleId, bool aCargoDePropietario);
+        Task<bool> ResolverDisputa(int reparacionId, int detalleId, bool aceptarDisputa);
         Task<bool> FinalizarReparacion(int reparacionId);
         Task<bool> AprobarReparacion(int reparacionId, EmpleadoCalificacion calificacion);
         Task<IEnumerable<EmpleadoCalificacion>> ObtenerCalificacionesEmpleado(int empleadoId);
@@ -89,17 +91,19 @@ namespace AdmIn.UI.Services
             RelacionarDatos();
         }
 
-        
+
 
         private List<ReparacionCategoria> GenerarCategoriasReparacion()
         {
             return new List<ReparacionCategoria>
             {
-                new ReparacionCategoria { Id = 1, Categoria = "Plomería" },
-                new ReparacionCategoria { Id = 2, Categoria = "Electricidad" },
-                new ReparacionCategoria { Id = 3, Categoria = "Pintura" },
-                new ReparacionCategoria { Id = 4, Categoria = "Albañilería" },
-                new ReparacionCategoria { Id = 5, Categoria = "Carpintería" }
+                new ReparacionCategoria { Id = 1, Categoria = "Sin clasificar" },
+                new ReparacionCategoria { Id = 2, Categoria = "Plomería" },
+                new ReparacionCategoria { Id = 3, Categoria = "Herreria" },
+                new ReparacionCategoria { Id = 4, Categoria = "Electricidad" },
+                new ReparacionCategoria { Id = 5, Categoria = "Pintura" },
+                new ReparacionCategoria { Id = 6, Categoria = "Albañilería" },
+                new ReparacionCategoria { Id = 7, Categoria = "Carpintería" }
             };
         }
 
@@ -301,6 +305,7 @@ namespace AdmIn.UI.Services
                                         Id = 1,
                                         Descripcion = "Descripcion trabajo realizado",
                                         Costo = random.Next(500, 2000),
+                                        ACargoDeInquilino = true,
                                         Fecha = fechaInicio.AddDays(1)
                                     },
                                     new ReparacionDetalle
@@ -308,6 +313,7 @@ namespace AdmIn.UI.Services
                                         Id = 2,
                                         Descripcion = "Otra tarea realizada para la reparacion",
                                         Costo = random.Next(300, 1500),
+                                        ACargoDeInquilino = true,
                                         Fecha = fechaInicio.AddDays(2)
                                     }
                                 };
@@ -338,17 +344,18 @@ namespace AdmIn.UI.Services
             }
         }
 
-        public IEnumerable<ReparacionEstado> GenerarReparacionEstados()
+        private IEnumerable<ReparacionEstado> GenerarReparacionEstados()
         {
-            var estados = new List<ReparacionEstado>
+            return new List<ReparacionEstado>
             {
-                new ReparacionEstado { Id = 1, Estado = "Pendiente" },
-                new ReparacionEstado { Id = 2, Estado = "En proceso" },
-                new ReparacionEstado { Id = 3, Estado = "Finalizado" }
+                new ReparacionEstado { Id = 1, Estado = "Pendiente sin asignar" },
+                new ReparacionEstado { Id = 2, Estado = "Pendiente" },
+                new ReparacionEstado { Id = 3, Estado = "En proceso" },
+                new ReparacionEstado { Id = 4, Estado = "En disputa" },
+                new ReparacionEstado { Id = 5, Estado = "Finalizado por aprobar" },
+                new ReparacionEstado { Id = 6, Estado = "Finalizado" },
+                new ReparacionEstado { Id = 7, Estado = "Rechazado" }
             };
-
-            // Devolver la lista como una tarea completada
-            return estados.AsEnumerable();
         }
 
         public async Task<IEnumerable<ReparacionEstado>> ObtenerEstadosReparacion()
@@ -371,7 +378,8 @@ namespace AdmIn.UI.Services
                     PersonaId = i,
                     Nombre = $"Empleado #{i}",
                     Especialidad = new EmpleadoEspecialidad { Especialidad = $"Especialidad #{i}" },
-                    Agenda = new List<EmpleadoAgenda>()
+                    Agenda = new List<EmpleadoAgenda>(),
+                    EsContratistaExterno = i % 2 == 0 // Alternamos entre interno y externo
                 };
             }
         }
@@ -549,6 +557,20 @@ namespace AdmIn.UI.Services
             await Task.CompletedTask;
         }
 
+        public async Task<bool> RechazarReparacion(int reparacionId, int empleadoId)
+        {
+            var reparacion = _reparaciones.FirstOrDefault(r => r.Id == reparacionId);
+            if (reparacion == null) return false;
+
+            // Volver a estado "Pendiente sin asignar" y quitar empleado
+            reparacion.EstadoId = 1;
+            reparacion.Estado = await ObtenerEstadoReparacion(1);
+            reparacion.EmpleadoId = 0;
+            reparacion.Empleado = null;
+
+            return true;
+        }
+
         public async Task ActualizarReparacion(Reparacion reparacion)
         {
             var reparacionExistente = _reparaciones.FirstOrDefault(r => r.Id == reparacion.Id);
@@ -611,16 +633,6 @@ namespace AdmIn.UI.Services
             return true;
         }
 
-        public async Task<bool> RechazarReparacion(int reparacionId, int empleadoId)
-        {
-            var reparacion = _reparaciones.FirstOrDefault(r => r.Id == reparacionId);
-            if (reparacion == null) return false;
-
-            reparacion.EstadoId = 4; // Rechazado
-            reparacion.Estado = await ObtenerEstadoReparacion(4);
-            return true;
-        }
-
         public async Task<bool> AgregarDetalleReparacion(int reparacionId, ReparacionDetalle detalle)
         {
             var reparacion = _reparaciones.FirstOrDefault(r => r.Id == reparacionId);
@@ -637,6 +649,46 @@ namespace AdmIn.UI.Services
                 reparacion.EstadoId = 3; // En proceso
                 reparacion.Estado = await ObtenerEstadoReparacion(3);
             }
+
+            return true;
+        }
+
+        public async Task<bool> DisputarDetalle(int reparacionId, int detalleId, bool aCargoDePropietario)
+        {
+            var reparacion = _reparaciones.FirstOrDefault(r => r.Id == reparacionId);
+            if (reparacion == null) return false;
+
+            var detalle = reparacion.Detalles.FirstOrDefault(d => d.Id == detalleId);
+            if (detalle == null) return false;
+
+            detalle.ACargoDePropietario = aCargoDePropietario;
+            detalle.ACargoDeInquilino = !aCargoDePropietario;
+
+            reparacion.EstadoId = 4; // En disputa
+            reparacion.Estado = await ObtenerEstadoReparacion(4);
+
+            return true;
+        }
+
+        public async Task<bool> ResolverDisputa(int reparacionId, int detalleId, bool aceptarDisputa)
+        {
+            var reparacion = _reparaciones.FirstOrDefault(r => r.Id == reparacionId);
+            if (reparacion == null) return false;
+
+            if (!aceptarDisputa)
+            {
+                // Si no se acepta la disputa, revertir a valores por defecto
+                var detalle = reparacion.Detalles.FirstOrDefault(d => d.Id == detalleId);
+                if (detalle != null)
+                {
+                    detalle.ACargoDePropietario = false;
+                    detalle.ACargoDeInquilino = true;
+                }
+            }
+
+            // Volver al estado anterior (En proceso)
+            reparacion.EstadoId = 3;
+            reparacion.Estado = await ObtenerEstadoReparacion(3);
 
             return true;
         }

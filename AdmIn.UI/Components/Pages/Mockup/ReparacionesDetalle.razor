@@ -64,6 +64,21 @@
                             <p>@reparacion.Descripcion</p>
                         </div>
                     </div>
+
+                    @if (reparacion?.Estado?.Estado == "En proceso")
+                    {
+                        <AuthorizeView Roles="edit_reparacion">
+                            <Authorized>
+                                <div class="row mb-4">
+                                    <div class="col-12">
+                                        <button class="btn btn-primary" @onclick="() => AgregarDetalle(reparacion.Id)">
+                                            <i class="fas fa-plus"></i> Agregar Detalle
+                                        </button>
+                                    </div>
+                                </div>
+                            </Authorized>
+                        </AuthorizeView>
+                    }
                     
                     @if (reparacion.Estado?.Estado == "Pendiente")
                     {
@@ -183,6 +198,11 @@
     private void AsignarProfesional(int reparacionId)
     {
         IrA($"/m/reparaciones/asignar/{reparacionId}");
+    }
+
+    private void AgregarDetalle(int reparacionId)
+    {
+        IrA($"/m/reparaciones/detalle/{reparacionId}/nuevo");
     }
 
     private async Task CancelarReparacion(int reparacionId)

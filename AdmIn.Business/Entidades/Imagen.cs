@@ -8,9 +8,11 @@ namespace AdmIn.Business.Entidades
 {
     public class Imagen
     {
-        public Guid Id { get; set; } = Guid.NewGuid(); // Identificador único de la imagen
-        public string Descripcion { get; set; } // Descripción de la imagen
-        public string Url { get; set; } // URL de la imagen en tamaño completo
-        public string? ThumbnailUrl { get; set; } // URL de la imagen en tamaño reducido (opcional)
+        public Guid Id { get; set; }
+        public string Descripcion { get; set; }
+        public string Url { get; set; }
+        public string ThumbnailUrl { get; set; }
+        public long Size { get; set; }
+        public string ContentType { get; set; }
     }
 }

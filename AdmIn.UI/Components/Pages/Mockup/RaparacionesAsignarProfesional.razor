@@ -121,11 +121,11 @@
         try
         {
             var success = await ServicioReparaciones.AceptarReparacion(
-                ReparacionId, 
-                model.EmpleadoId, 
-                model.CostoEstimado, 
+                ReparacionId,
+                model.EmpleadoId,
+                model.CostoEstimado,
                 model.FechaInicio);
-                
+
             if (success)
             {
                 MostrarNotificacion(NotificationSeverity.Success, "Éxito", "Profesional asignado correctamente");

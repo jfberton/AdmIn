@@ -1,0 +1,112 @@
+﻿@page "/m/reparaciones/detalle/{ReparacionId}/nuevo"
+@using AdmIn.Business.Entidades
+@using AdmIn.UI.Services
+@inherits BaseComponent
+
+<EditForm Model="@detalle" OnValidSubmit="@GuardarDetalle">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="card">
+        <div class="card-header">
+            <h5>Agregar Detalle de Reparación</h5>
+        </div>
+        <div class="card-body">
+            <div class="row mb-3">
+                <div class="col-12">
+                    <label class="form-label">Descripción *</label>
+                    <RadzenTextArea @bind-Value="@detalle.Descripcion" Style="width:100%" Rows="3" />
+                    <ValidationMessage For="@(() => detalle.Descripcion)" />
+                </div>
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="form-label">Costo *</label>
+                    <RadzenNumeric TValue="decimal" @bind-Value="@detalle.Costo" Style="width:100%" Format="C" />
+                    <ValidationMessage For="@(() => detalle.Costo)" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Fecha *</label>
+                    <RadzenDatePicker @bind-Value="@detalle.Fecha" Style="width:100%" />
+                    <ValidationMessage For="@(() => detalle.Fecha)" />
+                </div>
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-12">
+                    <label class="form-label">Imágenes *</label>
+                    <RadzenUpload @ref="uploadControl" ChooseText="Adjuntar imágenes" Multiple="true"
+                                  Accept="image/*" MaxFileSize="5000000" TotalFilesSize="10000000"
+                                  Style="width:100%" @bind-Files="@imagenesSeleccionadas" />
+                    <ValidationMessage For="@(() => imagenesSeleccionadas)" />
+                </div>
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-12">
+                    <label class="form-label">Responsable *</label>
+                    <RadzenRadioButtonList Name="responsable" @bind-Value="@responsable"
+                                           Data="@responsables" TextProperty="Text" ValueProperty="Value" />
+                </div>
+            </div>
+        </div>
+        <div class="card-footer text-end">
+            <button type="submit" class="btn btn-primary me-2">
+                <i class="fas fa-save"></i> Guardar
+            </button>
+            <button type="button" class="btn btn-secondary" @onclick="Cancelar">
+                <i class="fas fa-times"></i> Cancelar
+            </button>
+        </div>
+    </div>
+</EditForm>
+
+@code {
+    [Parameter]
+    public int ReparacionId { get; set; }
+
+    [Inject]
+    public required IServ_Mock ServicioReparaciones { get; set; }
+
+    private RadzenUpload uploadControl;
+    private ReparacionDetalle detalle = new ReparacionDetalle();
+    private IEnumerable<FileInfo> imagenesSeleccionadas = new List<FileInfo>();
+    private string responsable = "Inquilino";
+
+    private List<ResponsableModel> responsables = new List<ResponsableModel>
+    {
+        new ResponsableModel { Value = "Inquilino", Text = "A cargo del Inquilino" },
+        new ResponsableModel { Value = "Propietario", Text = "A cargo del Propietario" }
+    };
+
+    protected async Task GuardarDetalle()
+    {
+        if (imagenesSeleccionadas?.Any() != true)
+        {
+            MostrarNotificacion(NotificationSeverity.Error, "Error", "Debe adjuntar al menos una imagen");
+            return;
+        }
+
+        detalle.ACargoDeInquilino = responsable == "Inquilino";
+        detalle.ACargoDePropietario = responsable == "Propietario";
+
+        var success = await ServicioReparaciones.AgregarDetalleReparacion(ReparacionId, detalle);
+        if (success)
+        {
+            MostrarNotificacion(NotificationSeverity.Success, "Éxito", "Detalle agregado correctamente");
+            Cancelar();
+        }
+    }
+
+    private void Cancelar()
+    {
+        IrA($"/m/reparaciones/detalle/{ReparacionId}");
+    }
+
+    private class ResponsableModel
+    {
+        public string Value { get; set; }
+        public string Text { get; set; }
+    }
+}

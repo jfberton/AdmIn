@@ -1,19 +1,52 @@
 ﻿@page "/m/reparaciones/nueva"
 @inherits ReparacionForm
+@using AdmIn.Business.Entidades
 
+<EditForm Model="@reparacion" OnValidSubmit="@OnValidSubmit">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="card">
+        <div class="card-header">
+            <h5>@Titulo</h5>
+        </div>
+        <div class="card-body">
+            <!-- Contenido del formulario -->
+            @RenderFormContent()
+        </div>
+        <div class="card-footer text-end">
+            <button type="submit" class="btn btn-primary me-2">
+                <i class="fas fa-save"></i> Guardar
+            </button>
+            <button type="button" class="btn btn-secondary" @onclick="VolverAListado">
+                <i class="fas fa-times"></i> Cancelar
+            </button>
+        </div>
+    </div>
+</EditForm>
 
 @code {
     protected override async Task GuardarReparacion()
     {
         try
         {
+            // Lógica específica para nueva reparación
             reparacion.FechaSolicitud = DateTime.Now;
-            reparacion.Estado = await base.ServicioReparaciones.ObtenerEstadoReparacion(1); // Pendiente
+            reparacion.Estado = await ServicioReparaciones.ObtenerEstadoReparacion(1); // Pendiente
 
-            await base.ServicioReparaciones.AgregarReparacion(reparacion.InmuebleId, reparacion);
+            // Agregar imágenes a la reparación
+            foreach (var img in imagenesSeleccionadas)
+            {
+                reparacion.Imagenes.Add(new Imagen
+                    {
+                        Descripcion = $"Imagen de reparación",
+                        Url = img.Url
+                    });
+            }
 
+            await ServicioReparaciones.AgregarReparacion(reparacion.InmuebleId, reparacion);
             MostrarNotificacion(NotificationSeverity.Success, "Éxito", "Reparación creada correctamente");
-            base.VolverAListado();
+            VolverAListado();
         }
         catch (Exception ex)
         {

@@ -3,138 +3,343 @@
 
 @inherits BaseComponent
 
-<EditForm Model="@reparacion" OnValidSubmit="@GuardarReparacion">
-    <DataAnnotationsValidator />
-    <ValidationSummary />
+<style>
+	.image-thumbnails {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 15px;
+		margin-top: 10px;
+	}
 
-    <div class="card">
-        <div class="card-header">
-            <h5>@Titulo</h5>
-        </div>
-        <div class="card-body">
-            <div class="row mb-3">
-                <div class="col-md-6">
-                    <label class="form-label">Inmueble *</label>
-                    <RadzenDropDown Data="@inmuebles" TextProperty="Direccion" ValueProperty="Id"
-                                    @bind-Value="@reparacion.InmuebleId" Change="@OnInmuebleChange"
-                                    Placeholder="Seleccione un inmueble" Style="width:100%" />
-                    <ValidationMessage For="@(() => reparacion.InmuebleId)" />
-                </div>
+	.thumbnail-container {
+		position: relative;
+		text-align: center;
+	}
 
-                <div class="col-md-6">
-                    <label class="form-label">Categoría *</label>
-                    <RadzenDropDown Data="@categorias" TextProperty="Categoria" ValueProperty="Id"
-                                    @bind-Value="@reparacion.Categoria.Id" Placeholder="Seleccione categoría"
-                                    Style="width:100%" />
-                    <ValidationMessage For="@(() => reparacion.Categoria.Id)" />
-                </div>
-            </div>
+	.thumbnail-wrapper {
+		position: relative;
+		display: inline-block;
+	}
 
-            <div class="row mb-3">
-                <div class="col-md-6">
-                    <label class="form-label">Profesional (opcional)</label>
-                    <RadzenDropDown Data="@empleados" TextProperty="Nombre" ValueProperty="EmpleadoId"
-                                    @bind-Value="@reparacion.EmpleadoId" Placeholder="Seleccione profesional"
-                                    Style="width:100%">
-                        <Template Context="empleado">
-                            @empleado.Nombre (@empleado.Especialidad.Especialidad) ⭐@(GetCalificacionPromedio(empleado.EmpleadoId))
-                        </Template>
-                    </RadzenDropDown>
-                </div>
-            </div>
+	.img-thumbnail {
+		width: 100px;
+		height: 100px;
+		object-fit: cover;
+		border: 1px solid #ddd;
+		border-radius: 4px;
+		padding: 5px;
+		background: white;
+	}
 
-            <div class="row mb-3">
-                <div class="col-12">
-                    <label class="form-label">Descripción *</label>
-                    <RadzenTextArea @bind-Value="@reparacion.Descripcion" Style="width:100%" Rows="3" />
-                    <ValidationMessage For="@(() => reparacion.Descripcion)" />
-                </div>
-            </div>
+	.remove-btn {
+		position: absolute;
+		top: -10px;
+		right: -10px;
+		width: 25px;
+		height: 25px;
+		border-radius: 50%;
+		padding: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
 
-            <div class="row mb-3">
-                <div class="col-12">
-                    <label class="form-label">Imágenes (opcional)</label>
-                    <RadzenUpload ChooseText="Adjuntar imágenes" Multiple="true" Accept="image/*"
-                                  MaxFileSize="5000000" TotalFilesSize="10000000" Style="width:100%" />
-                </div>
-            </div>
-        </div>
-        <div class="card-footer text-end">
-            <button type="submit" class="btn btn-primary me-2">
-                <i class="fas fa-save"></i> Guardar
-            </button>
-            <button type="button" class="btn btn-secondary" @onclick="VolverAListado">
-                <i class="fas fa-times"></i> Cancelar
-            </button>
-        </div>
-    </div>
-</EditForm>
+	.thumbnail-name {
+		font-size: 0.8rem;
+		margin-top: 5px;
+		max-width: 100px;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+</style>
 
 @code {
-    [Inject]
-    protected IServ_Mock ServicioReparaciones { get; set; }
+	[Inject]
+	protected IServ_Mock ServicioReparaciones { get; set; }
 
-    [Inject]
-    protected IServ_Mock InmuebleService { get; set; }
+	[Inject]
+	protected IServ_Mock InmuebleService { get; set; }
 
-    [Inject]
-    protected IServ_Mock EmpleadoService { get; set; }
+	[Inject]
+	protected IServ_Mock EmpleadoService { get; set; }
 
-    [Parameter]
-    public Reparacion reparacion { get; set; } = new Reparacion();
+	[Parameter]
+	public Reparacion reparacion { get; set; } = new Reparacion();
 
-    [Parameter]
-    public string Titulo { get; set; } = "Nueva Reparación";
+	[Parameter]
+	public string Titulo { get; set; } = "Nueva Reparación";
 
-    private IEnumerable<Inmueble> inmuebles = new List<Inmueble>();
-    private IEnumerable<ReparacionCategoria> categorias = new List<ReparacionCategoria>();
-    private IEnumerable<Empleado> empleados = new List<Empleado>();
-    private Dictionary<int, double> calificacionesEmpleados = new Dictionary<int, double>();
+	private bool IsNuevaReparacion => Titulo == "Nueva Reparación";
 
-    protected override async Task OnInitializedAsync()
-    {
-        EstablecerTituloPagina(Titulo);
-        inmuebles = await InmuebleService.ObtenerInmuebles();
-        categorias = await ServicioReparaciones.ObtenerCategoriasReparacion();
-        empleados = await EmpleadoService.ObtenerEmpleados();
+	private RadzenUpload uploadControl;
 
-        // Cargar calificaciones de empleados
-        foreach (var empleado in empleados)
-        {
-            var calificaciones = await ServicioReparaciones.ObtenerCalificacionesEmpleado(empleado.EmpleadoId);
-            if (calificaciones.Any())
-            {
-                calificacionesEmpleados[empleado.EmpleadoId] = calificaciones.Average(c => (c.CalificacionTrabajo + c.CalificacionComportamiento) / 2);
-            }
-            else
-            {
-                calificacionesEmpleados[empleado.EmpleadoId] = 0;
-            }
-        }
-    }
+	public List<Imagen> imagenesSeleccionadas = new List<Imagen>();
 
-    private double GetCalificacionPromedio(int empleadoId)
-    {
-        return calificacionesEmpleados.ContainsKey(empleadoId) ? calificacionesEmpleados[empleadoId] : 0;
-    }
+	private IEnumerable<Inmueble> inmuebles = new List<Inmueble>();
+	private IEnumerable<ReparacionCategoria> categorias = new List<ReparacionCategoria>();
+	private IEnumerable<Empleado> empleados = new List<Empleado>();
+	private Dictionary<int, double> calificacionesEmpleados = new Dictionary<int, double>();
 
-    private async Task OnInmuebleChange(object value)
-    {
-        if (value != null && int.TryParse(value.ToString(), out int inmuebleId))
-        {
-            var inmueble = await InmuebleService.ObtenerInmueblePorId(inmuebleId);
-            reparacion.Inmueble = inmueble;
-            reparacion.InmuebleId = inmuebleId;
-        }
-    }
+	private int selectedCategoriaId;
 
-    protected virtual async Task GuardarReparacion()
-    {
-        // Implementado en las clases hijas
-    }
+	protected override async Task OnInitializedAsync()
+	{
+		EstablecerTituloPagina(Titulo);
+		inmuebles = await InmuebleService.ObtenerInmuebles();
+		categorias = await ServicioReparaciones.ObtenerCategoriasReparacion();
+		empleados = await EmpleadoService.ObtenerEmpleados();
 
-    protected virtual void VolverAListado()
-    {
-        IrA("/m/reparaciones");
-    }
+		if (IsNuevaReparacion && categorias.Any())
+		{
+			reparacion.Categoria = categorias.First();
+		}
+
+		// Sincroniza el ID de la categoría seleccionada
+		selectedCategoriaId = reparacion.Categoria?.Id ?? 0;
+
+		// Cargar calificaciones de empleados
+		foreach (var empleado in empleados)
+		{
+			var calificaciones = await ServicioReparaciones.ObtenerCalificacionesEmpleado(empleado.EmpleadoId);
+			if (calificaciones.Any())
+			{
+				calificacionesEmpleados[empleado.EmpleadoId] = calificaciones.Average(c => (c.CalificacionTrabajo + c.CalificacionComportamiento) / 2);
+			}
+			else
+			{
+				calificacionesEmpleados[empleado.EmpleadoId] = 0;
+			}
+		}
+	}
+
+	private async Task OnFileUpload(UploadChangeEventArgs args)
+	{
+		if (args.Files != null && args.Files.Any())
+		{
+			// Validar cantidad máxima
+			if (imagenesSeleccionadas.Count() + args.Files.Count() > 5)
+			{
+				MostrarNotificacion(NotificationSeverity.Warning,
+										"Límite excedido",
+										"Solo puedes subir hasta 5 imágenes");
+				// await uploadControl.RemoveAll();
+				return;
+			}
+
+			// Procesar cada archivo
+			foreach (var file in args.Files)
+			{
+				try
+				{
+					// Convertir a base64
+					var base64 = await ConvertToBase64(file);
+
+					// Agregar a la lista
+					imagenesSeleccionadas.Add(new Imagen
+						{
+							Id = Guid.NewGuid(),
+							Descripcion = file.Name,
+							Url = base64,
+							Size = file.Size,
+							ContentType = file.ContentType
+						});
+				}
+				catch (Exception ex)
+				{
+					MostrarNotificacion(NotificationSeverity.Error,
+											"Error al procesar imagen",
+											$"No se pudo cargar {file.Name}: {ex.Message}");
+				}
+			}
+
+			// Forzar actualización de la UI
+			StateHasChanged();
+
+			// Limpiar el control de upload
+			// await uploadControl.RemoveAll();
+		}
+	}
+
+	private void RemoveImage(Guid imageId)
+	{
+		var imageToRemove = imagenesSeleccionadas.FirstOrDefault(i => i.Id == imageId);
+		if (imageToRemove != null)
+		{
+			imagenesSeleccionadas.Remove(imageToRemove);
+			StateHasChanged(); // Actualizar UI
+		}
+	}
+
+	private async Task<string> ConvertToBase64(IBrowserFile file)
+	{
+		try
+		{
+			using var stream = file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024); // 5MB
+			using var memoryStream = new MemoryStream();
+			await stream.CopyToAsync(memoryStream);
+			return $"data:{file.ContentType};base64,{Convert.ToBase64String(memoryStream.ToArray())}";
+		}
+		catch (Exception ex)
+		{
+			Console.WriteLine($"Error converting image: {ex}");
+			throw;
+		}
+	}
+
+	private void OnCategoriaChange(object value)
+	{
+		if (value != null && int.TryParse(value.ToString(), out int categoriaId))
+		{
+			reparacion.Categoria = categorias.FirstOrDefault(c => c.Id == categoriaId);
+		}
+	}
+
+	private double GetCalificacionPromedio(int empleadoId)
+	{
+		return calificacionesEmpleados.ContainsKey(empleadoId) ? calificacionesEmpleados[empleadoId] : 0;
+	}
+
+	private async Task OnInmuebleChange(object value)
+	{
+		if (value != null && int.TryParse(value.ToString(), out int inmuebleId))
+		{
+			var inmueble = await InmuebleService.ObtenerInmueblePorId(inmuebleId);
+			reparacion.Inmueble = inmueble;
+			reparacion.InmuebleId = inmuebleId;
+		}
+	}
+
+	protected virtual async Task OnValidSubmit()
+	{
+		// Validación de imágenes (siempre aplica)
+		if (imagenesSeleccionadas.Count == 0)
+		{
+			MostrarNotificacion(NotificationSeverity.Error,
+									"Error",
+									"Debe adjuntar al menos una imagen");
+			return;
+		}
+
+		// Validación específica para nuevas reparaciones
+		if (IsNuevaReparacion && reparacion.EmpleadoId <= 0)
+		{
+			MostrarNotificacion(NotificationSeverity.Error, "Error", "Debe seleccionar un profesional");
+			return;
+		}
+
+		await GuardarReparacion();
+	}
+
+	protected virtual async Task GuardarReparacion()
+	{
+		// Implementado en las clases hijas
+	}
+
+	public virtual void VolverAListado()
+	{
+		IrA("/m/reparaciones");
+	}
+
+	private void EliminarImagen(Guid id)
+	{
+		var img = imagenesSeleccionadas.FirstOrDefault(x => x.Id == id);
+		if (img != null)
+			imagenesSeleccionadas.Remove(img);
+	}
+
+	protected RenderFragment RenderFormContent() => __builder =>
+				{
+					<div class="row mb-3">
+						<div class="col-md-6">
+							<label class="form-label">Inmueble *</label>
+							<RadzenDropDown Data="@inmuebles" TextProperty="Direccion" ValueProperty="Id"
+											@bind-Value="@reparacion.InmuebleId" Change="@OnInmuebleChange"
+											Placeholder="Seleccione un inmueble" Style="width:100%" />
+							<ValidationMessage For="@(() => reparacion.InmuebleId)" />
+						</div>
+
+						<div class="col-md-6">
+							<label class="form-label">Categoría *</label>
+							<RadzenDropDown Data="@categorias" TextProperty="Categoria" ValueProperty="Id"
+											@bind-Value="@selectedCategoriaId" Change="@OnCategoriaChange"
+											Placeholder="Seleccione categoría" Style="width:100%" />
+							<ValidationMessage For="@(() => reparacion.Categoria.Id)" />
+						</div>
+					</div>
+
+					<div class="row mb-3">
+						<div class="col-md-6">
+							<label class="form-label">Profesional *</label>
+							<RadzenDropDown Data="@empleados" TextProperty="Nombre" ValueProperty="EmpleadoId"
+											@bind-Value="@reparacion.EmpleadoId" Placeholder="Seleccione profesional"
+											Style="width:100%">
+								<Template Context="empleado">
+									@empleado.Nombre (@empleado.Especialidad.Especialidad) - @empleado.TipoEmpleado ⭐@(GetCalificacionPromedio(empleado.EmpleadoId))
+								</Template>
+							</RadzenDropDown>
+						</div>
+					</div>
+
+					<div class="row mb-3">
+						<div class="col-12">
+							<label class="form-label">Descripción *</label>
+							<RadzenTextArea @bind-Value="@reparacion.Descripcion" Style="width:100%" Rows="3" />
+							<ValidationMessage For="@(() => reparacion.Descripcion)" />
+						</div>
+					</div>
+
+					<div class="row mb-3">
+						<div class="col-12">
+							<label class="form-label">Imágenes * (Máximo 5)</label>
+							<RadzenUpload @ref="uploadControl"
+										  ChooseText="Adjuntar imágenes"
+										  Multiple="true"
+										  Accept="image/*"
+										  MaxFileSize="5000000"
+										  TotalFilesSize="25000000"
+										  Style="width:100%"
+										  OnChange="@OnFileUpload" />
+
+							<ValidationMessage For="@(() => imagenesSeleccionadas)" />
+
+							<!-- Lista de imágenes visualizada correctamente -->
+							<div class="mt-3">
+								@if (imagenesSeleccionadas.Any())
+								{
+									<div class="d-flex flex-wrap gap-2">
+										@foreach (var img in imagenesSeleccionadas)
+										{
+											<div class="position-relative" style="width: 120px;">
+												<img src="@img.Url"
+													 alt="@img.Descripcion"
+													 class="img-thumbnail w-100 h-auto"
+													 style="height: 100px; object-fit: cover;" />
+												<button type="button"
+														class="position-absolute top-0 start-100 translate-middle btn btn-danger btn-sm rounded-circle p-0"
+														style="width: 24px; height: 24px;"
+														@onclick="@(() => RemoveImage(img.Id))">
+													<i class="fas fa-times fs-10"></i>
+												</button>
+												<div class="text-truncate small mt-1" style="width: 100px;">@img.Descripcion</div>
+											</div>
+										}
+									</div>
+								}
+								else
+								{
+									<div class="text-muted">No hay imágenes cargadas</div>
+								}
+							</div>
+
+							<!-- Mensaje de límite -->
+							@if (imagenesSeleccionadas.Count >= 5)
+							{
+								<div class="text-warning small mt-2">Has alcanzado el límite de 5 imágenes</div>
+							}
+						</div>
+					</div>
+				};
+
 }
+
