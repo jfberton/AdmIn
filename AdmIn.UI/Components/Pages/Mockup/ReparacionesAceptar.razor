@@ -29,6 +29,18 @@
                 <p><strong>Categoría:</strong> @reparacion.Categoria?.Categoria</p>
             </div>
 
+            <!-- Entrada de datos de costo estimado y de fecha de inicio -->
+           <div class="row">
+				<div class="col-md-6 mb-2">
+					<label for="costo_estimado">Costo Estimado</label>
+					<input type="number" class="form-control" id="costo_estimado" @bind="costo_estimado" />
+				</div>
+				<div class="col-md-6 mb-2">
+					<label for="fecha_inicio">Fecha de Inicio</label>
+					<input type="date" class="form-control" id="fecha_inicio" @bind="fecha_inicio" />
+				</div>
+           </div>
+
             <!-- Botones de acción -->
             <div class="row">
                 <div class="col-md-6 mb-2">
@@ -52,6 +64,9 @@
 
     private Reparacion? reparacion;
 
+    private decimal costo_estimado;
+	private DateTime fecha_inicio;
+
     protected override async Task OnInitializedAsync()
     {
         reparacion = await ServicioReparaciones.ObtenerReparacionPorId(ReparacionId);
@@ -59,7 +74,7 @@
 
     private async Task AceptarReparacion()
     {
-        var success = await ServicioReparaciones.AceptarReparacion(ReparacionId, 1); // ID del empleado actual
+        var success = await ServicioReparaciones.AceptarReparacion(ReparacionId, reparacion.EmpleadoId, costo_estimado, fecha_inicio); 
         if (success)
         {
             MostrarNotificacion(NotificationSeverity.Success, "Éxito", "Reparación aceptada");
@@ -73,7 +88,7 @@
 
     private async Task RechazarReparacion()
     {
-        var success = await ServicioReparaciones.RechazarReparacion(ReparacionId, 1); // ID del empleado actual
+        var success = await ServicioReparaciones.RechazarReparacion(ReparacionId, reparacion.EmpleadoId); // ID del empleado actual
         if (success)
         {
             MostrarNotificacion(NotificationSeverity.Success, "Éxito", "Reparación rechazada");

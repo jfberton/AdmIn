@@ -1,251 +1,474 @@
 ﻿@page "/m/reparaciones/detalle/{Id:int}"
 @using AdmIn.Business.Entidades
 @using AdmIn.UI.Services
-
 @inject IServ_Mock ServicioReparaciones
+@inject DialogService DialogService
 @inherits BaseComponent
 
-<AuthorizeView>
-    <Authorized>
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5>Detalle de Reparación #@reparacion?.Id</h5>
-                <button class="btn btn-secondary" @onclick="VolverAListado">
-                    <i class="fas fa-arrow-left"></i> Volver
-                </button>
-            </div>
-            
-            @if (reparacion == null)
-            {
-                <div class="card-body">
-                    <p>Cargando detalles...</p>
-                </div>
-            }
-            else
-            {
-                <div class="card-body">
-                    <div class="row mb-4">
-                        <div class="col-md-6">
-                            <h6>Información Básica</h6>
-                            <dl class="row">
-                                <dt class="col-sm-4">Inmueble:</dt>
-                                <dd class="col-sm-8">@reparacion.Inmueble?.Direccion?.ToString()</dd>
-                                
-                                <dt class="col-sm-4">Categoría:</dt>
-                                <dd class="col-sm-8">@reparacion.Categoria?.Categoria</dd>
-                                
-                                <dt class="col-sm-4">Estado:</dt>
-                                <dd class="col-sm-8">
-                                    <RadzenBadge Text="@reparacion.Estado?.Estado" BadgeStyle="@GetBadgeStyle(reparacion.Estado?.Estado)" />
-                                </dd>
-                            </dl>
-                        </div>
-                        
-                        <div class="col-md-6">
-                            <h6>Fechas</h6>
-                            <dl class="row">
-                                <dt class="col-sm-4">Solicitud:</dt>
-                                <dd class="col-sm-8">@reparacion.FechaSolicitud.ToShortDateString()</dd>
-                                
-                                <dt class="col-sm-4">Inicio:</dt>
-                                <dd class="col-sm-8">@(reparacion.FechaInicio?.ToShortDateString() ?? "N/A")</dd>
-                                
-                                <dt class="col-sm-4">Finalización:</dt>
-                                <dd class="col-sm-8">@(reparacion.FechaFin?.ToShortDateString() ?? "N/A")</dd>
-                            </dl>
-                        </div>
-                    </div>
-                    
-                    <div class="row mb-4">
-                        <div class="col-12">
-                            <h6>Descripción</h6>
-                            <p>@reparacion.Descripcion</p>
-                        </div>
-                    </div>
+@inject IServ_Mock ServicioReparaciones
 
-                    @if (reparacion?.Estado?.Estado == "En proceso")
-                    {
-                        <AuthorizeView Roles="edit_reparacion">
-                            <Authorized>
-                                <div class="row mb-4">
-                                    <div class="col-12">
-                                        <button class="btn btn-primary" @onclick="() => AgregarDetalle(reparacion.Id)">
-                                            <i class="fas fa-plus"></i> Agregar Detalle
-                                        </button>
-                                    </div>
-                                </div>
-                            </Authorized>
-                        </AuthorizeView>
-                    }
-                    
-                    @if (reparacion.Estado?.Estado == "Pendiente")
-                    {
-                        <AuthorizeView Roles="edit_reparacion">
-                            <Authorized>
-                                <div class="row mb-4">
-                                    <div class="col-12">
-                                        <button class="btn btn-primary me-2" @onclick="() => AsignarProfesional(reparacion.Id)">
-                                            <i class="fas fa-user-plus"></i> Asignar Profesional
-                                        </button>
-                                        <button class="btn btn-danger" @onclick="() => CancelarReparacion(reparacion.Id)">
-                                            <i class="fas fa-times"></i> Cancelar Reparación
-                                        </button>
-                                    </div>
-                                </div>
-                            </Authorized>
-                        </AuthorizeView>
-                    }
-                    
-                    @if (reparacion.Detalles?.Any() == true)
-                    {
-                        <div class="row mb-4">
-                            <div class="col-12">
-                                <h6>Detalles de Trabajo</h6>
-                                <RadzenDataGrid TItem="ReparacionDetalle" Data="@reparacion.Detalles" AllowPaging="true" PageSize="5">
-                                    <Columns>
-                                        <RadzenDataGridColumn TItem="ReparacionDetalle" Title="Fecha" Width="120px">
-                                            <Template Context="detalle">
-                                                @detalle.Fecha.ToShortDateString()
-                                            </Template>
-                                        </RadzenDataGridColumn>
-                                        
-                                        <RadzenDataGridColumn TItem="ReparacionDetalle" Title="Descripción" Property="Descripcion" />
-                                        
-                                        <RadzenDataGridColumn TItem="ReparacionDetalle" Title="Costo" Width="120px">
-                                            <Template Context="detalle">
-                                                @detalle.Costo.ToString("C")
-                                            </Template>
-                                        </RadzenDataGridColumn>
-                                        
-                                        <RadzenDataGridColumn TItem="ReparacionDetalle" Title="Responsable" Width="150px">
-                                            <Template Context="detalle">
-                                                @if (detalle.ACargoDePropietario)
-                                                {
-                                                    <span class="badge bg-info">Propietario</span>
-                                                }
-                                                else
-                                                {
-                                                    <span class="badge bg-secondary">Inquilino</span>
-                                                }
-                                            </Template>
-                                        </RadzenDataGridColumn>
-                                    </Columns>
-                                </RadzenDataGrid>
-                            </div>
-                        </div>
-                    }
-                    
-                    @if (reparacion.Estado?.Estado == "Finalizado por aprobar")
-                    {
-                        <AuthorizeView Roles="approve_reparacion">
-                            <Authorized>
-                                <div class="row mb-4">
-                                    <div class="col-12">
-                                        <h6>Aprobar Reparación</h6>
-                                        <div class="card">
-                                            <div class="card-body">
-                                                <div class="mb-3">
-                                                    <label class="form-label">Calificación (1-5)</label>
-                                                    <RadzenRating Stars="5" @bind-Value="@calificacion.CalificacionTrabajo" />
-                                                </div>
-                                                <div class="mb-3">
-                                                    <label class="form-label">Comentario</label>
-                                                    <RadzenTextArea @bind-Value="@calificacion.Comentario" Rows="3" />
-                                                </div>
-                                                <button class="btn btn-success" @onclick="AprobarReparacion">
-                                                    <i class="fas fa-check"></i> Aprobar Reparación
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </Authorized>
-                        </AuthorizeView>
-                    }
-                </div>
-            }
-        </div>
-    </Authorized>
+<AuthorizeView>
+	<Authorized>
+		<div class="card">
+			<div class="card-header d-flex justify-content-between align-items-center">
+				<h5>Detalle de Reparación #@reparacion?.Id</h5>
+				<button class="btn btn-secondary" @onclick="VolverAListado">
+					<i class="fas fa-arrow-left"></i> Volver
+				</button>
+			</div>
+
+			@if (reparacion == null)
+			{
+				<div class="card-body">
+					<p>Cargando detalles...</p>
+				</div>
+			}
+			else
+			{
+				<div class="card-body">
+					<div class="row mb-4">
+						<div class="col-md-6">
+							<h6>Información Básica</h6>
+							<dl class="row">
+								<dt class="col-sm-4">Inmueble:</dt>
+								<dd class="col-sm-8">@reparacion.Inmueble?.Direccion?.ToString()</dd>
+
+								<dt class="col-sm-4">Categoría:</dt>
+								<dd class="col-sm-8">@reparacion.Categoria?.Categoria</dd>
+
+								<dt class="col-sm-4">Estado:</dt>
+								<dd class="col-sm-8">
+									<RadzenBadge Text="@reparacion.Estado?.Estado" BadgeStyle="@GetBadgeStyle(reparacion.Estado?.Estado)" />
+								</dd>
+
+								<dt class="col-sm-4">
+									@if (reparacion.Empleado != null)
+									{
+										@($"{reparacion.Empleado.TipoEmpleado}")
+									}
+									else
+									{
+										<span>Profesional: </span>
+									}
+								</dt>
+								<dd class="col-sm-8">
+									@if (reparacion.Empleado != null)
+									{
+										@($"{reparacion.Empleado.Nombre} - Esp: {reparacion.Empleado.Especialidad?.Especialidad} - Cal: {GetCalificacionPromedio(reparacion.Empleado.EmpleadoId)} ⭐")
+									}
+									else
+									{
+										<span>Sin asignar</span>
+									}
+								</dd>
+
+							</dl>
+						</div>
+
+						<div class="col-md-6">
+							<h6>Fechas</h6>
+							<dl class="row">
+								<dt class="col-sm-4">Solicitud:</dt>
+								<dd class="col-sm-8">@reparacion.FechaSolicitud.ToShortDateString()</dd>
+
+								<dt class="col-sm-4">Inicio:</dt>
+								<dd class="col-sm-8">@(reparacion.FechaInicio?.ToShortDateString() ?? "N/A")</dd>
+
+								<dt class="col-sm-4">Finalización:</dt>
+								<dd class="col-sm-8">@(reparacion.FechaFin?.ToShortDateString() ?? "N/A")</dd>
+							</dl>
+						</div>
+					</div>
+
+					<div class="row mb-4">
+						<div class="col-12">
+							<h6>Descripción</h6>
+							<p>@reparacion.Descripcion</p>
+						</div>
+					</div>
+
+					@if (reparacion.Detalles?.Any() == true)
+					{
+						<div class="row mb-4">
+							<div class="col-12">
+								<h6>Detalles de Trabajo</h6>
+								<RadzenDataGrid TItem="ReparacionDetalle" Data="@reparacion.Detalles" AllowPaging="true" PageSize="5">
+									<Columns>
+										<RadzenDataGridColumn TItem="ReparacionDetalle" Title="Fecha" Width="120px">
+											<Template Context="detalle">
+												@detalle.Fecha.ToShortDateString()
+											</Template>
+										</RadzenDataGridColumn>
+
+										<RadzenDataGridColumn TItem="ReparacionDetalle" Title="Descripción" Property="Descripcion" />
+
+										<RadzenDataGridColumn TItem="ReparacionDetalle" Title="Costo" Width="120px">
+											<Template Context="detalle">
+												@detalle.Costo.ToString("C")
+											</Template>
+										</RadzenDataGridColumn>
+
+										<RadzenDataGridColumn TItem="ReparacionDetalle" Title="Responsable" Width="150px">
+											<Template Context="detalle">
+												@if (detalle.ACargoDePropietario)
+												{
+													<span class="badge bg-info">Propietario</span>
+												}
+												else
+												{
+													<span class="badge bg-secondary">Inquilino</span>
+												}
+											</Template>
+										</RadzenDataGridColumn>
+
+										<RadzenDataGridColumn TItem="ReparacionDetalle" Title="Estado" Width="150px">
+											<Template Context="detalle">
+												@if (detalle.Disputada)
+												{
+													<span class="badge bg-danger">En disputa</span>
+												}
+												else
+												{
+													<span class="badge bg-info">Ok</span>
+												}
+
+											</Template>
+										</RadzenDataGridColumn>
+
+										<RadzenDataGridColumn TItem="ReparacionDetalle" Title="">
+											<Template Context="detalle">
+												<AuthorizeView Roles="rep_inq">
+													<Authorized>
+														@if (!detalle.Disputada)
+														{
+															<button class="btn btn-sm btn-danger" @onclick="() => Disputar(detalle.Id)">
+																Abrir disputa
+															</button>
+														}
+													</Authorized>
+												</AuthorizeView>
+												<AuthorizeView Roles="rep_adm">
+													<Authorized>
+														@if (detalle.Disputada)
+														{
+															<button class="btn btn-sm btn-success" @onclick="() => AceptarCosto(detalle.Id)">
+																Aceptar Costo
+															</button>
+															<button class="btn btn-sm btn-danger" @onclick="() => DevolverCosto(detalle.Id)">
+																Rechazar Costo
+															</button>
+														}
+													</Authorized>
+												</AuthorizeView>
+											</Template>
+										</RadzenDataGridColumn>
+
+									</Columns>
+								</RadzenDataGrid>
+							</div>
+						</div>
+					}
+
+					
+					@if (reparacion?.Estado?.Estado == "Pendiente")
+					{
+						<AuthorizeView Roles="rep_emp">
+							<Authorized>
+								<button type="button" class="btn btn-outline-success me-2" @onclick="ShowAcceptDialog">
+									<i class="fas fa-check"></i> Aceptar Reparación
+								</button>
+								<button class="btn btn-danger" @onclick="() => RechazarReparacion()">
+									Rechazar Reparación
+								</button>
+							</Authorized>
+						</AuthorizeView>
+					}
+
+
+					@if (reparacion.Estado?.Estado == "Pendiente sin asignar")
+					{
+						<AuthorizeView Roles="rep_adm">
+							<Authorized>
+								<button class="btn btn-primary me-2" @onclick="() => AsignarProfesional(reparacion.Id)">
+									Asignar Profesional
+								</button>
+								<button type="button" class="btn btn-outline-danger me-2" @onclick="ShowCancelDialog">
+									Cancelar Reparación
+								</button>
+							</Authorized>
+						</AuthorizeView>
+					}
+
+					@if (reparacion?.Estado?.Estado == "En proceso")
+					{
+						<AuthorizeView Roles="rep_emp">
+							<Authorized>
+								<div class="row mb-4">
+									<div class="col-12">
+										<button class="btn btn-primary" @onclick="() => AgregarDetalle()">
+											<i class="fas fa-plus"></i> Agregar Detalle
+										</button>
+									</div>
+								</div>
+							</Authorized>
+						</AuthorizeView>
+					}
+
+					@if (reparacion.Estado?.Estado == "En disputa")
+					{
+						<AuthorizeView Roles="rep_adm">
+							<Authorized>
+								<label class="form-label">Resolver las disputas de los detalles de reparación de arriba</label>
+							</Authorized>
+						</AuthorizeView>
+					}
+
+
+					@if (reparacion?.Estado?.Estado == "Finalizado por aprobar")
+					{
+						<AuthorizeView Roles="rep_adm, rep_inq">
+							<Authorized>
+								<div class="row mb-4">
+									<div class="col-12">
+										<button type="button" class="btn btn-outline-primary me-2" @onclick="ShowApproveDialog">
+											<i class="fas fa-check"></i> Aprobar Reparación
+										</button>
+										<button class="btn btn-danger" @onclick="() => DesaprobarReparacion()">
+											Desaprobar Reparación
+										</button>
+									</div>
+								</div>
+							</Authorized>
+						</AuthorizeView>
+					}
+					}
+				</div>
+			}
+		</div>
+	</Authorized>
 </AuthorizeView>
 
 @code {
-    [Parameter]
-    public int Id { get; set; }
-    
-    private Reparacion? reparacion;
-    private EmpleadoCalificacion calificacion = new EmpleadoCalificacion();
+	[Inject]
+	protected IServ_Mock EmpleadoService { get; set; }
 
-    protected override async Task OnInitializedAsync()
-    {
-        EstablecerTituloPagina("Detalle de Reparación");
-        await CargarReparacion();
-    }
+	[Parameter]
+	public int Id { get; set; }
 
-    private async Task CargarReparacion()
-    {
-        reparacion = await ServicioReparaciones.ObtenerReparacionPorId(Id);
-    }
+	private Reparacion? reparacion;
+	private EmpleadoCalificacion calificacion = new EmpleadoCalificacion();
+	private IEnumerable<Empleado> empleados = new List<Empleado>();
+	private Dictionary<int, double> calificacionesEmpleados = new Dictionary<int, double>();
+	private string comentarioCancelacion = string.Empty;
 
-    private BadgeStyle GetBadgeStyle(string estado)
-    {
-        return estado switch
-        {
-            "Pendiente" => BadgeStyle.Warning,
-            "En proceso" => BadgeStyle.Primary,
-            "Finalizado" => BadgeStyle.Success,
-            "Rechazado" => BadgeStyle.Danger,
-            "En disputa" => BadgeStyle.Danger,
-            _ => BadgeStyle.Info
-        };
-    }
+	async Task ShowAcceptDialog()
+	{
+		var result = await DialogService.OpenAsync("Aceptar Reparación", ds =>
+	@<div>
+		<div class="mb-3">
+			<label class="form-label">Costo estimado</label>
+			<RadzenNumeric TValue="decimal?" @bind-Value="@reparacion.CostoEstimado" Style="width: 100%" />
+		</div>
+		<div class="mb-3">
+			<label class="form-label">Fecha de inicio</label>
+			<RadzenDatePicker @bind-Value="@reparacion.FechaInicio" Style="width: 100%" />
+		</div>
+		<div class="rz-text-align-right rz-mt-3">
+			<RadzenButton Text="Confirmar" Click="@(() => { AceptarReparacion(); ds.Close(); })"
+					  	ButtonStyle="ButtonStyle.Success" class="rz-m-1" />
+			<RadzenButton Text="Cancelar" Click="@(() => ds.Close())"
+					  	ButtonStyle="ButtonStyle.Secondary" class="rz-m-1" />
+		</div>
+	</div>);
+	}
 
-    private void VolverAListado()
-    {
-        IrA("/m/reparaciones");
-    }
+	async Task ShowCancelDialog()
+	{
+		var result = await DialogService.OpenAsync("Cancelar Reparación", ds =>
+	@<div>
+		<div class="mb-3">
+			<label class="form-label">Motivo cancelación</label>
+			<RadzenTextArea @bind-Value="@comentarioCancelacion" Rows="3" Style="width: 100%" />
+		</div>
+		<div class="rz-text-align-right rz-mt-3">
+			<RadzenButton Text="Confirmar" Click="@(() => { CancelarReparacion(); ds.Close(); })"
+					  	ButtonStyle="ButtonStyle.Danger" class="rz-m-1" />
+			<RadzenButton Text="Cancelar" Click="@(() => ds.Close())"
+					  	ButtonStyle="ButtonStyle.Secondary" class="rz-m-1" />
+		</div>
+	</div>);
+	}
 
-    private void AsignarProfesional(int reparacionId)
-    {
-        IrA($"/m/reparaciones/asignar/{reparacionId}");
-    }
+	async Task ShowApproveDialog()
+	{
+		var result = await DialogService.OpenAsync("Aprobar Reparación", ds =>
+	@<div>
+		<div class="mb-3">
+			<label class="form-label">Calificación (1-5)</label>
+			<RadzenRating Stars="5" @bind-Value="@calificacion.CalificacionTrabajo" />
+		</div>
+		<div class="mb-3">
+			<label class="form-label">Comentario</label>
+			<RadzenTextArea @bind-Value="@calificacion.Comentario" Rows="3" Style="width: 100%" />
+		</div>
+		<div class="rz-text-align-right rz-mt-3">
+			<RadzenButton Text="Aprobar" Click="@(() => { AprobarReparacion(); ds.Close(); })"
+					  	ButtonStyle="ButtonStyle.Success" class="rz-m-1" />
+			<RadzenButton Text="Cancelar" Click="@(() => ds.Close())"
+					  	ButtonStyle="ButtonStyle.Secondary" class="rz-m-1" />
+		</div>
+	</div>);
+	}
 
-    private void AgregarDetalle(int reparacionId)
-    {
-        IrA($"/m/reparaciones/detalle/{reparacionId}/nuevo");
-    }
+	protected override async Task OnInitializedAsync()
+	{
+		EstablecerTituloPagina("Detalle de Reparación");
+		await CargarReparacion();
+		empleados = await EmpleadoService.ObtenerEmpleados();
+		foreach (var empleado in empleados)
+		{
+			var calificaciones = await ServicioReparaciones.ObtenerCalificacionesEmpleado(empleado.EmpleadoId);
+			if (calificaciones.Any())
+			{
+				calificacionesEmpleados[empleado.EmpleadoId] = calificaciones.Average(c => (c.CalificacionTrabajo + c.CalificacionComportamiento) / 2);
+			}
+			else
+			{
+				calificacionesEmpleados[empleado.EmpleadoId] = 0;
+			}
+		}
+	}
 
-    private async Task CancelarReparacion(int reparacionId)
-    {
-        var success = await ServicioReparaciones.RechazarReparacion(reparacionId, 0); // 0 para admin
-        if (success)
-        {
-            MostrarNotificacion(NotificationSeverity.Success, "Éxito", "Reparación cancelada");
-            await CargarReparacion();
-        }
-        else
-        {
-            MostrarNotificacion(NotificationSeverity.Error, "Error", "No se pudo cancelar la reparación");
-        }
-    }
+	private double GetCalificacionPromedio(int? empleadoId)
+	{
+		if (empleadoId == null) return 0;
+		return calificacionesEmpleados.ContainsKey(empleadoId.Value) ? calificacionesEmpleados[empleadoId.Value] : 0;
+	}
 
-    private async Task AprobarReparacion()
-    {
-        if (reparacion != null)
-        {
-            calificacion.ReparacionId = reparacion.Id;
-            calificacion.EmpleadoId = reparacion.EmpleadoId;
-            calificacion.CalificacionComportamiento = calificacion.CalificacionTrabajo; // Mismo valor por simplicidad
-            
-            var success = await ServicioReparaciones.AprobarReparacion(reparacion.Id, calificacion);
-            if (success)
-            {
-                MostrarNotificacion(NotificationSeverity.Success, "Éxito", "Reparación aprobada");
-                await CargarReparacion();
-            }
-            else
-            {
-                MostrarNotificacion(NotificationSeverity.Error, "Error", "No se pudo aprobar la reparación");
-            }
-        }
-    }
+	private async Task CargarReparacion()
+	{
+		reparacion = await ServicioReparaciones.ObtenerReparacionPorId(Id);
+	}
+
+	private BadgeStyle GetBadgeStyle(string estado)
+	{
+		return estado switch
+		{
+			"Pendiente" => BadgeStyle.Warning,
+			"En proceso" => BadgeStyle.Primary,
+			"Finalizado" => BadgeStyle.Success,
+			"Rechazado" => BadgeStyle.Danger,
+			"En disputa" => BadgeStyle.Danger,
+			_ => BadgeStyle.Info
+		};
+	}
+
+	private void VolverAListado()
+	{
+		IrA("/m/reparaciones");
+	}
+
+	private void AsignarProfesional(int reparacionId)
+	{
+		IrA($"/m/reparaciones/asignar/{reparacionId}");
+	}
+
+	private void AgregarDetalle()
+	{
+		IrA($"/m/reparaciones/detalle/{reparacion.Id}/nuevo");
+	}
+
+	private async Task RechazarReparacion()
+	{
+		var success = await ServicioReparaciones.RechazarReparacion(reparacion.Id, reparacion.EmpleadoId);
+		if (success)
+		{
+			MostrarNotificacion(NotificationSeverity.Success, "Éxito", "Reparación rechazada");
+			await CargarReparacion();
+		}
+		else
+		{
+			MostrarNotificacion(NotificationSeverity.Error, "Error", "No se pudo rechazar la reparación");
+		}
+	}
+
+	private void AceptarReparacion()
+	{
+		IrA($"/m/reparaciones/aceptar/{reparacion.Id}");
+	}
+
+	private async Task CancelarReparacion()
+	{
+		var exito = await ServicioReparaciones.CancelarReparacion(reparacion.Id, 1 /*administrador id*/, comentarioCancelacion);
+		if (exito)
+		{
+			MostrarNotificacion(NotificationSeverity.Success, "Reparación cancelada", "Se canceló correctamente.");
+			await CargarReparacion();
+		}
+		else
+		{
+			MostrarNotificacion(NotificationSeverity.Error, "Error", "No se pudo cancelar.");
+		}
+	}
+
+	private async Task AprobarReparacion()
+	{
+		if (reparacion != null)
+		{
+			calificacion.ReparacionId = reparacion.Id;
+			calificacion.EmpleadoId = reparacion.EmpleadoId;
+			calificacion.CalificacionComportamiento = calificacion.CalificacionTrabajo; // Mismo valor por simplicidad
+
+			var success = await ServicioReparaciones.AprobarReparacion(reparacion.Id, calificacion);
+			if (success)
+			{
+				MostrarNotificacion(NotificationSeverity.Success, "Éxito", "Reparación aprobada");
+				await CargarReparacion();
+			}
+			else
+			{
+				MostrarNotificacion(NotificationSeverity.Error, "Error", "No se pudo aprobar la reparación");
+			}
+		}
+	}
+
+	private async Task DesaprobarReparacion()
+	{
+		// var success = await ServicioReparaciones.DesaprobarReparacion(reparacion.Id);
+		// if (success)
+		// {
+		// 	MostrarNotificacion(NotificationSeverity.Success, "Éxito", "Reparación desaprobada");
+		// 	await CargarReparacion();
+		// }
+		// else
+		// {
+		// 	MostrarNotificacion(NotificationSeverity.Error, "Error", "No se pudo desaprobar la reparación");
+		// }
+	}
+
+	private async Task Disputar(int detalleId)
+	{
+		var success = await ServicioReparaciones.DisputarDetalle(reparacion.Id, detalleId);
+		if (success)
+		{
+			MostrarNotificacion(NotificationSeverity.Success, "Éxito", "Disputa abierta");
+			await CargarReparacion();
+		}
+		else
+		{
+			MostrarNotificacion(NotificationSeverity.Error, "Error", "No se pudo abrir la disputa");
+		}
+	}
+
+	private async Task AceptarCosto(int detalleid)
+	{
+		var success = await ServicioReparaciones.ResolverDisputa(reparacion.Id, detalleid, true);
+		if (success) await CargarReparacion();
+	}
+
+	private async Task DevolverCosto(int detalleid)
+	{
+		var success = await ServicioReparaciones.ResolverDisputa(reparacion.Id, detalleid, false);
+		if (success) await CargarReparacion();
+	}
 }

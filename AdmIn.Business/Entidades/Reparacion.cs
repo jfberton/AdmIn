@@ -84,6 +84,9 @@ namespace AdmIn.Business.Entidades
         public bool ACargoDePropietario { get; set; } = false;
         public bool ACargoDeInquilino { get; set; } = false;
 
+        // Indica si la reparación fue disputada por el inquilino 
+        public bool Disputada { get; set; } = false;
+
         public List<Imagen> Imagenes { get; set; } = new();
     }
 
