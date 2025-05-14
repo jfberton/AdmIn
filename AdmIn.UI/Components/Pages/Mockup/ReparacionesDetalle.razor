@@ -66,26 +66,54 @@
 						</div>
 
 						<div class="col-md-6">
-							<h6>Fechas</h6>
-							<dl class="row">
-								<dt class="col-sm-4">Solicitud:</dt>
-								<dd class="col-sm-8">@reparacion.FechaSolicitud.ToShortDateString()</dd>
+							<h6>Historial de Estados</h6>
 
-								<dt class="col-sm-4">Inicio:</dt>
-								<dd class="col-sm-8">@(reparacion.FechaInicio?.ToShortDateString() ?? "N/A")</dd>
+							@if (reparacion.HistorialEstados?.Any() == true)
+							{
+								<table class="table table-sm table-bordered">
+									<thead class="thead-light">
+										<tr>
+											<th>Estado</th>
+											<th>Fecha</th>
+											<th>Observación</th>
+										</tr>
+									</thead>
+									<tbody>
+										@foreach (var estado in reparacion.HistorialEstados.OrderBy(e => e.FechaCambio))
+										{
+											<tr>
+												<td>@estado.Estado.Estado</td>
+												<td>@estado.FechaCambio.ToString("dd/MM/yyyy")</td>
+												<td>@estado.Observacion</td>
+											</tr>
+										}
+									</tbody>
+								</table>
+							}
+							else
+							{
+								<p>Sin historial de estados.-</p>
+							}
 
-								<dt class="col-sm-4">Finalización:</dt>
-								<dd class="col-sm-8">@(reparacion.FechaFin?.ToShortDateString() ?? "N/A")</dd>
-							</dl>
 						</div>
 					</div>
 
 					<div class="row mb-4">
 						<div class="col-12">
-							<h6>Descripción</h6>
+							<h6><b>Descripción:</b></h6>
 							<p>@reparacion.Descripcion</p>
 						</div>
 					</div>
+
+					@if (reparacion?.Estado?.Estado == "Cancelado")
+					{
+						<div class="row mb-4">
+							<div class="col-12">
+								<h6><b>Motivo cancelación:</b></h6>
+								<p>@reparacion.MotivoCancelacion</p>
+							</div>
+						</div>
+					}
 
 					@if (reparacion.Detalles?.Any() == true)
 					{
@@ -139,7 +167,8 @@
 											<Template Context="detalle">
 												<AuthorizeView Roles="rep_inq">
 													<Authorized>
-														@if (!detalle.Disputada)
+														@if (!detalle.Disputada && (reparacion.Estado?.Estado == "En proceso" || reparacion.Estado?.Estado == "En disputa"))
+
 														{
 															<button class="btn btn-sm btn-danger" @onclick="() => Disputar(detalle.Id)">
 																Abrir disputa
@@ -149,7 +178,7 @@
 												</AuthorizeView>
 												<AuthorizeView Roles="rep_adm">
 													<Authorized>
-														@if (detalle.Disputada)
+														@if (detalle.Disputada && reparacion.Estado?.Estado == "En disputa")
 														{
 															<button class="btn btn-sm btn-success" @onclick="() => AceptarCosto(detalle.Id)">
 																Aceptar Costo
@@ -169,7 +198,7 @@
 						</div>
 					}
 
-					
+
 					@if (reparacion?.Estado?.Estado == "Pendiente")
 					{
 						<AuthorizeView Roles="rep_emp">
@@ -189,7 +218,7 @@
 					{
 						<AuthorizeView Roles="rep_adm">
 							<Authorized>
-								<button class="btn btn-primary me-2" @onclick="() => AsignarProfesional(reparacion.Id)">
+								<button class="btn btn-primary me-2" @onclick="ShowAsignarProfesionalDialog">
 									Asignar Profesional
 								</button>
 								<button type="button" class="btn btn-outline-danger me-2" @onclick="ShowCancelDialog">
@@ -198,6 +227,7 @@
 							</Authorized>
 						</AuthorizeView>
 					}
+
 
 					@if (reparacion?.Estado?.Estado == "En proceso")
 					{
@@ -209,9 +239,17 @@
 											<i class="fas fa-plus"></i> Agregar Detalle
 										</button>
 									</div>
+
+									<div class="col-12 mt-2">
+										<button type="button" class="btn btn-success me-2" @onclick="() => FinalizarReparacionEmpleado()">
+											Terminar reparación
+										</button>
+									</div>
 								</div>
 							</Authorized>
 						</AuthorizeView>
+
+
 					}
 
 					@if (reparacion.Estado?.Estado == "En disputa")
@@ -241,7 +279,7 @@
 							</Authorized>
 						</AuthorizeView>
 					}
-					}
+
 				</div>
 			}
 		</div>
@@ -260,6 +298,7 @@
 	private IEnumerable<Empleado> empleados = new List<Empleado>();
 	private Dictionary<int, double> calificacionesEmpleados = new Dictionary<int, double>();
 	private string comentarioCancelacion = string.Empty;
+	private int? empleadoIdSeleccionado;
 
 	async Task ShowAcceptDialog()
 	{
@@ -280,6 +319,38 @@
 					  	ButtonStyle="ButtonStyle.Secondary" class="rz-m-1" />
 		</div>
 	</div>);
+	}
+
+	async Task ShowAsignarProfesionalDialog()
+	{
+		empleadoIdSeleccionado = null;
+
+		var result = await DialogService.OpenAsync("Asignar Profesional", ds =>
+	@<div>
+		<div class="mb-3">
+			<label class="form-label">Seleccioná un profesional</label>
+			<RadzenDropDown Data="@empleados" TextProperty="Nombre" ValueProperty="EmpleadoId"
+							@bind-Value="@empleadoIdSeleccionado" Placeholder="Seleccione profesional"
+							Change="@((args) => { SeleccionarEmpleado((int?)args); ds.Refresh(); })"
+							Style="width:100%">
+				<Template Context="empleado">
+					@empleado.Nombre (@empleado.Especialidad?.Especialidad) - @empleado.TipoEmpleado ⭐@(GetCalificacionPromedio(empleado.EmpleadoId))
+				</Template>
+			</RadzenDropDown>
+		</div>
+		<div class="rz-text-align-right rz-mt-3">
+			<RadzenButton Text="Asignar" Click="@(() => { ConfirmarAsignacion(empleadoIdSeleccionado); ds.Close(); })"
+					  	ButtonStyle="ButtonStyle.Success" class="rz-m-1"
+					  	Disabled="@(!empleadoIdSeleccionado.HasValue)" />
+			<RadzenButton Text="Cancelar" Click="@(() => ds.Close())"
+					  	ButtonStyle="ButtonStyle.Secondary" class="rz-m-1" />
+		</div>
+	</div>);
+	}
+
+	private void SeleccionarEmpleado(int? id)
+	{
+		empleadoIdSeleccionado = id;
 	}
 
 	async Task ShowCancelDialog()
@@ -304,8 +375,12 @@
 		var result = await DialogService.OpenAsync("Aprobar Reparación", ds =>
 	@<div>
 		<div class="mb-3">
-			<label class="form-label">Calificación (1-5)</label>
+			<label class="form-label">Calificación Trabajo (1-5)</label>
 			<RadzenRating Stars="5" @bind-Value="@calificacion.CalificacionTrabajo" />
+		</div>
+		<div class="mb-3">
+			<label class="form-label">Calificación Comportamiento (1-5)</label>
+			<RadzenRating Stars="5" @bind-Value="@calificacion.CalificacionComportamiento" />
 		</div>
 		<div class="mb-3">
 			<label class="form-label">Comentario</label>
@@ -317,7 +392,8 @@
 			<RadzenButton Text="Cancelar" Click="@(() => ds.Close())"
 					  	ButtonStyle="ButtonStyle.Secondary" class="rz-m-1" />
 		</div>
-	</div>);
+	</div>
+	);
 	}
 
 	protected override async Task OnInitializedAsync()
@@ -348,17 +424,20 @@
 	private async Task CargarReparacion()
 	{
 		reparacion = await ServicioReparaciones.ObtenerReparacionPorId(Id);
+		StateHasChanged();
 	}
 
 	private BadgeStyle GetBadgeStyle(string estado)
 	{
 		return estado switch
 		{
-			"Pendiente" => BadgeStyle.Warning,
-			"En proceso" => BadgeStyle.Primary,
-			"Finalizado" => BadgeStyle.Success,
-			"Rechazado" => BadgeStyle.Danger,
-			"En disputa" => BadgeStyle.Danger,
+			"Pendiente" => BadgeStyle.Primary,
+			"Pendiente sin asignar" => BadgeStyle.Secondary,
+			"En proceso" => BadgeStyle.Success,
+			"En disputa" => BadgeStyle.Warning,
+			"Finalizado por aprobar" => BadgeStyle.Info,
+			"Finalizado" => BadgeStyle.Light,
+			"Cancelado" => BadgeStyle.Dark,
 			_ => BadgeStyle.Info
 		};
 	}
@@ -368,17 +447,9 @@
 		IrA("/m/reparaciones");
 	}
 
-	private void AsignarProfesional(int reparacionId)
-	{
-		IrA($"/m/reparaciones/asignar/{reparacionId}");
-	}
+	#region Pendiente
 
-	private void AgregarDetalle()
-	{
-		IrA($"/m/reparaciones/detalle/{reparacion.Id}/nuevo");
-	}
-
-	private async Task RechazarReparacion()
+	private async Task RechazarReparacion() //ok
 	{
 		var success = await ServicioReparaciones.RechazarReparacion(reparacion.Id, reparacion.EmpleadoId);
 		if (success)
@@ -392,12 +463,37 @@
 		}
 	}
 
-	private void AceptarReparacion()
+	private async Task AceptarReparacion() //ok
 	{
-		IrA($"/m/reparaciones/aceptar/{reparacion.Id}");
+		var success = await ServicioReparaciones.AceptarReparacion(reparacion.Id, reparacion.EmpleadoId, reparacion.CostoEstimado.Value, reparacion.FechaInicio.Value);
+		if (success)
+		{
+			MostrarNotificacion(NotificationSeverity.Success, "Éxito", "Reparación rechazada");
+			await CargarReparacion();
+		}
+		else
+		{
+			MostrarNotificacion(NotificationSeverity.Error, "Error", "No se pudo rechazar la reparación");
+		}
 	}
 
-	private async Task CancelarReparacion()
+	#endregion
+
+	#region Pendiente sin asignar
+
+	async Task ConfirmarAsignacion(int? profesionalSeleccionado) //ok
+	{
+		if (profesionalSeleccionado == null || reparacion == null)
+			return;
+
+		await ServicioReparaciones.AsignarEmpleado(reparacion.Id, profesionalSeleccionado.Value);
+
+		// Refrescar datos en pantalla
+		await CargarReparacion();
+		StateHasChanged();
+	}
+
+	private async Task CancelarReparacion()//ok
 	{
 		var exito = await ServicioReparaciones.CancelarReparacion(reparacion.Id, 1 /*administrador id*/, comentarioCancelacion);
 		if (exito)
@@ -411,14 +507,39 @@
 		}
 	}
 
-	private async Task AprobarReparacion()
+	#endregion
+
+	#region En proceso
+
+	private void AgregarDetalle()
+	{
+		IrA($"/m/reparaciones/detalle/{reparacion.Id}/nuevo");
+	}
+
+	private async Task FinalizarReparacionEmpleado() //ok
+	{
+		var success = await ServicioReparaciones.FinalizarReparacion(reparacion.Id);
+		if (success)
+		{
+			MostrarNotificacion(NotificationSeverity.Success, "Éxito", "Reparación finalizada");
+			await CargarReparacion();
+		}
+		else
+		{
+			MostrarNotificacion(NotificationSeverity.Error, "Error", "No se pudo finalizar la reparación");
+		}
+	}
+
+	#endregion
+
+	#region Finalizar reparacion
+
+	private async Task AprobarReparacion() //ok
 	{
 		if (reparacion != null)
 		{
 			calificacion.ReparacionId = reparacion.Id;
 			calificacion.EmpleadoId = reparacion.EmpleadoId;
-			calificacion.CalificacionComportamiento = calificacion.CalificacionTrabajo; // Mismo valor por simplicidad
-
 			var success = await ServicioReparaciones.AprobarReparacion(reparacion.Id, calificacion);
 			if (success)
 			{
@@ -432,21 +553,25 @@
 		}
 	}
 
-	private async Task DesaprobarReparacion()
+	private async Task DesaprobarReparacion() //ok
 	{
-		// var success = await ServicioReparaciones.DesaprobarReparacion(reparacion.Id);
-		// if (success)
-		// {
-		// 	MostrarNotificacion(NotificationSeverity.Success, "Éxito", "Reparación desaprobada");
-		// 	await CargarReparacion();
-		// }
-		// else
-		// {
-		// 	MostrarNotificacion(NotificationSeverity.Error, "Error", "No se pudo desaprobar la reparación");
-		// }
+		var success = await ServicioReparaciones.DesaprobarReparacion(reparacion.Id);
+		if (success)
+		{
+			MostrarNotificacion(NotificationSeverity.Success, "Éxito", "Reparación desaprobada");
+			await CargarReparacion();
+		}
+		else
+		{
+			MostrarNotificacion(NotificationSeverity.Error, "Error", "No se pudo desaprobar la reparación");
+		}
 	}
 
-	private async Task Disputar(int detalleId)
+	#endregion
+
+	#region Disputa
+
+	private async Task Disputar(int detalleId) //ok
 	{
 		var success = await ServicioReparaciones.DisputarDetalle(reparacion.Id, detalleId);
 		if (success)
@@ -460,15 +585,17 @@
 		}
 	}
 
-	private async Task AceptarCosto(int detalleid)
+	private async Task AceptarCosto(int detalleid) //ok
 	{
 		var success = await ServicioReparaciones.ResolverDisputa(reparacion.Id, detalleid, true);
 		if (success) await CargarReparacion();
 	}
 
-	private async Task DevolverCosto(int detalleid)
+	private async Task DevolverCosto(int detalleid) //ok
 	{
 		var success = await ServicioReparaciones.ResolverDisputa(reparacion.Id, detalleid, false);
 		if (success) await CargarReparacion();
 	}
+
+	#endregion
 }

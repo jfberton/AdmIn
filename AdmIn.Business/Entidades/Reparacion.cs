@@ -49,8 +49,9 @@ namespace AdmIn.Business.Entidades
         public List<ReparacionDetalle> Detalles { get; set; } = new();
 
         public List<Imagen> Imagenes { get; set; } = new();
-    }
 
+        public List<ReparacionEstadoHistorial> HistorialEstados { get; set; } = new();
+    }
 
     public class ReparacionCategoria
     {
@@ -88,6 +89,23 @@ namespace AdmIn.Business.Entidades
         public bool Disputada { get; set; } = false;
 
         public List<Imagen> Imagenes { get; set; } = new();
+    }
+
+    public class ReparacionEstadoHistorial
+    {
+        public int Id { get; set; }
+
+        public int ReparacionId { get; set; }
+        public Reparacion Reparacion { get; set; }
+
+        public int EstadoId { get; set; }
+        public ReparacionEstado Estado { get; set; }
+
+        public DateTime FechaCambio { get; set; }
+
+        public int? CambiadoPorId { get; set; }
+
+        public string? Observacion { get; set; }
     }
 
 
