@@ -3,6 +3,57 @@
 @using AdmIn.UI.Services
 @inherits BaseComponent
 
+<style>
+    .image-thumbnails {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 15px;
+        margin-top: 10px;
+    }
+
+    .thumbnail-container {
+        position: relative;
+        text-align: center;
+    }
+
+    .thumbnail-wrapper {
+        position: relative;
+        display: inline-block;
+    }
+
+    .img-thumbnail {
+        width: 100px;
+        height: 100px;
+        object-fit: cover;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 5px;
+        background: white;
+    }
+
+    .remove-btn {
+        position: absolute;
+        top: -10px;
+        right: -10px;
+        width: 25px;
+        height: 25px;
+        border-radius: 50%;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .thumbnail-name {
+        font-size: 0.8rem;
+        margin-top: 5px;
+        max-width: 100px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+</style>
+
 <EditForm Model="@detalle" OnValidSubmit="@GuardarDetalle">
     <DataAnnotationsValidator />
     <ValidationSummary />
@@ -35,11 +86,39 @@
 
             <div class="row mb-3">
                 <div class="col-12">
-                    <label class="form-label">Imágenes *</label>
-                    <RadzenUpload @ref="uploadControl" ChooseText="Adjuntar imágenes" Multiple="true"
-                                  Accept="image/*" MaxFileSize="5000000" TotalFilesSize="10000000"
-                                  Style="width:100%" @bind-Files="@imagenesSeleccionadas" />
+                    <label class="form-label">Imágenes (Máximo 5)</label>
+                    <RadzenUpload @ref="uploadControl"
+                    ChooseText="Adjuntar imágenes"
+                    Multiple="true"
+                    Accept="image/*"
+                    MaxFileSize="5000000"
+                    TotalFilesSize="25000000"
+                    Style="width:100%"
+                    Change="@OnFileUpload" />
+
                     <ValidationMessage For="@(() => imagenesSeleccionadas)" />
+
+                    @if (imagenesSeleccionadas.Any())
+                    {
+                        <div class="d-flex flex-wrap gap-2 mt-3">
+                            @foreach (var img in imagenesSeleccionadas)
+                            {
+                                <div class="position-relative" style="width: 120px;">
+                                    <img src="@img.Url"
+                                    alt="@img.Descripcion"
+                                    class="img-thumbnail w-100 h-auto"
+                                    style="height: 100px; object-fit: cover;" />
+                                    <button type="button"
+                                    class="position-absolute top-0 start-100 translate-middle btn btn-danger btn-sm rounded-circle p-0"
+                                    style="width: 24px; height: 24px;"
+                                    @onclick="@(() => RemoveImage(img.Id))">
+                                        <i class="fas fa-times fs-10"></i>
+                                    </button>
+                                    <div class="text-truncate small mt-1" style="width: 100px;">@img.Descripcion</div>
+                                </div>
+                            }
+                        </div>
+                    }
                 </div>
             </div>
 
@@ -47,7 +126,7 @@
                 <div class="col-12">
                     <label class="form-label">Responsable *</label>
                     <RadzenRadioButtonList Name="responsable" @bind-Value="@responsable"
-                                           Data="@responsables" TextProperty="Text" ValueProperty="Value" />
+                    Data="@responsables" TextProperty="Text" ValueProperty="Value" />
                 </div>
             </div>
         </div>
@@ -71,7 +150,7 @@
 
     private RadzenUpload uploadControl;
     private ReparacionDetalle detalle = new ReparacionDetalle();
-    private IEnumerable<FileInfo> imagenesSeleccionadas = new List<FileInfo>();
+    public List<Imagen> imagenesSeleccionadas = new List<Imagen>();
     private string responsable = "Inquilino";
 
     private List<ResponsableModel> responsables = new List<ResponsableModel>
@@ -79,6 +158,81 @@
         new ResponsableModel { Value = "Inquilino", Text = "A cargo del Inquilino" },
         new ResponsableModel { Value = "Propietario", Text = "A cargo del Propietario" }
     };
+
+
+    private async Task OnFileUpload(UploadChangeEventArgs args)
+    {
+        if (args.Files != null && args.Files.Any())
+        {
+            // Validar cantidad máxima
+            if (imagenesSeleccionadas.Count() + args.Files.Count() > 5)
+            {
+                MostrarNotificacion(NotificationSeverity.Warning,
+                                        "Límite excedido",
+                                        "Solo puedes subir hasta 5 imágenes");
+                // await uploadControl.RemoveAll();
+                return;
+            }
+
+            // Procesar cada archivo
+            foreach (var file in args.Files)
+            {
+                try
+                {
+                    // Convertir a base64
+                    var base64 = await ConvertToBase64(file);
+
+                    // Agregar a la lista
+                    imagenesSeleccionadas.Add(new Imagen
+                        {
+                            Id = Guid.NewGuid(),
+                            Descripcion = file.Name,
+                            Url = base64,
+                            Size = file.Size,
+                            ContentType = file.ContentType
+                        });
+                }
+                catch (Exception ex)
+                {
+                    MostrarNotificacion(NotificationSeverity.Error,
+                                            "Error al procesar imagen",
+                                            $"No se pudo cargar {file.Name}: {ex.Message}");
+                }
+            }
+
+            // Forzar actualización de la UI
+            StateHasChanged();
+
+            // Limpiar el control de upload
+            // await uploadControl.RemoveAll();
+        }
+    }
+
+    private void RemoveImage(Guid imageId)
+    {
+        var imageToRemove = imagenesSeleccionadas.FirstOrDefault(i => i.Id == imageId);
+        if (imageToRemove != null)
+        {
+            imagenesSeleccionadas.Remove(imageToRemove);
+            StateHasChanged(); // Actualizar UI
+        }
+    }
+
+    private async Task<string> ConvertToBase64(IBrowserFile file)
+    {
+        try
+        {
+            using var stream = file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024); // 5MB
+            using var memoryStream = new MemoryStream();
+            await stream.CopyToAsync(memoryStream);
+            return $"data:{file.ContentType};base64,{Convert.ToBase64String(memoryStream.ToArray())}";
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error converting image: {ex}");
+            throw;
+        }
+    }
 
     protected async Task GuardarDetalle()
     {
@@ -90,6 +244,7 @@
 
         detalle.ACargoDeInquilino = responsable == "Inquilino";
         detalle.ACargoDePropietario = responsable == "Propietario";
+        detalle.Imagenes = imagenesSeleccionadas;
 
         var success = await ServicioReparaciones.AgregarDetalleReparacion(ReparacionId, detalle);
         if (success)
