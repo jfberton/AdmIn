@@ -27,22 +27,22 @@ else
             <RadzenDataGridColumn TItem="Reparacion" Title="Fecha de Solicitud">
                 <Template Context="reparacion">
                     @(
-                        reparacion.FechaSolicitud.ToString("d")
-                    )
+                            reparacion.FechaSolicitud.ToString("d")
+                        )
                 </Template>
             </RadzenDataGridColumn>
 
             <RadzenDataGridColumn TItem="Reparacion" Title="Costo Final">
                 <Template Context="reparacion">
                     @(
-                        (reparacion.CostoFinal ?? 0).ToString("C")
-                        )
+                            (reparacion.CostoFinal ?? 0).ToString("C")
+                            )
                 </Template>
             </RadzenDataGridColumn>
             <RadzenDataGridColumn TItem="Reparacion">
                 <Template Context="reparacion">
-                    <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Primary" Click="@(() => EditarReparacion(reparacion))" Style="margin-right: 5px;" />
-                    <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Click="@(() => EliminarReparacion(reparacion))" />
+                    <RadzenButton Icon="search" ButtonStyle="ButtonStyle.Primary" Click="@(() => VerReparacion(reparacion))" Style="margin-right: 5px;" />
+                    @* <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Click="@(() => EliminarReparacion(reparacion))" /> *@
                 </Template>
             </RadzenDataGridColumn>
         </Columns>
@@ -83,6 +83,12 @@ else
         // Actualizar el inmueble después de editar la reparación
         await ObtenerInmueble();
     }
+
+    private async Task VerReparacion(Reparacion reparacion)
+    {
+        IrA($"/m/reparaciones/detalle/{reparacion.Id}/inmueble/{InmuebleId}");
+    }
+
 
     private async Task EliminarReparacion(Reparacion reparacion)
     {

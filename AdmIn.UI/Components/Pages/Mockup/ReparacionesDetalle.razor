@@ -1,4 +1,5 @@
 ﻿@page "/m/reparaciones/detalle/{Id:int}"
+@page "/m/reparaciones/detalle/{Id:int}/{origen}/{inmuebleId:int}"
 @using AdmIn.Business.Entidades
 @using AdmIn.UI.Services
 @inject IServ_Mock ServicioReparaciones
@@ -48,7 +49,7 @@
 									}
 									else
 									{
-										<span>Profesional: </span>
+										<span>Reparador/Contratista: </span>
 									}
 								</dt>
 								<dd class="col-sm-8">
@@ -347,7 +348,7 @@
 						<AuthorizeView Roles="rep_adm">
 							<Authorized>
 								<button class="btn btn-primary me-2" @onclick="ShowAsignarProfesionalDialog">
-									Asignar Profesional
+									Asignar Reparador/Contratista
 								</button>
 								<button type="button" class="btn btn-outline-danger me-2" @onclick="ShowCancelDialog">
 									Cancelar Reparación
@@ -421,6 +422,12 @@
 	[Parameter]
 	public int Id { get; set; }
 
+	[Parameter]
+	public string? origen { get; set; }
+
+	[Parameter]
+	public int? inmuebleId { get; set; }
+
 	private Reparacion? reparacion;
 	private EmpleadoCalificacion calificacion = new EmpleadoCalificacion();
 	private IEnumerable<Empleado> empleados = new List<Empleado>();
@@ -470,7 +477,7 @@
 	{
 		empleadoIdSeleccionado = null;
 
-		var result = await DialogService.OpenAsync("Asignar Profesional", ds =>
+		var result = await DialogService.OpenAsync("Asignar Reparador / Contratista", ds =>
 	@<div>
 		<div class="mb-3">
 			<label class="form-label">Seleccioná un profesional</label>
@@ -599,7 +606,14 @@
 
 	private void VolverAListado()
 	{
-		IrA("/m/reparaciones");
+		if (origen == "inmueble" && inmuebleId.HasValue)
+		{
+			IrA($"/inmueble/{inmuebleId.Value}/reparaciones");
+		}
+		else
+		{
+			IrA("/m/reparaciones");
+		}
 	}
 
 	#region Pendiente

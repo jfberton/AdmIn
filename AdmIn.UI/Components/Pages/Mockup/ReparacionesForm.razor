@@ -248,6 +248,26 @@
 			return;
 		}
 
+        if (IsNuevaReparacion && reparacion.InmuebleId <= 0)
+        {
+            MostrarNotificacion(NotificationSeverity.Error, "Error", "Debe seleccionar un inmueble");
+            return;
+        }
+
+        if (IsNuevaReparacion && reparacion.Categoria == null)
+        {
+            MostrarNotificacion(NotificationSeverity.Error, "Error", "Debe seleccionar una categoría");
+            return;
+        }
+
+        if (IsNuevaReparacion && string.IsNullOrWhiteSpace(reparacion.Descripcion))
+        {
+            MostrarNotificacion(NotificationSeverity.Error, "Error", "Debe ingresar una descripción");
+            return;
+        }
+
+
+
 		await GuardarReparacion();
 	}
 
@@ -290,9 +310,9 @@
 
 					<div class="row mb-3">
 						<div class="col-md-6">
-							<label class="form-label">Profesional *</label>
+							<label class="form-label">Reparador / Contratista *</label>
 							<RadzenDropDown Data="@empleados" TextProperty="Nombre" ValueProperty="EmpleadoId"
-											@bind-Value="@reparacion.EmpleadoId" Placeholder="Seleccione profesional"
+											@bind-Value="@reparacion.EmpleadoId" Placeholder="Seleccione reparador / contratista"
 											Style="width:100%">
 								<Template Context="empleado">
 									@empleado.Nombre (@empleado.Especialidad.Especialidad) - @empleado.TipoEmpleado ⭐@(GetCalificacionPromedio(empleado.EmpleadoId))

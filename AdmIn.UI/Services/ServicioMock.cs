@@ -351,6 +351,9 @@ namespace AdmIn.UI.Services
 
                 // Seleccionar inmueble
                 int inmuebleIndex = random.Next(0, _inmuebles.Count);
+                var inmueble = _inmuebles[inmuebleIndex];
+                //Actualizar estado inmueble
+                inmueble.Estado = _estadosInmueble.First(e => e.Estado == "En reparación");
 
                 // Determinar estado y estadoId según reglas
                 int estadoId;
@@ -425,7 +428,7 @@ namespace AdmIn.UI.Services
                 {
                     EmpleadoId = i,
                     PersonaId = i,
-                    Nombre = $"Empleado #{i}",
+                    Nombre = $"Un nombre #{i}",
                     Especialidad = new EmpleadoEspecialidad { Especialidad = $"Especialidad #{i}" },
                     Agenda = new List<EmpleadoAgenda>(),
                     EsContratistaExterno = i % 2 == 0 // Alternamos entre interno y externo
@@ -620,6 +623,8 @@ namespace AdmIn.UI.Services
                 reparacion.Inmueble = inmueble;
                 reparacion.InmuebleId = inmueble.Id;
 
+                reparacion.Empleado = _empleados.FirstOrDefault(e => e.EmpleadoId == reparacion.EmpleadoId);
+
                 await ActualizarEstadoReparacion(1, "Alta reparación", reparacion); //pendiente
 
                 // Agregar la reparación a la lista global
@@ -635,8 +640,9 @@ namespace AdmIn.UI.Services
         {
             var reparacion = _reparaciones.FirstOrDefault(r => r.Id == reparacionId);
             if (reparacion == null) return false;
+            Empleado empleado =  _empleados.First(e => e.EmpleadoId == empleadoId);
 
-            await ActualizarEstadoReparacion(2, "Profesional rechazó solicitud", reparacion); //Pendiente sin asignar
+            await ActualizarEstadoReparacion(2, $"{empleado.TipoEmpleado} rechazó solicitud", reparacion); //Pendiente sin asignar
             reparacion.EmpleadoId = 0;
             reparacion.Empleado = null;
 
@@ -689,12 +695,13 @@ namespace AdmIn.UI.Services
         {
             var reparacion = _reparaciones.FirstOrDefault(r => r.Id == reparacionId);
             if (reparacion == null) return false;
-
-            await ActualizarEstadoReparacion(3, "Profesional aceptó la solicitud", reparacion); //en proceso
+            
             reparacion.EmpleadoId = empleadoId;
             reparacion.Empleado = _empleados.First(e => e.EmpleadoId == empleadoId);
             reparacion.CostoEstimado = costoEstimado;
             reparacion.FechaInicio = fechaInicio;
+            
+            await ActualizarEstadoReparacion(3, $"{reparacion.Empleado.TipoEmpleado} aceptó la solicitud", reparacion); //en proceso
 
             return true;
         }
@@ -764,7 +771,8 @@ namespace AdmIn.UI.Services
             var reparacion = _reparaciones.FirstOrDefault(r => r.Id == reparacionId);
             if (reparacion == null) return false;
 
-            await ActualizarEstadoReparacion(5, "Profesional indica que terminó reparación", reparacion); // finalizado por aprobar
+            Empleado empleado = _empleados.First(e => e.EmpleadoId == reparacion.EmpleadoId);
+            await ActualizarEstadoReparacion(5, $"{empleado.TipoEmpleado} indica que terminó reparación", reparacion); // finalizado por aprobar
             reparacion.FechaFin = DateTime.Now;
             reparacion.CostoFinal = reparacion.Detalles.Sum(d => d.Costo);
 

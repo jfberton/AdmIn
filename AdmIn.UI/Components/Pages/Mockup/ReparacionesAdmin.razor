@@ -49,7 +49,7 @@ else
 				</Template>
 			</RadzenDataGridColumn>
 
-			<RadzenDataGridColumn TItem="Reparacion" Title="Profesional" MinWidth="200px">
+			<RadzenDataGridColumn TItem="Reparacion" Title="Reparador/Contratista" MinWidth="200px">
 				<Template Context="data">
 					@if (data.Empleado != null)
 					{
@@ -116,6 +116,18 @@ else
 			// Filtrado manual
 			IEnumerable<Reparacion> query = reparaciones;
 
+			// Ordenamiento personalizado por prioridad y FechaSolicitud (desc) solo si no se ordena desde la grilla
+			if (string.IsNullOrEmpty(args.OrderBy))
+			{
+				query = query
+					.OrderBy(r => ObtenerPrioridadEstado(r.Estado?.Estado))
+					.ThenByDescending(r => r.Estado?.Estado == "Pendiente" ? r.FechaSolicitud : DateTime.MinValue);
+			}
+			else
+			{
+				query = query.AsQueryable().OrderBy(args.OrderBy);
+			}
+
 			if (!string.IsNullOrEmpty(args.Filter))
 			{
 				query = query.Where(r =>
@@ -159,6 +171,21 @@ else
 			"Finalizado" => BadgeStyle.Light,
 			"Cancelado" => BadgeStyle.Dark,
 			_ => BadgeStyle.Info
+		};
+	}
+
+	private int ObtenerPrioridadEstado(string estado)
+	{
+		return estado switch
+		{
+			"Pendiente sin asignar" => 1,
+			"En disputa" => 2,
+			"Pendiente" => 3,
+			"Finalizado por aprobar" => 4,
+			"En proceso" => 5,
+			"Finalizado" => 6,
+			"Cancelado" => 7,
+			_ => 100
 		};
 	}
 
