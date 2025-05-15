@@ -92,11 +92,13 @@
                 <div class="col-12">
                     <label class="form-label">Imágenes (Máximo 5)</label>
                     <RadzenUpload @ref="uploadControl"
-                    ChooseText="Adjuntar imágenes"
-                    Multiple="true"
-                    Accept="image/*"
-                    Style="width:100%"
-                    Change="@OnFileUpload" />
+                                  ChooseText="Adjuntar imágenes"
+                                  Multiple="true"
+                                  Accept="image/*"
+                                  MaxFileSize="5000000"
+                                  TotalFilesSize="25000000"
+                                  Style="width:100%"
+                                  Change="@OnFileUpload" />
 
                     <ValidationMessage For="@(() => imagenesSeleccionadas)" />
 
@@ -178,7 +180,7 @@
 
     private Imagen? imagenSeleccionada;
 
-   
+
 
     private async Task OnFileUpload(UploadChangeEventArgs args)
     {
@@ -224,7 +226,7 @@
             StateHasChanged();
 
             // Limpiar el control de upload
-			uploadControl.ClearFiles();
+            uploadControl.ClearFiles();
         }
     }
 

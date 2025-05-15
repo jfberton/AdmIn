@@ -5,54 +5,56 @@
 
 <style>
 	.image-thumbnails {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 15px;
-		margin-top: 10px;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 15px;
+	margin-top: 10px;
 	}
 
 	.thumbnail-container {
-		position: relative;
-		text-align: center;
+	position: relative;
+	text-align: center;
 	}
 
 	.thumbnail-wrapper {
-		position: relative;
-		display: inline-block;
+	position: relative;
+	display: inline-block;
 	}
 
 	.img-thumbnail {
-		width: 100px;
-		height: 100px;
-		object-fit: cover;
-		border: 1px solid #ddd;
-		border-radius: 4px;
-		padding: 5px;
-		background: white;
+	width: 100px;
+	height: 100px;
+	object-fit: cover;
+	border: 1px solid #ddd;
+	border-radius: 4px;
+	padding: 5px;
+	background: white;
 	}
 
 	.remove-btn {
-		position: absolute;
-		top: -10px;
-		right: -10px;
-		width: 25px;
-		height: 25px;
-		border-radius: 50%;
-		padding: 0;
-		display: flex;
-		align-items: center;
-		justify-content: center;
+	position: absolute;
+	top: -10px;
+	right: -10px;
+	width: 25px;
+	height: 25px;
+	border-radius: 50%;
+	padding: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
 	}
 
 	.thumbnail-name {
-		font-size: 0.8rem;
-		margin-top: 5px;
-		max-width: 100px;
-		white-space: nowrap;
-		overflow: hidden;
-		text-overflow: ellipsis;
+	font-size: 0.8rem;
+	margin-top: 5px;
+	max-width: 100px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 	}
 </style>
+
+
 
 @code {
 	[Inject]
@@ -75,6 +77,8 @@
 	private RadzenUpload uploadControl;
 
 	public List<Imagen> imagenesSeleccionadas = new List<Imagen>();
+
+	private Imagen? imagenSeleccionada;
 
 	private IEnumerable<Inmueble> inmuebles = new List<Inmueble>();
 	private IEnumerable<ReparacionCategoria> categorias = new List<ReparacionCategoria>();
@@ -123,7 +127,7 @@
 				MostrarNotificacion(NotificationSeverity.Warning,
 										"Límite excedido",
 										"Solo puedes subir hasta 5 imágenes");
-				// await uploadControl.RemoveAll();
+				await uploadControl.ClearFiles();
 				return;
 			}
 
@@ -157,8 +161,24 @@
 			StateHasChanged();
 
 			// Limpiar el control de upload
-			// await uploadControl.RemoveAll();
+			await uploadControl.ClearFiles();
 		}
+	}
+
+	private void AbrirModal(Imagen img)
+	{
+		imagenSeleccionada = img;
+	}
+
+	private void CerrarModal()
+	{
+		imagenSeleccionada = null;
+	}
+
+	private void ConfirmarEliminar(Guid imageId)
+	{
+		RemoveImage(imageId);
+		CerrarModal();
 	}
 
 	private void RemoveImage(Guid imageId)
@@ -312,20 +332,50 @@
 											<img src="@img.Url"
 												 alt="@img.Descripcion"
 												 class="img-thumbnail w-100 h-auto"
-												 style="height: 100px; object-fit: cover;" />
+												 style="height: 100px; object-fit: cover; cursor: pointer;"
+												 @onclick="@(() => AbrirModal(img))" />
+
 											<button type="button"
 													class="position-absolute top-0 start-100 translate-middle btn btn-danger btn-sm rounded-circle p-0"
 													style="width: 24px; height: 24px;"
+													@onclick:stopPropagation="true"
 													@onclick="@(() => RemoveImage(img.Id))">
 												<i class="fas fa-times fs-10"></i>
 											</button>
+
 											<div class="text-truncate small mt-1" style="width: 100px;">@img.Descripcion</div>
 										</div>
+
 									}
 								</div>
 							}
 						</div>
 					</div>
+
+					@if (imagenSeleccionada != null)
+					{
+						<div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);" role="dialog">
+							<div class="modal-dialog modal-lg" role="document">
+								<div class="modal-content">
+									<div class="modal-header">
+										<h5 class="modal-title">@imagenSeleccionada.Descripcion</h5>
+										<button type="button" class="btn-close" @onclick="CerrarModal"></button>
+									</div>
+									<div class="modal-body text-center">
+										<img src="@imagenSeleccionada.Url" class="img-fluid" />
+									</div>
+									<div class="modal-footer">
+										<button type="button" class="btn btn-danger" @onclick="@(() => ConfirmarEliminar(imagenSeleccionada.Id))">
+											<i class="fas fa-trash-alt"></i> Quitar imagen
+										</button>
+										<button type="button" class="btn btn-secondary" @onclick="CerrarModal">
+											Cancelar
+										</button>
+									</div>
+								</div>
+							</div>
+						</div>
+					}
 				};
 
 }

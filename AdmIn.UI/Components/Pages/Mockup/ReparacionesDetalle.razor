@@ -105,6 +105,52 @@
 						</div>
 					</div>
 
+					@if (reparacion?.Imagenes?.Any() == true)
+					{
+						<div class="row mb-4">
+							<div class="col-12">
+								<h6><b>Imágenes asociadas</b></h6>
+								<div class="d-flex flex-wrap gap-2">
+									@foreach (var imagen in reparacion.Imagenes)
+									{
+										<div class="position-relative" style="width: 120px;">
+											<img src="@imagen.Url"
+											alt="@imagen.Descripcion"
+											class="img-thumbnail w-100 h-auto"
+											style="height: 100px; object-fit: cover; cursor: pointer;"
+											@onclick="@(() => AbrirModalImagen(imagen))" />
+										</div>
+									}
+								</div>
+							</div>
+						</div>
+					}
+
+					@if (imagenSeleccionada != null)
+					{
+						<div class="modal fade show d-block"
+							 tabindex="-1"
+							 style="background-color: rgba(0,0,0,0.5); z-index: 1060; position: fixed; top: 0; left: 0; right: 0; bottom: 0;"
+							 role="dialog">
+							<div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+								<div class="modal-content">
+									<div class="modal-header">
+										<h5 class="modal-title">@imagenSeleccionada.Descripcion</h5>
+										<button type="button" class="btn-close" @onclick="CerrarModalImagen"></button>
+									</div>
+									<div class="modal-body text-center">
+										<img src="@imagenSeleccionada.Url" class="img-fluid" style="max-height: 80vh" />
+									</div>
+									<div class="modal-footer">
+										<button type="button" class="btn btn-secondary" @onclick="CerrarModalImagen">
+											Cancelar
+										</button>
+									</div>
+								</div>
+							</div>
+						</div>
+					}
+
 					@if (reparacion?.Estado?.Estado == "Cancelado")
 					{
 						<div class="row mb-4">
@@ -189,11 +235,93 @@
 														}
 													</Authorized>
 												</AuthorizeView>
+
+												<RadzenButton Icon="search" Size="ButtonSize.Small" Style="margin-right: 5px"
+															  Click="@(() => VerDetalle(detalle))"
+															  Tooltip="Ver detalle" />
+
 											</Template>
 										</RadzenDataGridColumn>
 
 									</Columns>
 								</RadzenDataGrid>
+							</div>
+						</div>
+					}
+
+					@if (mostrarModalDetalle && detalleSeleccionado != null)
+					{
+						<div class="modal fade show d-block"
+							 tabindex="-1"
+							 style="background-color: rgba(0,0,0,0.5); z-index: 1050; position: fixed; top: 0; left: 0; right: 0; bottom: 0;"
+							 role="dialog">
+							<div class="modal-dialog" role="document">
+								<div class="modal-content">
+									<div class="modal-header">
+										<h5 class="modal-title">Detalle de trabajo</h5>
+										<button type="button" class="btn-close" @onclick="CerrarModalDetalle"></button>
+									</div>
+									<div class="modal-body">
+										<dl class="row">
+											<dt class="col-sm-4">Fecha:</dt>
+											<dd class="col-sm-8">@detalleSeleccionado.Fecha.ToString("dd/MM/yyyy")</dd>
+
+											<dt class="col-sm-4">Descripción:</dt>
+											<dd class="col-sm-8">@detalleSeleccionado.Descripcion</dd>
+
+											<dt class="col-sm-4">Costo:</dt>
+											<dd class="col-sm-8">@detalleSeleccionado.Costo.ToString("C")</dd>
+
+											<dt class="col-sm-4">Responsable:</dt>
+											<dd class="col-sm-8">
+												@if (detalleSeleccionado.ACargoDePropietario)
+												{
+													<p>Propietario</p>
+												}
+												else
+												{
+													<p>Inquilino</p>
+												}
+											</dd>
+
+											<dt class="col-sm-4">Estado:</dt>
+											<dd class="col-sm-8">
+												@if (detalleSeleccionado.Disputada)
+												{
+													<span class="badge bg-danger">En disputa</span>
+												}
+												else
+												{
+													<span class="badge bg-success">Sin disputa</span>
+												}
+											</dd>
+										</dl>
+									</div>
+
+									@if (detalleSeleccionado?.Imagenes?.Any() == true)
+									{
+										<div class="row mb-4">
+											<div class="col-12">
+												<h6><b>Imágenes asociadas</b></h6>
+												<div class="d-flex flex-wrap gap-2">
+													@foreach (var imagen in detalleSeleccionado.Imagenes)
+													{
+														<div class="position-relative" style="width: 120px;">
+															<img src="@imagen.Url"
+																 alt="@imagen.Descripcion"
+																 class="img-thumbnail w-100 h-auto"
+																 style="height: 100px; object-fit: cover; cursor: pointer;"
+																 @onclick="@(() => AbrirModalImagen(imagen))" />
+														</div>
+													}
+												</div>
+											</div>
+										</div>
+									}
+									<div class="modal-footer">
+										<button class="btn btn-secondary" @onclick="CerrarModalDetalle">Cerrar</button>
+									</div>
+								</div>
 							</div>
 						</div>
 					}
@@ -299,6 +427,23 @@
 	private Dictionary<int, double> calificacionesEmpleados = new Dictionary<int, double>();
 	private string comentarioCancelacion = string.Empty;
 	private int? empleadoIdSeleccionado;
+	private Imagen? imagenSeleccionada;
+
+	private ReparacionDetalle? detalleSeleccionado;
+	private bool mostrarModalDetalle = false;
+
+	private void VerDetalle(ReparacionDetalle detalle)
+	{
+		detalleSeleccionado = detalle;
+		mostrarModalDetalle = true;
+	}
+
+	private void CerrarModalDetalle()
+	{
+		mostrarModalDetalle = false;
+		detalleSeleccionado = null;
+	}
+
 
 	async Task ShowAcceptDialog()
 	{
@@ -440,6 +585,16 @@
 			"Cancelado" => BadgeStyle.Dark,
 			_ => BadgeStyle.Info
 		};
+	}
+
+	private void AbrirModalImagen(Imagen img)
+	{
+		imagenSeleccionada = img;
+	}
+
+	private void CerrarModalImagen()
+	{
+		imagenSeleccionada = null;
 	}
 
 	private void VolverAListado()
