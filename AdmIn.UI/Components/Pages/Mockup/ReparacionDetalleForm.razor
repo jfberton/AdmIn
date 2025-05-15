@@ -52,6 +52,10 @@
         overflow: hidden;
         text-overflow: ellipsis;
     }
+
+    .modal-backdrop.show {
+        opacity: 0.5;
+    }
 </style>
 
 <EditForm Model="@detalle" OnValidSubmit="@GuardarDetalle">
@@ -91,8 +95,6 @@
                     ChooseText="Adjuntar imágenes"
                     Multiple="true"
                     Accept="image/*"
-                    MaxFileSize="5000000"
-                    TotalFilesSize="25000000"
                     Style="width:100%"
                     Change="@OnFileUpload" />
 
@@ -105,28 +107,25 @@
                             {
                                 <div class="position-relative" style="width: 120px;">
                                     <img src="@img.Url"
-                                    alt="@img.Descripcion"
-                                    class="img-thumbnail w-100 h-auto"
-                                    style="height: 100px; object-fit: cover;" />
+                                         alt="@img.Descripcion"
+                                         class="img-thumbnail w-100 h-auto"
+                                         style="height: 100px; object-fit: cover; cursor: pointer;"
+                                         @onclick="@(() => AbrirModal(img))" />
+
                                     <button type="button"
-                                    class="position-absolute top-0 start-100 translate-middle btn btn-danger btn-sm rounded-circle p-0"
-                                    style="width: 24px; height: 24px;"
-                                    @onclick="@(() => RemoveImage(img.Id))">
+                                            class="position-absolute top-0 start-100 translate-middle btn btn-danger btn-sm rounded-circle p-0"
+                                            style="width: 24px; height: 24px;"
+                                            @onclick:stopPropagation="true"
+                                            @onclick="@(() => RemoveImage(img.Id))">
                                         <i class="fas fa-times fs-10"></i>
                                     </button>
+
                                     <div class="text-truncate small mt-1" style="width: 100px;">@img.Descripcion</div>
                                 </div>
+
                             }
                         </div>
                     }
-                </div>
-            </div>
-
-            <div class="row mb-3">
-                <div class="col-12">
-                    <label class="form-label">Responsable *</label>
-                    <RadzenRadioButtonList Name="responsable" @bind-Value="@responsable"
-                    Data="@responsables" TextProperty="Text" ValueProperty="Value" />
                 </div>
             </div>
         </div>
@@ -141,6 +140,31 @@
     </div>
 </EditForm>
 
+@if (imagenSeleccionada != null)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);" role="dialog">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@imagenSeleccionada.Descripcion</h5>
+                    <button type="button" class="btn-close" @onclick="CerrarModal"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <img src="@imagenSeleccionada.Url" class="img-fluid" />
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-danger" @onclick="@(() => ConfirmarEliminar(imagenSeleccionada.Id))">
+                        <i class="fas fa-trash-alt"></i> Quitar imagen
+                    </button>
+                    <button type="button" class="btn btn-secondary" @onclick="CerrarModal">
+                        Cancelar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     [Parameter]
     public int ReparacionId { get; set; }
@@ -151,14 +175,10 @@
     private RadzenUpload uploadControl;
     private ReparacionDetalle detalle = new ReparacionDetalle();
     public List<Imagen> imagenesSeleccionadas = new List<Imagen>();
-    private string responsable = "Inquilino";
 
-    private List<ResponsableModel> responsables = new List<ResponsableModel>
-    {
-        new ResponsableModel { Value = "Inquilino", Text = "A cargo del Inquilino" },
-        new ResponsableModel { Value = "Propietario", Text = "A cargo del Propietario" }
-    };
+    private Imagen? imagenSeleccionada;
 
+   
 
     private async Task OnFileUpload(UploadChangeEventArgs args)
     {
@@ -204,8 +224,24 @@
             StateHasChanged();
 
             // Limpiar el control de upload
-            // await uploadControl.RemoveAll();
+			uploadControl.ClearFiles();
         }
+    }
+
+    private void AbrirModal(Imagen img)
+    {
+        imagenSeleccionada = img;
+    }
+
+    private void CerrarModal()
+    {
+        imagenSeleccionada = null;
+    }
+
+    private void ConfirmarEliminar(Guid imageId)
+    {
+        RemoveImage(imageId);
+        CerrarModal();
     }
 
     private void RemoveImage(Guid imageId)
@@ -242,8 +278,6 @@
             return;
         }
 
-        detalle.ACargoDeInquilino = responsable == "Inquilino";
-        detalle.ACargoDePropietario = responsable == "Propietario";
         detalle.Imagenes = imagenesSeleccionadas;
 
         var success = await ServicioReparaciones.AgregarDetalleReparacion(ReparacionId, detalle);
@@ -257,11 +291,5 @@
     private void Cancelar()
     {
         IrA($"/m/reparaciones/detalle/{ReparacionId}");
-    }
-
-    private class ResponsableModel
-    {
-        public string Value { get; set; }
-        public string Text { get; set; }
     }
 }

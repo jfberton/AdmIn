@@ -1,0 +1,235 @@
+﻿@using AdmIn.Business.Entidades
+
+<style>
+    .image-thumbnails {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .thumbnail-container {
+        text-align: center;
+        width: 120px;
+    }
+
+    .thumbnail-wrapper {
+        position: relative;
+    }
+
+    .img-thumbnail {
+        width: 100px;
+        height: 100px;
+        object-fit: cover;
+        cursor: pointer;
+    }
+
+    .remove-btn {
+        position: absolute;
+        top: 2px;
+        right: 2px;
+    }
+
+    .star-btn {
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        background: transparent;
+        border: none;
+        font-size: 1.2rem;
+        cursor: pointer;
+    }
+
+    .thumbnail-name {
+        font-size: 0.85rem;
+        word-break: break-word;
+    }
+
+    .modal-backdrop {
+        background-color: rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-image {
+        max-width: 100%;
+        max-height: 70vh;
+    }
+</style>
+
+<InputFile OnChange="OnFileUpload" multiple accept="image/*" />
+
+@if (imagenes.Any())
+{
+    <div class="image-thumbnails">
+        @foreach (var img in imagenes)
+        {
+            <div class="thumbnail-container">
+                <div class="thumbnail-wrapper">
+                    <img src="@img.Url" class="img-thumbnail" @onclick="@(() => AbrirModal(img))" />
+
+                    @if (ReconoceImagenPrincipal)
+                    {
+                        <button class="btn btn-link star-btn" @onclick="() => EstablecerComoPrincipal(img.Id)">
+                            @if (img.Id == ImagenPrincipalId)
+                            {
+                                <i class="fas fa-star text-warning"></i>
+                            }
+                            else
+                            {
+                                <i class="far fa-star text-secondary"></i>
+                            }
+                        </button>
+                    }
+
+                    <button class="remove-btn btn btn-danger btn-sm" @onclick="@(() => EliminarImagen(img.Id))">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="thumbnail-name">@img.Descripcion</div>
+            </div>
+        }
+    </div>
+}
+
+@if (imagenSeleccionada != null)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.6);">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@imagenSeleccionada.Descripcion</h5>
+                    <button type="button" class="btn-close" @onclick="CerrarModal"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <img src="@imagenSeleccionada.Url" class="modal-image" />
+                </div>
+                <div class="modal-footer">
+                    @if (ReconoceImagenPrincipal)
+                    {
+                        <button class="btn btn-warning" @onclick="() => EstablecerComoPrincipal(imagenSeleccionada.Id)">
+                            Establecer como principal
+                        </button>
+                    }
+
+                    <button class="btn btn-danger" @onclick="() => EliminarImagen(imagenSeleccionada.Id)">
+                        Quitar imagen
+                    </button>
+
+                    <button class="btn btn-secondary" @onclick="CerrarModal">Cancelar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public List<Imagen> Imagenes { get; set; } = new();
+
+    [Parameter]
+    public EventCallback<List<Imagen>> ImagenesChanged { get; set; }
+
+    [Parameter]
+    public bool ReconoceImagenPrincipal { get; set; }
+
+    [Parameter]
+    public Guid? ImagenPrincipalId { get; set; }
+
+    [Parameter]
+    public EventCallback<Guid?> ImagenPrincipalIdChanged { get; set; }
+
+    [Parameter]
+    public int MaximoImagenes { get; set; } = 5;
+
+    private List<Imagen> imagenes = new();
+    private Imagen? imagenSeleccionada;
+
+    protected override void OnParametersSet()
+    {
+        imagenes = Imagenes?.Select(img => new Imagen
+            {
+                Id = img.Id,
+                Descripcion = img.Descripcion,
+                Url = img.Url,
+                ContentType = img.ContentType,
+                Size = img.Size
+            }).ToList() ?? new List<Imagen>();
+
+        if (ReconoceImagenPrincipal && imagenes.Any() && ImagenPrincipalId == null)
+        {
+            ImagenPrincipalId = imagenes.First().Id;
+            ImagenPrincipalIdChanged.InvokeAsync(ImagenPrincipalId);
+        }
+    }
+
+    private async Task OnFileUpload(InputFileChangeEventArgs e)
+    {
+        if (e.FileCount + imagenes.Count > MaximoImagenes)
+            return;
+
+        foreach (var file in e.GetMultipleFiles(MaximoImagenes - imagenes.Count))
+        {
+            var img = await ConvertToImagen(file);
+            imagenes.Add(img);
+        }
+
+        if (ReconoceImagenPrincipal && ImagenPrincipalId == null && imagenes.Any())
+        {
+            ImagenPrincipalId = imagenes.First().Id;
+            await ImagenPrincipalIdChanged.InvokeAsync(ImagenPrincipalId);
+        }
+
+        await ImagenesChanged.InvokeAsync(imagenes);
+    }
+
+    private async Task<Imagen> ConvertToImagen(IBrowserFile file)
+    {
+        using var stream = file.OpenReadStream(5 * 1024 * 1024);
+        using var ms = new MemoryStream();
+        await stream.CopyToAsync(ms);
+        var base64 = Convert.ToBase64String(ms.ToArray());
+
+        return new Imagen
+            {
+                Id = Guid.NewGuid(),
+                Descripcion = file.Name,
+                Url = $"data:{file.ContentType};base64,{base64}",
+                ContentType = file.ContentType,
+                Size = file.Size
+            };
+    }
+
+    private async Task EliminarImagen(Guid id)
+    {
+        var img = imagenes.FirstOrDefault(x => x.Id == id);
+        if (img is not null)
+        {
+            imagenes.Remove(img);
+            await ImagenesChanged.InvokeAsync(imagenes);
+
+            if (ReconoceImagenPrincipal && ImagenPrincipalId == id)
+            {
+                ImagenPrincipalId = imagenes.FirstOrDefault()?.Id;
+                await ImagenPrincipalIdChanged.InvokeAsync(ImagenPrincipalId);
+            }
+
+            if (imagenSeleccionada?.Id == id)
+                imagenSeleccionada = null;
+        }
+    }
+
+    private async Task EstablecerComoPrincipal(Guid id)
+    {
+        ImagenPrincipalId = id;
+        await ImagenPrincipalIdChanged.InvokeAsync(id);
+    }
+
+    private void AbrirModal(Imagen img)
+    {
+        imagenSeleccionada = img;
+    }
+
+    private void CerrarModal()
+    {
+        imagenSeleccionada = null;
+    }
+}
+

@@ -707,6 +707,8 @@ namespace AdmIn.UI.Services
             detalle.Id = reparacion.Detalles.Any() ? reparacion.Detalles.Max(d => d.Id) + 1 : 1;
             detalle.Reparacion = reparacion;
             detalle.Fecha = DateTime.Now;
+            detalle.ACargoDeInquilino = reparacion.Inmueble.Inquilinos.Any(); //si tiene inquilinos activos
+            detalle.ACargoDePropietario = !detalle.ACargoDeInquilino;
             reparacion.Detalles.Add(detalle);
 
             // Actualizar estado si es la primera vez que se agrega un detalle
