@@ -91,6 +91,9 @@ namespace AdmIn.Business.Entidades
         // Estado actual del contrato
         public ContratoEstado Estado { get; set; }
 
+        // Observacion del contrato
+        public string Observacion { get; set; }
+
         // Lista de pagos programados (Agenda de pagos)
         public List<Pago> Pagos { get; set; } = new();
     }

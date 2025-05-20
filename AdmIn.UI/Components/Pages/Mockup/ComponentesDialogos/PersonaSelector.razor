@@ -1,0 +1,82 @@
+﻿@using AdmIn.Business.Entidades
+@using AdmIn.UI.Services
+@inject IServ_Mock PersonaService
+
+<div class="persona-selector">
+    <h3>@Titulo</h3>
+    <div class="mb-2">
+        <input @bind="filtroApellido" placeholder="Buscar por Apellido" class="form-control" />
+        <input @bind="filtroRfc" placeholder="Buscar por RFC" class="form-control" />
+        <button class="btn btn-primary" @onclick="BuscarPersonas">Buscar</button>
+        <button class="btn btn-success ms-2" @onclick="MostrarFormularioNuevaPersona">Agregar Persona</button>
+    </div>
+
+    <RadzenDataGrid Data="@personas" TItem="PersonaBase" RowSelect="@SeleccionarPersona" ShowPagingSummary="true" PageSize="10">
+        <Columns>
+            <RadzenDataGridColumn TItem="PersonaBase" Property="Nombre" Title="Nombre" />
+            <RadzenDataGridColumn TItem="PersonaBase" Property="ApellidoPaterno" Title="Apellido Paterno" />
+            <RadzenDataGridColumn TItem="PersonaBase" Property="ApellidoMaterno" Title="Apellido Materno" />
+            <RadzenDataGridColumn TItem="PersonaBase" Property="Rfc" Title="RFC" />
+            <RadzenDataGridColumn TItem="PersonaBase" Property="Email" Title="Email" />
+        </Columns>
+    </RadzenDataGrid>
+
+    @if (mostrarFormularioNuevaPersona)
+    {
+        <div class="mt-3 p-3 border rounded bg-light">
+            <h5>Nueva Persona</h5>
+            <EditForm Model="@nuevaPersona" OnValidSubmit="CrearPersona">
+                <InputText @bind-Value="nuevaPersona.Nombre" class="form-control mb-2" placeholder="Nombre" />
+                <InputText @bind-Value="nuevaPersona.ApellidoPaterno" class="form-control mb-2" placeholder="Apellido Paterno" />
+                <InputText @bind-Value="nuevaPersona.ApellidoMaterno" class="form-control mb-2" placeholder="Apellido Materno" />
+                <InputText @bind-Value="nuevaPersona.Rfc" class="form-control mb-2" placeholder="RFC" />
+                <InputText @bind-Value="nuevaPersona.Email" class="form-control mb-2" placeholder="Email" />
+                <button class="btn btn-primary" type="submit">Guardar</button>
+                <button class="btn btn-secondary ms-2" type="button" @onclick="()=>mostrarFormularioNuevaPersona=false">Cancelar</button>
+            </EditForm>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public EventCallback<PersonaBase> OnPersonaSelected { get; set; }
+    [Parameter] public string Titulo { get; set; } = "Buscar o crear persona";
+
+    private List<PersonaBase> personas = new();
+    private string filtroApellido = string.Empty;
+    private string filtroRfc = string.Empty;
+    private bool mostrarFormularioNuevaPersona = false;
+    private PersonaBase nuevaPersona = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await BuscarPersonas();
+    }
+
+    private async Task BuscarPersonas()
+    {
+        personas = await PersonaService.BuscarPersonasAsync(filtroApellido, filtroRfc);
+        mostrarFormularioNuevaPersona = false;
+        StateHasChanged();
+    }
+
+    private async Task SeleccionarPersona(PersonaBase persona)
+    {
+        if (OnPersonaSelected.HasDelegate)
+            await OnPersonaSelected.InvokeAsync(persona);
+    }
+
+    private void MostrarFormularioNuevaPersona()
+    {
+        nuevaPersona = new PersonaBase();
+        mostrarFormularioNuevaPersona = true;
+    }
+
+    private async Task CrearPersona()
+    {
+        var personaCreada = await PersonaService.CrearPersonaAsync(nuevaPersona);
+        mostrarFormularioNuevaPersona = false;
+        await BuscarPersonas();
+        await SeleccionarPersona(personaCreada);
+    }
+}
