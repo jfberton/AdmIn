@@ -1,0 +1,110 @@
+﻿@page "/inmueble/reservar/{inmuebleId:int}"
+
+@inherits BaseComponent
+
+@using AdmIn.Business.Entidades
+@using AdmIn.UI.Services
+@using AdmIn.UI.Components.Pages.Mockup.ComponentesDialogos
+@inject IServ_Mock MockData
+
+@if (inmueble == null)
+{
+    <RadzenAlert Text="Cargando inmueble..." Style="margin: 20px;" />
+}
+else
+{
+    <RadzenCard Style="margin-top: 30px;">
+        <Content>
+            <div class="row">
+                <div class="col-md-12">
+                    <h4>@inmueble.Descripcion</h4>
+                    <p><strong>Dirección:</strong> @inmueble.Direccion.ToString()</p>
+                    <p><strong>Valor:</strong> @inmueble.Valor.ToString("C")</p>
+                </div>
+
+            </div>
+
+            <div class="row">
+                <div class="col-md-12">
+                    <h5>Selecciona o crea la persona que reserva</h5>
+                    <PersonaSelector OnPersonaSelected="OnPersonaSeleccionada" Placeholder="Seleccionar persona para la reserva" />
+                </div>
+            </div>
+            @if (personaSeleccionada != null)
+            {
+                <div class="row mt-4">
+                    <div class="col-md-6">
+                        <RadzenNumeric @bind-Value="costoReserva" Placeholder="Costo de la reserva" Style="width:100%;" />
+                    </div>
+                    <div class="col-md-6">
+                        <RadzenDatePicker @bind-Value="fechaFinalizacion" Placeholder="Fecha de finalización" Style="width:100%;" />
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-md-12 d-flex justify-content-end">
+                        <RadzenButton Text="Confirmar Reserva" Icon="check" Style="margin-right: 10px;" Click="ConfirmarReserva" />
+                        <RadzenButton Text="Cancelar" Icon="close" ButtonStyle="ButtonStyle.Secondary" Click="@(() => personaSeleccionada = null)" />
+                    </div>
+                </div>
+            }
+            @if (reservaGenerada != null)
+            {
+                <div class="row mt-4">
+                    <div class="col-md-12">
+                        <RadzenAlert Text="Reserva generada correctamente. Puedes descargar el comprobante." Style="margin-bottom:10px;" />
+                        <RadzenButton Text="Descargar PDF de Reserva" Icon="picture_as_pdf" Click="DescargarPdfReserva" />
+                    </div>
+                </div>
+            }
+        </Content>
+    </RadzenCard>
+}
+
+@code {
+    [Parameter] public int inmuebleId { get; set; }
+    private Inmueble? inmueble;
+    private PersonaBase? personaSeleccionada;
+    private decimal costoReserva;
+    private DateTime fechaFinalizacion = DateTime.Today.AddDays(7);
+    private Reserva? reservaGenerada;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        base.EstablecerTituloPagina("Inmuebles", "Reservar");
+        inmueble = await MockData.ObtenerInmueblePorId(inmuebleId);
+    }
+
+    private void OnPersonaSeleccionada(PersonaBase persona)
+    {
+        personaSeleccionada = persona;
+    }
+
+    private async Task ConfirmarReserva()
+    {
+        if (inmueble == null || personaSeleccionada == null || costoReserva <= 0 || fechaFinalizacion <= DateTime.Today)
+        {
+            base.MostrarNotificacion(Radzen.NotificationSeverity.Warning, "Datos incompletos", "Completa todos los campos para confirmar la reserva.");
+            return;
+        }
+
+        var reserva = new Reserva
+            {
+                Persona = personaSeleccionada,
+                Inmueble = inmueble,
+                CostoReserva = costoReserva,
+                FechaFinalizacion = fechaFinalizacion
+            };
+
+        reservaGenerada = await MockData.GuardarReservaAsync(reserva);
+
+        base.MostrarNotificacion(Radzen.NotificationSeverity.Success, "Reserva confirmada", "La reserva se ha registrado correctamente.");
+    }
+
+    private void DescargarPdfReserva()
+    {
+        // Aquí deberías generar y descargar el PDF de la reserva.
+        // Puedes usar un servicio de PDF o simplemente mostrar un mensaje de ejemplo.
+        base.MostrarNotificacion(Radzen.NotificationSeverity.Info, "PDF", "Funcionalidad de descarga de PDF pendiente de implementación.");
+    }
+}

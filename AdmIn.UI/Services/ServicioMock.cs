@@ -47,6 +47,10 @@ namespace AdmIn.UI.Services
 
         Task<IEnumerable<Pago>> ObtenerPagos();
         Task<Pago?> ObtenerPagoPorId(int id);
+
+        Task<Reserva> GuardarReservaAsync(Reserva reserva);
+        Task<Reserva?> ObtenerReservaPorInmuebleIdAsync(int inmuebleId);
+
         #endregion
 
         #region Reparaciones
@@ -110,6 +114,7 @@ namespace AdmIn.UI.Services
         
         private readonly List<EmpleadoCalificacion> _calificaciones = new();
         private readonly List<Contrato> _contratos = new();
+        private readonly List<Reserva> _reservas = new();
         private readonly List<Inquilino> _inquilinos = new();
         private readonly List<Pago> _pagos = new();
         private readonly List<Reparacion> _reparaciones;
@@ -360,6 +365,11 @@ namespace AdmIn.UI.Services
                     ? _estadosInmueble.First(e => e.Estado == "Ocupado")
                     : _estadosInmueble.First(e => e.Estado == "Disponible");
 
+                if(vigente)
+                {
+                    inmueble.Inquilinos.Add(inquilino);
+                }
+
                 // Crear contrato
                 var contrato = new Contrato
                 {
@@ -397,6 +407,12 @@ namespace AdmIn.UI.Services
                     };
                     _pagos.Add(pago);
                     contrato.Pagos.Add(pago);
+                }
+
+                inmueble.Contratos.Add(contrato);
+                if(vigente)
+                {
+                    inmueble.Pagos.AddRange(contrato.Pagos);
                 }
             }
         }
@@ -626,6 +642,7 @@ namespace AdmIn.UI.Services
         public async Task<Inmueble> ObtenerInmueblePorId(int id)
         {
             var inmueble = _inmuebles.FirstOrDefault(i => i.Id == id);
+            inmueble.Reparaciones = _reparaciones.Where(r=>r.InmuebleId == id).ToList();
             return inmueble;
         }
 
@@ -978,6 +995,28 @@ namespace AdmIn.UI.Services
 
         public async Task<IEnumerable<Pago>> ObtenerPagos() => await Task.FromResult(_pagos);
         public async Task<Pago?> ObtenerPagoPorId(int id) => await Task.FromResult(_pagos.FirstOrDefault(p => p.Id == id));
+
+        public async Task<Reserva> GuardarReservaAsync(Reserva reserva)
+        {
+            reserva.Id = _reservas.Any() ? _reservas.Max(r => r.Id) + 1 : 1;
+            reserva.FechaCreacion = DateTime.Now;
+            _reservas.Add(reserva);
+
+            // Asociar la reserva al inmueble
+            var inmueble = _inmuebles.FirstOrDefault(i => i.Id == reserva.Inmueble.Id);
+            if (inmueble != null)
+            {
+                inmueble.Reserva = reserva;
+                inmueble.Estado = _estadosInmueble.First(e => e.Estado == "Reservado");
+            }
+
+            return await Task.FromResult(reserva);
+        }
+
+        public async Task<Reserva?> ObtenerReservaPorInmuebleIdAsync(int inmuebleId)
+        {
+            return await Task.FromResult(_reservas.FirstOrDefault(r => r.Inmueble.Id == inmuebleId));
+        }
 
         #endregion
     }

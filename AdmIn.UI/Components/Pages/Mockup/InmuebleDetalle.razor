@@ -24,6 +24,11 @@ else
             <RadzenButton Text="Eliminar" Icon="delete" ButtonStyle="ButtonStyle.Danger" Click="@(async () => await EliminarInmueble())" />
         </div>
 
+        @if (inmueble.Estado.Estado == "Disponible")
+        {
+            <RadzenButton Text="Reservar" Icon="event" Style="margin-right: 10px;" Click="@(() => IrAReservarInmueble(inmueble.Id))" />
+        }
+
         <!-- Información principal -->
         <RadzenCard>
             <Header>
@@ -182,6 +187,12 @@ else
             NavigationManager.NavigateTo("m/inmuebles/");
         }
     }
+
+    private void IrAReservarInmueble(int inmuebleId)
+    {
+        NavigationManager.NavigateTo($"/inmueble/reservar/{inmuebleId}");
+    }
+
 
     private void IrAAdministrarReparaciones(int inmuebleId)
     {

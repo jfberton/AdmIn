@@ -58,6 +58,7 @@ namespace AdmIn.Business.Entidades
         public List<Pago> Pagos { get; set; } = new();
         public List<Contrato> Contratos { get; set; } = new();
         public List<CaracteristicaInmueble> Caracteristicas { get; set; } = new();
+        public Reserva? Reserva { get; set; }
     }
 
     //Habitaciones, baños, pileta, garage, etc el valor es indica cantidad o estado

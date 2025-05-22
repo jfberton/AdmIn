@@ -103,4 +103,14 @@ namespace AdmIn.Business.Entidades
         public int Id { get; set; }
         public string Descripcion { get; set; } = string.Empty;
     }
+
+    public class Reserva
+    {
+        public int Id { get; set; }
+        public PersonaBase Persona { get; set; }
+        public Inmueble Inmueble { get; set; }
+        public decimal CostoReserva { get; set; }
+        public DateTime FechaCreacion { get; set; }
+        public DateTime FechaFinalizacion { get; set; }
+    }
 }
