@@ -78,23 +78,23 @@
 
 
                             // Detalles de la reserva
-                            doc.Add(new Paragraph($"Bueno por: {rec.CostoReserva:C}"));
-                            doc.Add(new Paragraph($"Fecha de Reserva: {rec.FechaCreacion.ToString("d", CultureInfo.CurrentCulture)}").SetTextAlignment(TextAlignment.LEFT));
+                            doc.Add(new Paragraph($"Bueno por: {rec.CostoReserva:C}").SetFontSize(9));
+                            doc.Add(new Paragraph($"Fecha de Reserva: {rec.FechaCreacion.ToString("d", CultureInfo.CurrentCulture)}").SetTextAlignment(TextAlignment.RIGHT).SetFontSize(9));
 
                             #region convierto el valor en letras
                             Numalet nl = new Numalet();
-                            nl.SeparadorDecimalSalida = "pesos ";
+                            nl.SeparadorDecimalSalida = "pesos con ";
                             nl.LetraCapital = true;
                             nl.MascaraSalidaDecimal = "00/100 M.N.";
 
-                            string montoDocumentoString = "Son " + nl.ToCustomCardinal(rec.CostoReserva);
+                            string montoDocumentoString = "Son " + nl.ToCustomCardinal(rec.CostoReserva).Replace("/100", "/100 M.N.");
                             #endregion
 
-                            doc.Add(new Paragraph($"Cantidad con letra: {montoDocumentoString}")).SetTextAlignment(TextAlignment.RIGHT);
+                            doc.Add(new Paragraph($"Cantidad con letra: {montoDocumentoString}").SetFontSize(9));
 
                             doc.Add(new Paragraph($"Recibimos de {rec.Persona.Nombre} {rec.Persona.ApellidoPaterno} {rec.Persona.ApellidoMaterno}, " +
                                 $"la cantidad arriba mencionada por concepto de pago de investigación y apartado hasta el día {rec.FechaFinalizacion.ToLongDateString()}" +
-                                $" sobre una opción de casa en arrendamiento ubicada en {rec.Inmueble.Direccion.ToString()}. ").SetTextAlignment(TextAlignment.JUSTIFIED));
+                                $" sobre una opción de casa en arrendamiento ubicada en {rec.Inmueble.Direccion.ToString()}. ").SetTextAlignment(TextAlignment.JUSTIFIED).SetFontSize(9));
 
                             #region Condiciones adicionales
 

@@ -32,7 +32,9 @@
                 <RadzenColumn Size="12">
                     <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center">
                         <RadzenSidebarToggle Click="@(() => sidebar1Expanded = !sidebar1Expanded)" />
-                        <RadzenLabel Text="AdmIn" />
+                        <RadzenImage Style="height:40px; margin-left:10px;"
+                                     Path="@GetLogoPath()" />
+                        @* <RadzenLabel Text="AdmIn" /> *@
                     </RadzenStack>
                     <RadzenText TextStyle="TextStyle.Body1" Style="display:flex; justify-content:center; align-items:center; width:100%;" class="rz-color-white">
                         <strong>@PageTitleService.Titulo</strong>
@@ -52,7 +54,9 @@
                 <RadzenColumn Size="11">
                     <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center">
                         <RadzenSidebarToggle Click="@(() => sidebar1Expanded = !sidebar1Expanded)" />
-                        <RadzenLabel Text="AdmIn" />
+                        <RadzenImage Style="height:40px; margin-left:10px;"
+                                     Path="@GetLogoPath()" />
+                       @*  <RadzenLabel Text="AdmIn" /> *@
                     </RadzenStack>
                     <RadzenText TextStyle="TextStyle.Body1" Style="display:flex; justify-content:center; align-items:center; width:100%;" class="rz-color-white">
                         <strong>@PageTitleService.Titulo</strong>
@@ -169,6 +173,11 @@
         {
             sidebar1Expanded = false;
         }
+    }
+
+    private string GetLogoPath()
+    {
+        return sidebar1Expanded ? "img/AdmIn.png" : "img/Admin.png";
     }
 
     private async Task CambiarPassword()
