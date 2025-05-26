@@ -14,22 +14,40 @@
         <div class="persona-dropdown">
             @if (!mostrarFormularioNuevaPersona)
             {
-                <div class="mb-2">
-                    <input @bind="filtroApellido" placeholder="Buscar por Apellido" class="form-control" />
-                    <input @bind="filtroRfc" placeholder="Buscar por RFC" class="form-control" />
-                    <button class="btn btn-primary" @onclick="BuscarPersonas">Buscar</button>
-                    <button class="btn btn-success ms-2" @onclick="MostrarFormularioNuevaPersona">Agregar Persona</button>
-                    <button class="btn btn-secondary ms-2" @onclick="CerrarDropdown">Cerrar</button>
+                <div class="row mb-3">
+                    <div class="col-md-12">
+                        <RadzenTextBox @bind-Value="filtroGlobal" Placeholder="Buscar en todas las columnas..." Style="width:100%" />
+                    </div>
                 </div>
-                <RadzenDataGrid Data="@personas" TItem="PersonaBase" RowSelect="@SeleccionarPersona" ShowPagingSummary="true" PageSize="10">
-                    <Columns>
-                        <RadzenDataGridColumn TItem="PersonaBase" Property="Nombre" Title="Nombre" />
-                        <RadzenDataGridColumn TItem="PersonaBase" Property="ApellidoPaterno" Title="Apellido Paterno" />
-                        <RadzenDataGridColumn TItem="PersonaBase" Property="ApellidoMaterno" Title="Apellido Materno" />
-                        <RadzenDataGridColumn TItem="PersonaBase" Property="Rfc" Title="RFC" />
-                        <RadzenDataGridColumn TItem="PersonaBase" Property="Email" Title="Email" />
-                    </Columns>
-                </RadzenDataGrid>
+                <div class="row mb-3">
+                    <div class="col-md-12 d-flex justify-content-between">
+                        <button class="btn btn-success" @onclick="MostrarFormularioNuevaPersona">
+                            <i class="fas fa-plus"></i> Agregar Persona
+                        </button>
+                        <button class="btn btn-secondary" @onclick="CerrarDropdown">
+                            <i class="fas fa-times"></i> Cerrar
+                        </button>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-12">
+                        <RadzenDataGrid Data="@personas" TItem="PersonaBase"
+                                        AllowFiltering="true" AllowColumnResize="true"
+                                        FilterMode="FilterMode.Simple" AllowSorting="true"
+                                        PageSize="5" AllowPaging="true"
+                                        PagerHorizontalAlign="HorizontalAlign.Left" ShowPagingSummary="true"
+                                        LogicalFilterOperator="LogicalFilterOperator.Or"
+                                        RowSelect="@SeleccionarPersona" @bind-Value="@personasSeleccionadas">
+                            <Columns>
+                                <RadzenDataGridColumn TItem="PersonaBase" Property="Nombre" Title="Nombre" Width="160px" />
+                                <RadzenDataGridColumn TItem="PersonaBase" Property="ApellidoPaterno" Title="Apellido Paterno" Width="160px" />
+                                <RadzenDataGridColumn TItem="PersonaBase" Property="ApellidoMaterno" Title="Apellido Materno" Width="160px" />
+                                <RadzenDataGridColumn TItem="PersonaBase" Property="Rfc" Title="RFC" Width="140px" />
+                                <RadzenDataGridColumn TItem="PersonaBase" Property="Email" Title="Email" Width="200px" />
+                            </Columns>
+                        </RadzenDataGrid>
+                    </div>
+                </div>
             }
             else
             {
@@ -45,8 +63,14 @@
                         <InputText @bind-Value="nuevaPersona.ApellidoMaterno" class="form-control mb-2" placeholder="Apellido Materno" required />
                         <InputText @bind-Value="nuevaPersona.Rfc" class="form-control mb-2" placeholder="RFC" required />
                         <InputText @bind-Value="nuevaPersona.Email" class="form-control mb-2" placeholder="Email" required />
-                        <button class="btn btn-primary" type="submit">Crear</button>
-                        <button class="btn btn-secondary ms-2" type="button" @onclick="CancelarAgregarPersona">Cancelar</button>
+                        <div class="d-flex justify-content-end">
+                            <button class="btn btn-primary" type="submit">
+                                <i class="fas fa-save"></i> Crear
+                            </button>
+                            <button class="btn btn-secondary ms-2" type="button" @onclick="CancelarAgregarPersona">
+                                <i class="fas fa-ban"></i> Cancelar
+                            </button>
+                        </div>
                     </EditForm>
                 </div>
             }
@@ -77,23 +101,34 @@
     [Parameter] public string Titulo { get; set; } = "Buscar o crear persona";
 
     private List<PersonaBase> personas = new();
-    private string filtroApellido = string.Empty;
-    private string filtroRfc = string.Empty;
+    private IList<PersonaBase> personasSeleccionadas = new List<PersonaBase>();
+    private string filtroGlobal = string.Empty;
     private bool mostrarFormularioNuevaPersona = false;
     private PersonaBase nuevaPersona = new();
     private bool mostrarDropdown = false;
     private PersonaBase? personaSeleccionada;
     private string? mensajeError;
+
     private string displayValue => personaSeleccionada != null
         ? $"({personaSeleccionada.Rfc}) {personaSeleccionada.Nombre} {personaSeleccionada.ApellidoPaterno} {personaSeleccionada.ApellidoMaterno}"
         : Placeholder;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarPersonas();
+    }
+
+    private async Task CargarPersonas()
+    {
+        personas = await PersonaService.BuscarPersonasAsync("", "");
+    }
 
     private void ToggleDropdown()
     {
         mostrarDropdown = !mostrarDropdown;
         if (mostrarDropdown)
         {
-            _ = BuscarPersonas();
+            filtroGlobal = string.Empty;
         }
     }
 
@@ -101,13 +136,6 @@
     {
         mostrarDropdown = false;
         mostrarFormularioNuevaPersona = false;
-    }
-
-    private async Task BuscarPersonas()
-    {
-        personas = await PersonaService.BuscarPersonasAsync(filtroApellido, filtroRfc);
-        mostrarFormularioNuevaPersona = false;
-        StateHasChanged();
     }
 
     private async Task SeleccionarPersona(PersonaBase persona)
@@ -132,7 +160,6 @@
 
     private async Task CrearPersona()
     {
-        // Validación simple (todos los campos requeridos)
         if (string.IsNullOrWhiteSpace(nuevaPersona.Nombre) ||
             string.IsNullOrWhiteSpace(nuevaPersona.ApellidoPaterno) ||
             string.IsNullOrWhiteSpace(nuevaPersona.ApellidoMaterno) ||
@@ -146,11 +173,16 @@
 
         mensajeError = null;
         var personaCreada = await PersonaService.CrearPersonaAsync(nuevaPersona);
-        mostrarFormularioNuevaPersona = false;
+
+        // Actualizar la lista local
+        personas.Add(personaCreada);
+
         personaSeleccionada = personaCreada;
+        personasSeleccionadas = new List<PersonaBase> { personaCreada };
+        mostrarFormularioNuevaPersona = false;
         mostrarDropdown = false;
+
         if (OnPersonaSelected.HasDelegate)
             await OnPersonaSelected.InvokeAsync(personaCreada);
-        StateHasChanged();
     }
 }
