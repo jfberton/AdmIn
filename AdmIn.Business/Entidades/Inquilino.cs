@@ -12,5 +12,4 @@ namespace AdmIn.Business.Entidades
         public Inmueble Inmueble { get; set; } // Relación con Inmueble
     }
 
-
 }

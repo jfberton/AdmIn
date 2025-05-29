@@ -14,6 +14,7 @@
             <RadzenButton Text="Agregar Inmueble" Icon="add" Click="@(() => IrA("/agregar-inmueble"))" />
             <RadzenBadge Text="Todos" BadgeStyle="BadgeStyle.Primary" Style="cursor: pointer;" @onclick="() => FiltrarInmuebles(null)" />
             <RadzenBadge Text="Disponible" BadgeStyle="BadgeStyle.Success" Style="cursor: pointer;" @onclick="@(() => FiltrarInmuebles("Disponible"))" />
+			<RadzenBadge Text="Reservado" BadgeStyle="BadgeStyle.Info" Style="cursor: pointer;" @onclick="@(() => FiltrarInmuebles("Reservado"))" />
             <RadzenBadge Text="Ocupado" BadgeStyle="BadgeStyle.Dark" Style="cursor: pointer;" @onclick="@(() => FiltrarInmuebles("Ocupado"))" />
             <RadzenBadge Text="En reparación" BadgeStyle="BadgeStyle.Warning" Style="cursor: pointer;" @onclick="@(() => FiltrarInmuebles("En reparación"))" />
         </RadzenStack>

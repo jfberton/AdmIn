@@ -51,6 +51,10 @@ namespace AdmIn.UI.Services
         Task<Reserva> GuardarReservaAsync(Reserva reserva);
         Task<Reserva?> ObtenerReservaPorInmuebleIdAsync(int inmuebleId);
 
+        Task<Contrato> CrearContrato(Inmueble inmueble, decimal montoMensual,string observaciones, Administrador administrador, PersonaBase inquilino, int cantidadMeses, int mesInicio, int diaVencimiento);
+
+        Task GuardarNuevoContrato(Contrato contrato);
+
         #endregion
 
         #region Reparaciones
@@ -111,7 +115,7 @@ namespace AdmIn.UI.Services
         private readonly List<PersonaBase> _personas;
         private readonly List<Inmueble> _inmuebles;
         private readonly List<Empleado> _empleados;
-        
+
         private readonly List<EmpleadoCalificacion> _calificaciones = new();
         private readonly List<Contrato> _contratos = new();
         private readonly List<Reserva> _reservas = new();
@@ -142,6 +146,7 @@ namespace AdmIn.UI.Services
         #region Generacion de datos de prueba
 
         #region Listas de estados y categorias
+
         private List<EstadoInmueble> GenerarEstadosInmueble() => new()
             {
                 new() { Id = 1, Estado = "Disponible" },
@@ -365,7 +370,7 @@ namespace AdmIn.UI.Services
                     ? _estadosInmueble.First(e => e.Estado == "Ocupado")
                     : _estadosInmueble.First(e => e.Estado == "Disponible");
 
-                if(vigente)
+                if (vigente)
                 {
                     inmueble.Inquilinos.Add(inquilino);
                 }
@@ -410,7 +415,7 @@ namespace AdmIn.UI.Services
                 }
 
                 inmueble.Contratos.Add(contrato);
-                if(vigente)
+                if (vigente)
                 {
                     inmueble.Pagos.AddRange(contrato.Pagos);
                 }
@@ -642,7 +647,7 @@ namespace AdmIn.UI.Services
         public async Task<Inmueble> ObtenerInmueblePorId(int id)
         {
             var inmueble = _inmuebles.FirstOrDefault(i => i.Id == id);
-            inmueble.Reparaciones = _reparaciones.Where(r=>r.InmuebleId == id).ToList();
+            inmueble.Reparaciones = _reparaciones.Where(r => r.InmuebleId == id).ToList();
             return inmueble;
         }
 
@@ -1000,6 +1005,7 @@ namespace AdmIn.UI.Services
         {
             reserva.Id = _reservas.Any() ? _reservas.Max(r => r.Id) + 1 : 1;
             reserva.FechaCreacion = DateTime.Now;
+            reserva.Administrador = new Administrador { Nombre = "Admin Ejemplo" }; // Asignar un administrador ficticio
             _reservas.Add(reserva);
 
             // Asociar la reserva al inmueble
@@ -1016,6 +1022,94 @@ namespace AdmIn.UI.Services
         public async Task<Reserva?> ObtenerReservaPorInmuebleIdAsync(int inmuebleId)
         {
             return await Task.FromResult(_reservas.FirstOrDefault(r => r.Inmueble.Id == inmuebleId));
+        }
+
+        public async Task<Contrato> CrearContrato(Inmueble inmueble, decimal montoMensual, string observaciones, Administrador administrador, PersonaBase persona, int cantidadMeses, int mesInicio, int diaVencimiento)
+        {
+            // Creamos el contrato
+            var anioActual = DateTime.Today.Year;
+            var fechaInicio = new DateTime(anioActual, mesInicio, 1);
+            var fechaFin = fechaInicio.AddMonths(cantidadMeses).AddDays(-1);
+
+            var contrato = new Contrato
+            {
+                Inmueble = inmueble,
+                MontoMensual = montoMensual,
+                Observacion = observaciones,
+                FechaInicio = fechaInicio,
+                FechaFin = fechaFin,
+                Administrador = new Administrador { Nombre = "Admin Ejemplo" }
+            };
+
+            // Crear Inquilino a partir de Persona
+            var inquilino = new Inquilino
+            {
+                Id = _inquilinos.Count + 1,
+                PersonaId = persona.PersonaId,
+                Nombre = persona.Nombre,
+                ApellidoPaterno = persona.ApellidoPaterno,
+                ApellidoMaterno = persona.ApellidoMaterno,
+                Rfc = persona.Rfc,
+                Email = persona.Email,
+                Nacionalidad = persona.Nacionalidad,
+                EsPersonaFisica = persona.EsPersonaFisica,
+                EsTitular = persona.EsTitular,
+                Direcciones = persona.Direcciones,
+                Telefonos = persona.Telefonos,
+                Inmueble = contrato.Inmueble
+            };
+
+            
+            contrato.Inquilino = inquilino;
+
+            // Estado de contrato "Vigente"
+            var estadoContrato = _contratoEstados.FirstOrDefault(e => e.Descripcion == "Vigente")
+                                 ?? new ContratoEstado { Id = 1, Descripcion = "Vigente" };
+            contrato.Estado = estadoContrato;
+
+            // Generar pagos pendientes
+            var agenda = new List<Pago>();
+
+            var fechaBase = new DateTime(DateTime.Today.Year, mesInicio, 1);
+
+            for (int i = 0; i < cantidadMeses; i++)
+            {
+                var mes = fechaBase.AddMonths(i);
+                var dia = Math.Min(diaVencimiento, DateTime.DaysInMonth(mes.Year, mes.Month)); // evita días inválidos (ej: 31 de febrero)
+                var fechaVencimiento = new DateTime(mes.Year, mes.Month, dia);
+
+                agenda.Add(new Pago
+                {
+                    Id = _pagos.Count + 1,
+                    Contrato = contrato,
+                    FechaVencimiento = fechaVencimiento,
+                    Estado = _pagoEstados.First(e => e.Estado == "Pendiente"),
+                    Descripcion = $"Cuota mensual {i + 1} de {cantidadMeses}",
+                    DetallesPago = new List<DetallePago>
+                    {
+                        new DetallePago { Descripcion = "Cuota mensual", Monto = contrato.MontoMensual }
+                    }
+                });
+            }
+
+            contrato.Pagos = agenda;
+            contrato.Inquilino = inquilino;
+
+            return await Task.FromResult(contrato);
+        }
+
+        public async Task GuardarNuevoContrato(Contrato contrato)
+        {
+
+            _inquilinos.Add(contrato.Inquilino);
+            
+            Inmueble inmueble = _inmuebles.FirstOrDefault(i => i.Id == contrato.Inmueble.Id);
+            inmueble.Estado = _estadosInmueble.First(e => e.Estado == "Ocupado");
+            inmueble.Inquilinos.Add(contrato.Inquilino);
+            inmueble.Contratos.Add(contrato);
+
+            contrato.Id = _contratos.Count + 1;
+            _contratos.Add(contrato);
         }
 
         #endregion

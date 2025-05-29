@@ -1,0 +1,251 @@
+﻿@page "/inmueble/alquilar/{inmuebleId:int}"
+
+@inherits BaseComponent
+
+@using AdmIn.Business.Entidades
+@using AdmIn.UI.Services
+@using AdmIn.UI.Components.Pages.Mockup.ComponentesDialogos
+@using System.Globalization
+@inject IServ_Mock MockData
+@inject IJSRuntime JS
+@inject IWebHostEnvironment Env
+
+@if (inmueble == null)
+{
+	<RadzenAlert Text="Cargando inmueble..." Style="margin: 20px;" />
+}
+else
+{
+	<RadzenCard>
+		<Header>
+			<h3>@inmueble.Descripcion</h3>
+		</Header>
+		<Content>
+			<RadzenRow>
+				<RadzenColumn Size="12">
+					<p><strong>Dirección:</strong> @inmueble.Direccion.ToString()</p>
+					<p><strong>Valor:</strong> @inmueble.Valor.ToString("C") </p>
+					<p><strong>Superficie:</strong> @inmueble.Superficie m²</p>
+					<p><strong>Construido:</strong> @inmueble.Construido m²</p>
+				</RadzenColumn>
+			</RadzenRow>
+		</Content>
+	</RadzenCard>
+
+	@if (contratoGenerado == null)
+	{
+		// Mostrar campos de carga del contrato
+		<RadzenCard Style="margin-top: 20px;">
+			<Header>
+				<h4>Generar Contrato de Alquiler</h4>
+			</Header>
+			<Content>
+				<RadzenRow>
+					<RadzenColumn Size="12">
+						<label>Persona</label>
+						<RadzenFormField Variant="Variant.Text" Text="" Style="width:100%">
+							@if (inmueble.Estado.Estado == "Reservado" && inmueble.Reserva != null)
+							{
+								<PersonaSelector OnPersonaSelected="OnPersonaSeleccionada"
+												 PersonaSeleccionada="inmueble.Reserva.Persona"
+												 Placeholder="Seleccionar persona para el alquiler" />
+							}
+							else
+							{
+								<PersonaSelector OnPersonaSelected="OnPersonaSeleccionada"
+												 Placeholder="Seleccionar persona para el alquiler" />
+							}
+						</RadzenFormField>
+					</RadzenColumn>
+				</RadzenRow>
+
+				@if (personaSeleccionada != null)
+				{
+					<RadzenRow>
+						<RadzenColumn Size="12">
+							<label>Cantidad de meses del contrato</label>
+							<RadzenFormField Variant="Variant.Text" Text="" Style="width:100%">
+								<RadzenNumeric @bind-Value="cantidadMeses" Style="width: 100%;" />
+							</RadzenFormField>
+						</RadzenColumn>
+					</RadzenRow>
+
+					<RadzenRow>
+						<RadzenColumn Size="12">
+							<label>Mes de inicio del contrato</label>
+							<RadzenFormField Variant="Variant.Text" Text="" Style="width:100%">
+								<RadzenDropDown @bind-Value="mesInicioSeleccionado"
+												Data="@mesesDelAnio"
+												TextProperty="Nombre"
+												ValueProperty="Numero"
+												Style="width: 100%;"
+												Placeholder="Mes de inicio" />
+							</RadzenFormField>
+						</RadzenColumn>
+					</RadzenRow>
+
+					<RadzenRow>
+						<RadzenColumn Size="12">
+							<label>Día de vencimiento mensual</label>
+							<RadzenFormField Variant="Variant.Text" Text="" Style="width:100%">
+								<RadzenDropDown @bind-Value="diaVencimientoSeleccionado"
+												Data="@diasDelMes"
+												Style="width: 100%;"
+												Placeholder="Día de vencimiento" />
+							</RadzenFormField>
+						</RadzenColumn>
+					</RadzenRow>
+
+					<RadzenRow>
+						<RadzenColumn Size="12">
+							<label>Monto mensual del alquiler</label>
+							<RadzenFormField Variant="Variant.Text" Text="" Style="width:100%">
+								<RadzenNumeric @bind-Value="montoMensual" Style="width: 100%;" />
+							</RadzenFormField>
+						</RadzenColumn>
+					</RadzenRow>
+
+					<RadzenRow>
+						<RadzenColumn Size="12">
+							<label>Observaciones del contrato</label>
+							<RadzenFormField Variant="Variant.Text" Text="" Style="width:100%">
+								<RadzenTextBox @bind-Value="observaciones" Style="width: 100%;" />
+							</RadzenFormField>
+						</RadzenColumn>
+					</RadzenRow>
+
+					<RadzenRow>
+						<RadzenColumn Size="12" Class="d-flex justify-content-end">
+							<RadzenButton Text="Confirmar Alquiler" Icon="check" Click="CrearAlquiler" Style="margin-top: 15px;" />
+						</RadzenColumn>
+					</RadzenRow>
+				}
+
+			</Content>
+		</RadzenCard>
+	}
+	else
+	{
+		// Mostrar resumen del contrato y agenda de pagos
+		<RadzenCard Style="margin-top: 30px;">
+			<Header>
+				<h4>Contrato generado</h4>
+			</Header>
+			<Content>
+				<p><strong>Inquilino:</strong> (@contratoGenerado.Inquilino.Rfc) - @contratoGenerado.Inquilino.Nombre, @contratoGenerado.Inquilino.ApellidoPaterno @contratoGenerado.Inquilino.ApellidoMaterno</p>
+				<p><strong>Monto mensual:</strong> @contratoGenerado.MontoMensual.ToString("C")</p>
+				<p><strong>Observaciones:</strong> @contratoGenerado.Observacion</p>
+				<p><strong>Fecha inicio:</strong> @contratoGenerado.FechaInicio.ToString("dd/MM/yyyy")</p>
+				<p><strong>Fecha finalización:</strong> @contratoGenerado.FechaFin.ToString("dd/MM/yyyy")</p>
+			</Content>
+		</RadzenCard>
+
+		<RadzenCard Style="margin-top: 20px;">
+			<Header>
+				<h5>Agenda de Pagos</h5>
+			</Header>
+			<Content>
+				<RadzenDataGrid Data="@contratoGenerado.Pagos" TItem="Pago">
+					<Columns>
+						<RadzenDataGridColumn TItem="Pago" Property="Descripcion" Title="Descripcion" />
+						<RadzenDataGridColumn TItem="Pago" Property="FechaVencimiento" Title="Vencimiento" FormatString="{0:dd/MM/yyyy}" />
+						<RadzenDataGridColumn TItem="Pago" Property="FechaPago" Title="Pago" FormatString="{0:dd/MM/yyyy}" />
+						<RadzenDataGridColumn TItem="Pago" Property="Monto" Title="Monto" FormatString="{0:C}" />
+						<RadzenDataGridColumn TItem="Pago" Property="Estado.Estado" Title="Estado" />
+					</Columns>
+				</RadzenDataGrid>
+			</Content>
+		</RadzenCard>
+		<RadzenRow>
+			<RadzenColumn Size="12" Class="d-flex justify-content-end">
+				<RadzenButton Text="Confirmar Alquiler" Icon="check" Click="ConfirmarAlquiler" Style="margin-top: 15px;" />
+			</RadzenColumn>
+		</RadzenRow>
+	}
+
+
+
+}
+
+<script>
+	function abrirPdfDesdeBase64(base64) {
+	const byteCharacters = atob(base64);
+	const byteNumbers = new Array(byteCharacters.length);
+	for (let i = 0; i < byteCharacters.length; i++) {
+	byteNumbers[i] = byteCharacters.charCodeAt(i);
+	}
+	const byteArray = new Uint8Array(byteNumbers);
+	const blob = new Blob([byteArray], { type: 'application/pdf' });
+	const url = URL.createObjectURL(blob);
+	window.open(url, '_blank');
+	}
+</script>
+
+
+@code {
+	[Parameter] public int inmuebleId { get; set; }
+	private Inmueble? inmueble;
+	private PersonaBase? personaSeleccionada;
+	private int cantidadMeses = 12;
+	private decimal montoMensual;
+	private string observaciones = "";
+	private int mesInicioSeleccionado = DateTime.Today.Month;
+	private Contrato? contratoGenerado;
+
+	private List<MesItem> mesesDelAnio = Enumerable.Range(1, 12)
+		.Select(i => new MesItem
+			{
+				Numero = i,
+				Nombre = CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(i)
+			}).ToList();
+
+	public class MesItem
+	{
+		public int Numero { get; set; }
+		public string Nombre { get; set; }
+	}
+
+	private int diaVencimientoSeleccionado = 1;
+
+	private List<int> diasDelMes = Enumerable.Range(1, 31).ToList();
+
+	protected override async Task OnInitializedAsync()
+	{
+		await base.OnInitializedAsync();
+		base.EstablecerTituloPagina("Inmuebles", "Alquilar");
+		inmueble = await MockData.ObtenerInmueblePorId(inmuebleId);
+
+		if (inmueble?.Reserva?.Persona != null)
+		{
+			personaSeleccionada = inmueble.Reserva.Persona;
+		}
+	}
+
+	private void OnPersonaSeleccionada(PersonaBase persona)
+	{
+		personaSeleccionada = persona;
+	}
+
+	private async Task CrearAlquiler()
+	{
+		if (inmueble == null || personaSeleccionada == null || montoMensual <= 0 || cantidadMeses <= 0)
+		{
+			base.MostrarNotificacion(Radzen.NotificationSeverity.Warning, "Datos incompletos", "Completá todos los campos del alquiler.");
+			return;
+		}
+
+		contratoGenerado = await MockData.CrearContrato(inmueble, montoMensual, observaciones, new Administrador { Nombre = "Admin de ejemplo" }, personaSeleccionada, cantidadMeses, mesInicioSeleccionado, diaVencimientoSeleccionado);
+
+		// base.MostrarNotificacion(Radzen.NotificationSeverity.Success, "Contrato creado", "El contrato de alquiler fue generado exitosamente.");
+	}
+
+	private async Task ConfirmarAlquiler()
+	{
+
+		await MockData.GuardarNuevoContrato(contratoGenerado);
+
+		base.MostrarNotificacion(Radzen.NotificationSeverity.Success, "Contrato creado", "El contrato de alquiler fue generado exitosamente.");
+	}
+
+
+}

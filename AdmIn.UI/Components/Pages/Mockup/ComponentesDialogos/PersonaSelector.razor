@@ -99,6 +99,20 @@
     [Parameter] public EventCallback<PersonaBase> OnPersonaSelected { get; set; }
     [Parameter] public string Placeholder { get; set; } = "Seleccionar persona";
     [Parameter] public string Titulo { get; set; } = "Buscar o crear persona";
+    [Parameter]
+    public PersonaBase? PersonaSeleccionada
+    {
+        get => personaSeleccionada;
+        set
+        {
+            if (personaSeleccionada != value)
+            {
+                personaSeleccionada = value;
+                StateHasChanged();
+            }
+        }
+    }
+
 
     private List<PersonaBase> personas = new();
     private IList<PersonaBase> personasSeleccionadas = new List<PersonaBase>();
