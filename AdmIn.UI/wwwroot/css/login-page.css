@@ -1,52 +1,82 @@
+/* Custom Theme Colors */
+:root { /* Define variables at a high scope, accessible throughout this file */
+    --admin-primary-blue: #4A90E2;
+    --admin-primary-blue-dark: #357ABD;
+    --admin-primary-blue-rgb: 74, 144, 226;
+}
+
+/* General Page Styling - Applied to .page div in LoginLayout.razor */
+.page {
+    min-height: 100vh;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 1rem;
+    background-color: #E9F5FE; /* Base soft blue color */
+    background-image:
+        /* Layer 2: Abstract Lines */
+        linear-gradient(to bottom right, transparent 49.5%, rgba(115, 185, 236, 0.1) 50%, transparent 50.5%),
+        linear-gradient(to top right, transparent 49.5%, rgba(115, 185, 236, 0.05) 50%, transparent 50.5%),
+        /* Layer 1: Ambiance Radials */
+        radial-gradient(circle at 5% 5%, rgba(169, 214, 245, 0.3) 0%, transparent 30%),
+        radial-gradient(circle at 95% 95%, rgba(220, 238, 251, 0.3) 0%, transparent 35%);
+    background-size:
+        100px 100px, /* For diagonal lines */
+        150px 150px, /* For other diagonal lines */
+        800px 800px, /* For radial ambiance */
+        1000px 1000px; /* For other radial ambiance */
+    background-position:
+        0 0, /* Lines */
+        0 0, /* Other Lines */
+        center center, /* Radial */
+        center center; /* Other Radial */
+    background-repeat:
+        repeat, /* Lines */
+        repeat, /* Other Lines */
+        no-repeat, /* Radial */
+        no-repeat; /* Other Radial */
+    overflow: hidden;
+    position: relative;
+    box-sizing: border-box; /* Ensure padding doesn't add to width/height */
+}
+
 .login-container-row-mobile {
     width: 100%;
-    max-width: 800px;
-    overflow: hidden;
-    /* Added for flex behavior for columns */
+    max-width: 500px; /* Max width of the content area on mobile */
     display: flex;
     flex-direction: column;
-}
-
-.login-image-column-mobile {
-    /* height: 50%; Default, will be overridden by media query */
-    /* Ensure it doesn't shrink if there's little content, but can also grow if needed */
-    flex-shrink: 0;
-}
-
-.login-image-card-mobile {
-    height: 100%;
-    background: linear-gradient(to right, var(--rz-primary-light), #f0f4f8);
-    min-height: 100px; /* Minimum height for the gradient card */
+    z-index: 1;
 }
 
 .login-container-row-desktop {
     width: 100%;
-    max-width: 800px;
-    overflow: hidden;
+    /* max-width: 800px; Let RadzenRow's JustifyContent handle centering of the SizeMD=6 column */
+    z-index: 1;
+    /* background-color, border-radius, box-shadow REMOVED */
 }
 
-.login-image-card-desktop {
-    height: 100%;
-    background: linear-gradient(to right, var(--rz-primary-light), #f0f4f8);
-}
+/* Removed .login-image-column-mobile, .login-image-card-mobile, .login-image-card-desktop as elements are removed from Razor */
 
 .login-form-card {
-    padding: 2rem; /* Radzen's rz-p-6 is 1.5rem, rz-p-12 is 3rem. This might need adjustment based on final look. */
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-    border-radius: 8px;
-    background-color: #ffffff;
-    display: flex; /* Added to allow flex-direction column */
-    flex-direction: column; /* To stack logo, title, form */
-    align-items: center; /* To center logo and title if they have auto margins or text-align center */
-    width: 100%; /* Ensure form card takes full width of its column */
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    /* Desktop styles for semi-transparent card */
+    background-color: rgba(255, 255, 255, 0.92);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+    border-radius: 12px;
+    box-sizing: border-box; /* Ensure padding doesn't add to width/height */
 }
 
 /* Login Logo */
 .login-logo {
     display: block;
-    margin: 0 auto 1.5rem auto; /* Center it and add space below */
+    margin: 0 auto 1.5rem auto;
     max-width: 150px;
-    height: auto; /* Maintain aspect ratio */
+    height: auto;
 }
 
 /* Login Title */
@@ -54,40 +84,48 @@
     font-size: 1.8rem;
     font-weight: 600;
     color: #333;
-    margin-bottom: 2rem !important; /* Using !important to override rz-mb-6 if necessary */
-    text-align: center; /* Ensure title is centered */
+    margin-bottom: 2rem !important;
+    text-align: center;
+    position: relative; /* Needed for pseudo-element positioning if more complex things were done */
 }
 
-/* Input Fields (Username and Password) */
+.login-title::before {
+    content: '● ● ●';
+    display: block;
+    text-align: center;
+    font-size: 0.8rem;
+    color: #A9D6F5; /* Soft, muted blue from the palette */
+    margin-bottom: 0.75rem;
+    letter-spacing: 0.3rem;
+}
+
 .login-form-card .rz-textbox,
-.login-form-card .rz-inputtext { /* RadzenLogin might use rz-inputtext directly on inputs */
+.login-form-card .rz-inputtext {
     border-radius: 6px;
     border: 1px solid #ced4da;
     padding: 0.75rem 1rem;
     font-size: 1rem;
-    width: 100%; /* Ensure inputs take full width of their container */
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .login-form-card .rz-textbox:focus,
 .login-form-card .rz-inputtext:focus {
-    border-color: var(--rz-primary-dark); /* Using a darker primary for focus */
-    box-shadow: 0 0 0 0.2rem rgba(var(--rz-primary-rgb), 0.25); /* Assuming --rz-primary-rgb is available for box shadow color */
+    border-color: var(--admin-primary-blue-dark);
+    box-shadow: 0 0 0 0.2rem rgba(var(--admin-primary-blue-rgb), 0.25);
 }
 
-/* Labels (Usuario, Contraseña) */
-/* RadzenLogin places labels inside divs with class .rz-label for its text boxes */
 .login-form-card .rz-label {
     font-weight: 500;
     margin-bottom: 0.5rem;
     color: #555;
-    display: block; /* Ensure margin-bottom works as expected */
-    width: 100%; /* Ensure label takes full width for alignment */
-    text-align: left; /* Align label text to the left */
+    display: block;
+    width: 100%;
+    text-align: left;
 }
 
-/* Login Button */
 .login-form-card .rz-button[type='submit'] {
-    background-color: var(--rz-primary);
+    background-color: var(--admin-primary-blue);
     border: none;
     padding: 0.75rem 1.5rem;
     font-size: 1rem;
@@ -95,63 +133,82 @@
     border-radius: 6px;
     width: 100%;
     transition: background-color 0.15s ease-in-out;
+    box-sizing: border-box;
 }
 
 .login-form-card .rz-button[type='submit']:hover {
-    background-color: var(--rz-primary-dark); /* Darken button on hover */
+    background-color: var(--admin-primary-blue-dark);
 }
 
-/* Adjustments for RadzenLogin structure if it wraps inputs differently */
-.login-form-card .rz-form-group { /* RadzenLogin often uses rz-form-group for each field */
-    margin-bottom: 1.5rem; /* Space between form groups */
-    width: 100%; /* Ensure form group takes full width */
+.login-form-card .rz-form-group {
+    margin-bottom: 1.5rem;
+    width: 100%;
 }
 
-.login-form-card .rz-form-group:last-of-type { /* Last form group (usually button) might not need margin */
+.login-form-card .rz-form-group:last-of-type {
     margin-bottom: 0;
 }
 
-/* Ensure RadzenTemplateForm takes full width */
-.login-form-card RadzenTemplateForm { /* This might need to be .RadzenTemplateForm if it's a class */
+.login-form-card .RadzenTemplateForm {
     width: 100%;
 }
 
 @media (max-width: 575.98px) {
+    .login-container-row-desktop {
+        /* Ensure no desktop specific styles apply on mobile if class is somehow present */
+        background-color: transparent;
+        box-shadow: none;
+    }
+
     .login-logo {
-        max-width: 120px; /* Smaller logo on mobile */
-        margin-top: 1rem; /* Add some margin at the top of the logo */
+        max-width: 120px;
+        margin-top: 1rem;
     }
 
     .login-title {
-        font-size: 1.6rem; /* Smaller title */
-        margin-bottom: 1.5rem !important; /* Adjust margin */
+        font-size: 1.6rem;
+        margin-bottom: 1.5rem !important;
+    }
+
+    .login-title::before {
+        font-size: 0.7rem; /* Slightly smaller dots on mobile */
+        margin-bottom: 0.6rem;
+        letter-spacing: 0.25rem;
     }
 
     .login-form-card {
-        padding: 1.5rem; /* Less padding */
-        /* Remove box-shadow and border-radius if we want it to blend more with the image card, or adjust as needed */
-        /* box-shadow: none; */
-        /* border-radius: 0; */
+        padding: 1.5rem;
+        /* Mobile: opaque card */
+        background-color: #ffffff;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        border-radius: 8px;
     }
 
-    .login-image-column-mobile {
-        min-height: 120px; /* Fixed shorter height for the gradient band on mobile */
-        height: auto;
-        flex: 0 0 auto; /* Don't grow, don't shrink beyond content, basis is auto */
+    /* Removed .login-image-column-mobile and .login-image-card-mobile specific media query rules */
+    /* Removed .login-form-card.rz-p-6 override as rz-p-X classes were removed from Razor */
+}
+
+@media (max-width: 370px) {
+    .page {
+        padding: 0.5rem; /* Reduce page padding on very small screens */
     }
 
-    .login-image-card-mobile {
-        min-height: 120px; /* Ensure card itself has a min-height */
+    .login-form-card {
+        padding: 1rem; /* Further reduce card padding on very small screens */
     }
 
-    .login-container-row-mobile {
-        /* Potentially remove max-width on mobile if we want full bleed, or adjust */
-        /* max-width: none; */
+    .login-title {
+        font-size: 1.4rem; /* Further reduce title font size */
+        margin-bottom: 1rem !important;
     }
 
-    /* Reduce padding for RadzenCards if they have rz-p-6 or similar */
-    .login-form-card.rz-p-6,
-    .login-image-card-mobile.rz-p-6 {
-        padding: 1rem !important; /* Override Radzen's padding */
+    .login-title::before {
+        font-size: 0.6rem;
+        margin-bottom: 0.5rem;
+        letter-spacing: 0.2rem;
+    }
+
+    .login-logo {
+        max-width: 100px;
     }
 }

@@ -20,12 +20,8 @@
 @if (DeviceService.IsMobileDevice())
 {
     <RadzenRow Gap="0" Class="rz-mx-auto login-container-row-mobile">
-        <RadzenColumn Size="12" SizeMD="6" Class="login-image-column-mobile">
-            <RadzenCard Class="rz-shadow-0 rz-border-radius-0 rz-text-align-center rz-p-6 login-image-card-mobile">
-            </RadzenCard>
-        </RadzenColumn>
-        <RadzenColumn Size="12" SizeMD="6">
-            <RadzenCard Class="rz-shadow-0 rz-border-radius-0 rz-p-6 login-form-card">
+        <RadzenColumn Size="12">
+            <RadzenCard Class="rz-shadow-0 rz-border-radius-0 login-form-card"> {/* Removed rz-p-6 */}
                 <img src="img/AdmIn.png" alt="AdmIn Logo" class="login-logo" />
                 <RadzenText TextStyle="TextStyle.H5" TagName="TagName.H2" Class="rz-mb-6 login-title">
                     Ingrese sus credenciales
@@ -41,13 +37,9 @@
 }
 else
 {
-    <RadzenRow Gap="0" Class="rz-my-12 rz-mx-auto rz-border-radius-6 rz-shadow-10 login-container-row-desktop">
-        <RadzenColumn Size="12" SizeMD="6">
-            <RadzenCard Class="rz-shadow-0 rz-border-radius-0 rz-text-align-center rz-p-12 login-image-card-desktop">
-            </RadzenCard>
-        </RadzenColumn>
-        <RadzenColumn Size="12" SizeMD="6">
-            <RadzenCard Class="rz-shadow-0 rz-border-radius-0 rz-p-12 login-form-card">
+    <RadzenRow Gap="0" Class="rz-my-12 rz-mx-auto login-container-row-desktop" JustifyContent="JustifyContent.Center">
+        <RadzenColumn Size="12" SizeMD="6"> {/* Centered column */}
+            <RadzenCard Class="rz-shadow-0 rz-border-radius-0 login-form-card"> {/* Removed rz-p-12 */}
                 <img src="img/AdmIn.png" alt="AdmIn Logo" class="login-logo" />
                 <RadzenText TextStyle="TextStyle.H5" TagName="TagName.H2" Class="rz-mb-6 login-title">
                     Ingrese sus credenciales
