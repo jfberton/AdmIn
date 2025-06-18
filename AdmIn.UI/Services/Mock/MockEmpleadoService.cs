@@ -97,8 +97,8 @@ namespace AdmIn.UI.Services.Mock
                     HoraInicio = horaInicio,
                     HoraFin = horaFin,
                     Disponible = random.Next(0, 2) == 0, // 50% chance of being available
-                    Empleado = empleado, // Link back to the employee
-                    EmpleadoId = empleado.EmpleadoId
+                    Empleado = empleado // Link back to the employee
+                    // EmpleadoId = empleado.EmpleadoId // Removed
                 };
             }
         }

@@ -86,8 +86,8 @@ namespace AdmIn.UI.Services.Mock
                     EsTitular = persona.EsTitular,
                     Direcciones = persona.Direcciones,
                     Telefonos = persona.Telefonos,
-                    Inmueble = inmueble,
-                    Persona = persona
+                    Inmueble = inmueble
+                    // Persona = persona // Removed
                 };
                 _inquilinos.Add(inquilino);
                 persona.Inquilino = inquilino;
@@ -96,14 +96,14 @@ namespace AdmIn.UI.Services.Mock
                 if (vigente)
                 {
                     inmueble.Estado = estadosInmueble.First(e => e.Estado == "Ocupado");
-                    inmueble.EstadoId = inmueble.Estado.Id;
+                    // inmueble.EstadoId = inmueble.Estado.Id; // Removed
                     if (inmueble.Inquilinos == null) inmueble.Inquilinos = new List<Inquilino>();
                     inmueble.Inquilinos.Add(inquilino);
                 }
                 else
                 {
                      inmueble.Estado = estadosInmueble.First(e => e.Estado == "Disponible");
-                     inmueble.EstadoId = inmueble.Estado.Id;
+                     // inmueble.EstadoId = inmueble.Estado.Id; // Removed
                 }
 
 
@@ -111,15 +111,15 @@ namespace AdmIn.UI.Services.Mock
                 {
                     Id = _contratos.Any() ? _contratos.Max(c => c.Id) + 1 : 1,
                     Inquilino = inquilino,
-                    InquilinoId = inquilino.Id,
+                    // InquilinoId = inquilino.Id, // Removed
                     Inmueble = inmueble,
-                    InmuebleId = inmueble.Id,
+                    // InmuebleId = inmueble.Id, // Removed
                     Administrador = new Administrador { Nombre = "Admin Contrato Ejemplo" }, // Placeholder
                     FechaInicio = DateTime.Now.AddMonths(-random.Next(1, 12)),
                     FechaFin = DateTime.Now.AddMonths(random.Next(1, 12)),
                     MontoMensual = random.Next(1000, 5000),
                     Estado = estadoContrato,
-                    EstadoId = estadoContrato.Id,
+                    // EstadoId = estadoContrato.Id, // Removed
                     Pagos = new List<Pago>()
                 };
                 _contratos.Add(contrato);
@@ -135,10 +135,10 @@ namespace AdmIn.UI.Services.Mock
                     {
                         Id = _pagos.Any() ? _pagos.Max(p => p.Id) + 1 : 1,
                         Contrato = contrato,
-                        ContratoId = contrato.Id,
+                        // ContratoId = contrato.Id, // Removed
                         FechaVencimiento = contrato.FechaInicio.AddMonths(j),
                         Estado = estadoPago,
-                        EstadoId = estadoPago.Id,
+                        // EstadoId = estadoPago.Id, // Removed
                         Descripcion = $"Cuota {j + 1} de {pagosACrear}",
                         DetallesPago = new List<DetallePago>
                         {
@@ -179,7 +179,7 @@ namespace AdmIn.UI.Services.Mock
                 inmueble.Reserva = reserva;
                 var estadoReservado = (await _mockInmuebleService.ObtenerEstadosInmueble()).First(e => e.Estado == "Reservado");
                 inmueble.Estado = estadoReservado;
-                inmueble.EstadoId = estadoReservado.Id;
+                // inmueble.EstadoId = estadoReservado.Id; // Removed
                 // No need to call ActualizarInmueble if this is all in-memory and objects are referenced.
             }
             return await Task.FromResult(reserva);
@@ -199,7 +199,7 @@ namespace AdmIn.UI.Services.Mock
             var contrato = new Contrato
             {
                 Inmueble = inmueble,
-                InmuebleId = inmueble.Id,
+                // InmuebleId = inmueble.Id, // Removed
                 MontoMensual = montoMensual,
                 Observacion = observaciones,
                 FechaInicio = fechaInicio,
@@ -218,16 +218,16 @@ namespace AdmIn.UI.Services.Mock
                     Rfc = persona.Rfc, Email = persona.Email, Nacionalidad = persona.Nacionalidad,
                     EsPersonaFisica = persona.EsPersonaFisica, EsTitular = persona.EsTitular,
                     Direcciones = persona.Direcciones, Telefonos = persona.Telefonos,
-                    Inmueble = inmueble,
-                    Persona = persona
+                    Inmueble = inmueble
+                    // Persona = persona // Removed
                 };
             }
             contrato.Inquilino = inquilino;
-            contrato.InquilinoId = inquilino.Id;
+            // contrato.InquilinoId = inquilino.Id; // Removed
 
             var estadoContrato = _contratoEstados.First(e => e.Descripcion == "Vigente");
             contrato.Estado = estadoContrato;
-            contrato.EstadoId = estadoContrato.Id;
+            // contrato.EstadoId = estadoContrato.Id; // Removed
 
             var agendaPagos = new List<Pago>();
             var fechaBase = new DateTime(DateTime.Today.Year, mesInicio, 1);
@@ -244,7 +244,7 @@ namespace AdmIn.UI.Services.Mock
                     Contrato = contrato, // Reference set later after contrato Id is known if needed
                     FechaVencimiento = fechaVencimiento,
                     Estado = _pagoEstados.First(e => e.Estado == "Pendiente"),
-                    EstadoId = _pagoEstados.First(e => e.Estado == "Pendiente").Id,
+                    // EstadoId = _pagoEstados.First(e => e.Estado == "Pendiente").Id, // Removed
                     Descripcion = $"Cuota mensual {i + 1} de {cantidadMeses}",
                     DetallesPago = new List<DetallePago>
                     {
@@ -263,7 +263,7 @@ namespace AdmIn.UI.Services.Mock
             // Assign ContratoId to Pagos
             foreach(var pago in contrato.Pagos)
             {
-                pago.ContratoId = contrato.Id;
+                // pago.ContratoId = contrato.Id; // Removed
                 pago.Contrato = contrato; // Ensure back-reference
                  if (!_pagos.Any(p=> p.Id == pago.Id)) _pagos.Add(pago); // Add if not already added by ID
             }
@@ -278,7 +278,7 @@ namespace AdmIn.UI.Services.Mock
             {
                 var estadoOcupado = (await _mockInmuebleService.ObtenerEstadosInmueble()).First(e => e.Estado == "Ocupado");
                 inmuebleActualizar.Estado = estadoOcupado;
-                inmuebleActualizar.EstadoId = estadoOcupado.Id;
+                // inmuebleActualizar.EstadoId = estadoOcupado.Id; // Removed
                 if (inmuebleActualizar.Inquilinos == null) inmuebleActualizar.Inquilinos = new List<Inquilino>();
                 inmuebleActualizar.Inquilinos.Add(contrato.Inquilino);
                 if (inmuebleActualizar.Contratos == null) inmuebleActualizar.Contratos = new List<Contrato>();

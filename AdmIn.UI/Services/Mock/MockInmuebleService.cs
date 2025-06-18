@@ -43,7 +43,7 @@ namespace AdmIn.UI.Services.Mock
                     Construido = random.Next(30, 450),
                     Telefono = new Telefono { Numero = $"+54 9 {random.Next(1000, 9999)}-{random.Next(100000, 999999)}" },
                     Estado = estadoDisponible, // Default a disponible
-                    EstadoId = estadoDisponible.Id,
+                    // EstadoId = estadoDisponible.Id, // Removed
                     Direccion = new Direccion
                     {
                         DireccionId = i, // Assuming DireccionId can be same as InmuebleId for mock

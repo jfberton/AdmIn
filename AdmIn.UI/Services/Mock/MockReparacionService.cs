@@ -97,7 +97,7 @@ namespace AdmIn.UI.Services.Mock
                 if(inmuebleParaReparar.Estado.Estado != "En reparación")
                 {
                     inmuebleParaReparar.Estado = estadoEnReparacion;
-                    inmuebleParaReparar.EstadoId = estadoEnReparacion.Id;
+                    // inmuebleParaReparar.EstadoId = estadoEnReparacion.Id; // Removed
                 }
 
 
@@ -116,7 +116,7 @@ namespace AdmIn.UI.Services.Mock
                     Estado = estadoActual,
                     EstadoId = estadoActual.Id,
                     Empleado = empleado,
-                    EmpleadoId = empleado?.EmpleadoId,
+                    EmpleadoId = empleado?.EmpleadoId ?? 0, // Changed
                     Detalles = new List<ReparacionDetalle>(),
                     HistorialEstados = new List<ReparacionEstadoHistorial>()
                 };
@@ -170,9 +170,9 @@ namespace AdmIn.UI.Services.Mock
             if (index != -1)
             {
                 _reparaciones[index] = reparacion;
-                if (reparacion.EmpleadoId.HasValue && reparacion.Empleado == null)
+                if (reparacion.EmpleadoId != 0 && reparacion.Empleado == null) // Changed
                 {
-                    reparacion.Empleado = await _mockEmpleadoService.ObtenerEmpleadoPorId(reparacion.EmpleadoId.Value);
+                    reparacion.Empleado = await _mockEmpleadoService.ObtenerEmpleadoPorId(reparacion.EmpleadoId); // Changed
                 }
             }
             await Task.CompletedTask;
@@ -199,11 +199,11 @@ namespace AdmIn.UI.Services.Mock
             reparacion.Inmueble = inmueble;
             reparacion.InmuebleId = inmueble.Id;
 
-            if(reparacion.EmpleadoId.HasValue)
-                reparacion.Empleado = await _mockEmpleadoService.ObtenerEmpleadoPorId(reparacion.EmpleadoId.Value);
+            if(reparacion.EmpleadoId != 0) // Changed
+                reparacion.Empleado = await _mockEmpleadoService.ObtenerEmpleadoPorId(reparacion.EmpleadoId); // Changed
 
             // Initial state: "Pendiente sin asignar" if no employee, "Pendiente" if employee assigned
-            int initialStateId = reparacion.EmpleadoId.HasValue && reparacion.EmpleadoId.Value > 0 ? 1 : 2;
+            int initialStateId = reparacion.EmpleadoId != 0 ? 1 : 2; // Changed
             await ActualizarEstadoReparacionInterno(reparacion, initialStateId, "Reparación creada.");
 
             _reparaciones.Add(reparacion);
@@ -215,7 +215,7 @@ namespace AdmIn.UI.Services.Mock
             if (estadoEnReparacion != null && inmueble.EstadoId != estadoEnReparacion.Id)
             {
                 inmueble.Estado = estadoEnReparacion;
-                inmueble.EstadoId = estadoEnReparacion.Id;
+                // inmueble.EstadoId = estadoEnReparacion.Id; // Removed
                // await _mockInmuebleService.ActualizarInmueble(inmueble); // if state change needs to persist in that service's list
             }
         }
@@ -246,7 +246,7 @@ namespace AdmIn.UI.Services.Mock
             string empleadoNombre = empleado?.Nombre ?? $"Empleado Id {empleadoId}";
 
             await ActualizarEstadoReparacionInterno(reparacion, 2, $"{empleadoNombre} rechazó la solicitud."); // Pendiente sin asignar
-            reparacion.EmpleadoId = null; // Unassign employee
+            reparacion.EmpleadoId = 0; // Unassign employee // Changed
             reparacion.Empleado = null;
             reparacion.FechaInicio = null;
             reparacion.CostoEstimado = null;
@@ -261,7 +261,7 @@ namespace AdmIn.UI.Services.Mock
 
             detalle.Id = reparacion.Detalles.Any() ? reparacion.Detalles.Max(d => d.Id) + 1 : 1;
             detalle.Reparacion = reparacion;
-            detalle.ReparacionId = reparacionId;
+            // detalle.ReparacionId = reparacionId; // Removed
             detalle.Fecha = DateTime.Now;
             // Default ACargoDe based on current mock logic (inquilino if any, else propietario)
             detalle.ACargoDeInquilino = reparacion.Inmueble.Inquilinos != null && reparacion.Inmueble.Inquilinos.Any();
@@ -332,10 +332,10 @@ namespace AdmIn.UI.Services.Mock
 
             await ActualizarEstadoReparacionInterno(reparacion, 6, "Reparación aprobada por administrador."); // Finalizado
 
-            if (reparacion.EmpleadoId.HasValue)
+            if (reparacion.EmpleadoId != 0) // Changed
             {
                 calificacion.ReparacionId = reparacionId;
-                calificacion.EmpleadoId = reparacion.EmpleadoId.Value;
+                calificacion.EmpleadoId = reparacion.EmpleadoId; // Changed
                 // The AddCalificacionAsync will handle setting its own ID
                 await _mockEmpleadoService.AddCalificacionAsync(calificacion);
             }
@@ -378,7 +378,7 @@ namespace AdmIn.UI.Services.Mock
 
             reparacion.EmpleadoId = empleadoId;
             reparacion.Empleado = empleado;
-            await ActualizarEstadoReparacionInterno(reparacion, 1, $"Empleado {empleado.NombreCompleto} asignado por administrador."); // Pendiente (de aceptación del empleado)
+            await ActualizarEstadoReparacionInterno(reparacion, 1, $"Empleado {empleado.Nombre} {empleado.ApellidoPaterno} {empleado.ApellidoMaterno} asignado por administrador."); // Pendiente (de aceptación del empleado)
             return true;
         }
     }
