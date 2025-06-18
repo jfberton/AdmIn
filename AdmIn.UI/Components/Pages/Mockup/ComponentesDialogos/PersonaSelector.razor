@@ -1,6 +1,7 @@
 ﻿@using AdmIn.Business.Entidades
+@using AdmIn.UI.Services.Mock
 @using AdmIn.UI.Services
-@inject IServ_Mock PersonaService
+@inject IPersonaService PersonaService // Renamed
 
 <div class="persona-selector" style="position:relative;">
     <RadzenTextBox @onclick="ToggleDropdown"

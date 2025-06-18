@@ -1,12 +1,12 @@
 ﻿@page "/m/reparaciones/detalle/{Id:int}"
 @page "/m/reparaciones/detalle/{Id:int}/{origen}/{inmuebleId:int}"
 @using AdmIn.Business.Entidades
+@using AdmIn.UI.Services.Mock
 @using AdmIn.UI.Services
-@inject IServ_Mock ServicioReparaciones
+@inject IReparacionService ReparacionMockService // Renamed
+@inject IEmpleadoService EmpleadoMockService // Renamed
 @inject DialogService DialogService
 @inherits BaseComponent
-
-@inject IServ_Mock ServicioReparaciones
 
 <AuthorizeView>
 	<Authorized>
@@ -416,9 +416,7 @@
 </AuthorizeView>
 
 @code {
-	[Inject]
-	protected IServ_Mock EmpleadoService { get; set; }
-
+	// EmpleadoService is now injected at the top level
 	[Parameter]
 	public int Id { get; set; }
 
@@ -552,10 +550,10 @@
 	{
 		EstablecerTituloPagina("Detalle de Reparación");
 		await CargarReparacion();
-		empleados = await EmpleadoService.ObtenerEmpleados();
+		empleados = await EmpleadoMockService.ObtenerEmpleados();
 		foreach (var empleado in empleados)
 		{
-			var calificaciones = await ServicioReparaciones.ObtenerCalificacionesEmpleado(empleado.EmpleadoId);
+			var calificaciones = await EmpleadoMockService.ObtenerCalificacionesEmpleado(empleado.EmpleadoId);
 			if (calificaciones.Any())
 			{
 				calificacionesEmpleados[empleado.EmpleadoId] = calificaciones.Average(c => (c.CalificacionTrabajo + c.CalificacionComportamiento) / 2);
@@ -575,7 +573,7 @@
 
 	private async Task CargarReparacion()
 	{
-		reparacion = await ServicioReparaciones.ObtenerReparacionPorId(Id);
+		reparacion = await ReparacionMockService.ObtenerReparacionPorId(Id);
 		StateHasChanged();
 	}
 
@@ -620,7 +618,7 @@
 
 	private async Task RechazarReparacion() //ok
 	{
-		var success = await ServicioReparaciones.RechazarReparacion(reparacion.Id, reparacion.EmpleadoId);
+		var success = await ReparacionMockService.RechazarReparacion(reparacion.Id, reparacion.EmpleadoId.Value); // Assuming EmpleadoId is non-null when this is called
 		if (success)
 		{
 			MostrarNotificacion(NotificationSeverity.Success, "Éxito", "Reparación rechazada");
@@ -634,7 +632,7 @@
 
 	private async Task AceptarReparacion() //ok
 	{
-		var success = await ServicioReparaciones.AceptarReparacion(reparacion.Id, reparacion.EmpleadoId, reparacion.CostoEstimado.Value, reparacion.FechaInicio.Value);
+		var success = await ReparacionMockService.AceptarReparacion(reparacion.Id, reparacion.EmpleadoId.Value, reparacion.CostoEstimado.Value, reparacion.FechaInicio.Value); // Assuming EmpleadoId is non-null
 		if (success)
 		{
 			MostrarNotificacion(NotificationSeverity.Success, "Éxito", "Reparación rechazada");
@@ -655,7 +653,7 @@
 		if (profesionalSeleccionado == null || reparacion == null)
 			return;
 
-		await ServicioReparaciones.AsignarEmpleado(reparacion.Id, profesionalSeleccionado.Value);
+		await ReparacionMockService.AsignarEmpleado(reparacion.Id, profesionalSeleccionado.Value);
 
 		// Refrescar datos en pantalla
 		await CargarReparacion();
@@ -664,7 +662,7 @@
 
 	private async Task CancelarReparacion()//ok
 	{
-		var exito = await ServicioReparaciones.CancelarReparacion(reparacion.Id, 1 /*administrador id*/, comentarioCancelacion);
+		var exito = await ReparacionMockService.CancelarReparacion(reparacion.Id, 1 /*administrador id*/, comentarioCancelacion);
 		if (exito)
 		{
 			MostrarNotificacion(NotificationSeverity.Success, "Reparación cancelada", "Se canceló correctamente.");
@@ -687,7 +685,7 @@
 
 	private async Task FinalizarReparacionEmpleado() //ok
 	{
-		var success = await ServicioReparaciones.FinalizarReparacion(reparacion.Id);
+		var success = await ReparacionMockService.FinalizarReparacion(reparacion.Id);
 		if (success)
 		{
 			MostrarNotificacion(NotificationSeverity.Success, "Éxito", "Reparación finalizada");
@@ -708,8 +706,8 @@
 		if (reparacion != null)
 		{
 			calificacion.ReparacionId = reparacion.Id;
-			calificacion.EmpleadoId = reparacion.EmpleadoId;
-			var success = await ServicioReparaciones.AprobarReparacion(reparacion.Id, calificacion);
+			calificacion.EmpleadoId = reparacion.EmpleadoId.Value; // Assuming EmpleadoId is non-null
+			var success = await ReparacionMockService.AprobarReparacion(reparacion.Id, calificacion);
 			if (success)
 			{
 				MostrarNotificacion(NotificationSeverity.Success, "Éxito", "Reparación aprobada");
@@ -724,7 +722,7 @@
 
 	private async Task DesaprobarReparacion() //ok
 	{
-		var success = await ServicioReparaciones.DesaprobarReparacion(reparacion.Id);
+		var success = await ReparacionMockService.DesaprobarReparacion(reparacion.Id);
 		if (success)
 		{
 			MostrarNotificacion(NotificationSeverity.Success, "Éxito", "Reparación desaprobada");
@@ -742,7 +740,7 @@
 
 	private async Task Disputar(int detalleId) //ok
 	{
-		var success = await ServicioReparaciones.DisputarDetalle(reparacion.Id, detalleId);
+		var success = await ReparacionMockService.DisputarDetalle(reparacion.Id, detalleId);
 		if (success)
 		{
 			MostrarNotificacion(NotificationSeverity.Success, "Éxito", "Disputa abierta");
@@ -756,13 +754,13 @@
 
 	private async Task AceptarCosto(int detalleid) //ok
 	{
-		var success = await ServicioReparaciones.ResolverDisputa(reparacion.Id, detalleid, true);
+		var success = await ReparacionMockService.ResolverDisputa(reparacion.Id, detalleid, true);
 		if (success) await CargarReparacion();
 	}
 
 	private async Task DevolverCosto(int detalleid) //ok
 	{
-		var success = await ServicioReparaciones.ResolverDisputa(reparacion.Id, detalleid, false);
+		var success = await ReparacionMockService.ResolverDisputa(reparacion.Id, detalleid, false);
 		if (success) await CargarReparacion();
 	}
 

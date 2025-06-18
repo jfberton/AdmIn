@@ -31,8 +31,9 @@
 
     protected override async Task OnInitializedAsync()
     {
-        await base.OnInitializedAsync();
-        var reparacionExistente = await ServicioReparaciones.ObtenerReparacionPorId(Id);
+        await base.OnInitializedAsync(); // This calls OnInitializedAsync in ReparacionesForm
+        // The ReparacionMockService is injected in the base class ReparacionesForm
+        var reparacionExistente = await ReparacionMockService.ObtenerReparacionPorId(Id);
         if (reparacionExistente != null)
         {
             reparacion = reparacionExistente;
@@ -76,7 +77,7 @@
                            }  
                        }
 
-            await ServicioReparaciones.ActualizarReparacion(reparacion);
+            await ReparacionMockService.ActualizarReparacion(reparacion);
             MostrarNotificacion(NotificationSeverity.Success, "Éxito", "Reparación actualizada correctamente");
             VolverAListado();
         }

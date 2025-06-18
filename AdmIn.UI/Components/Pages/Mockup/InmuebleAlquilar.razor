@@ -3,10 +3,12 @@
 @inherits BaseComponent
 
 @using AdmIn.Business.Entidades
+@using AdmIn.UI.Services.Mock @* Added for new services *@
 @using AdmIn.UI.Services
 @using AdmIn.UI.Components.Pages.Mockup.ComponentesDialogos
 @using System.Globalization
-@inject IServ_Mock MockData
+@inject IInmuebleService InmuebleMockService // Renamed
+@inject IContratoService ContratoMockService // Renamed
 @inject IJSRuntime JS
 @inject IWebHostEnvironment Env
 
@@ -210,7 +212,7 @@ else
 	{
 		await base.OnInitializedAsync();
 		base.EstablecerTituloPagina("Inmuebles", "Alquilar");
-		inmueble = await MockData.ObtenerInmueblePorId(inmuebleId);
+		inmueble = await InmuebleMockService.ObtenerInmueblePorId(inmuebleId);
 
 		if (inmueble?.Reserva?.Persona != null)
 		{
@@ -231,7 +233,7 @@ else
 			return;
 		}
 
-		contratoGenerado = await MockData.CrearContrato(inmueble, montoMensual, observaciones, new Administrador { Nombre = "Admin de ejemplo" }, personaSeleccionada, cantidadMeses, mesInicioSeleccionado, diaVencimientoSeleccionado);
+		contratoGenerado = await ContratoMockService.CrearContrato(inmueble, montoMensual, observaciones, new Administrador { Nombre = "Admin de ejemplo" }, personaSeleccionada, cantidadMeses, mesInicioSeleccionado, diaVencimientoSeleccionado);
 
 		// base.MostrarNotificacion(Radzen.NotificationSeverity.Success, "Contrato creado", "El contrato de alquiler fue generado exitosamente.");
 	}
@@ -239,7 +241,7 @@ else
 	private async Task ConfirmarAlquiler()
 	{
 
-		await MockData.GuardarNuevoContrato(contratoGenerado);
+		await ContratoMockService.GuardarNuevoContrato(contratoGenerado);
 
 		base.MostrarNotificacion(Radzen.NotificationSeverity.Success, "Contrato creado", "El contrato de alquiler fue generado exitosamente.");
 	}

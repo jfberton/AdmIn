@@ -172,7 +172,7 @@
     public int ReparacionId { get; set; }
 
     [Inject]
-    public required IServ_Mock ServicioReparaciones { get; set; }
+    public required AdmIn.UI.Services.Mock.IReparacionService ReparacionMockService { get; set; } // Renamed
 
     private RadzenUpload uploadControl;
     private ReparacionDetalle detalle = new ReparacionDetalle();
@@ -282,7 +282,7 @@
 
         detalle.Imagenes = imagenesSeleccionadas;
 
-        var success = await ServicioReparaciones.AgregarDetalleReparacion(ReparacionId, detalle);
+        var success = await ReparacionMockService.AgregarDetalleReparacion(ReparacionId, detalle);
         if (success)
         {
             MostrarNotificacion(NotificationSeverity.Success, "Éxito", "Detalle agregado correctamente");

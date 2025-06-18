@@ -1,9 +1,11 @@
 ﻿@using Radzen.Blazor
 @using AdmIn.Business.Entidades
+@using AdmIn.UI.Services.Mock @* Added for new services *@
 @using AdmIn.UI.Services
 
 @inject DialogService DialogService
-@inject IServ_Mock MockData
+@inject IEmpleadoService EmpleadoMockService // Renamed
+@inject IReparacionService ReparacionMockService // Renamed
 
 <RadzenTemplateForm TItem="Reparacion" Context="reparacionContext">
     <RadzenFieldset Text="@(Reparacion.Id == 0 ? "Agregar Reparación" : "Editar Reparación")">
@@ -70,7 +72,7 @@
     protected override async Task OnInitializedAsync()
     {
         // Cargar empleados
-        var empleadoslst = await MockData.ObtenerEmpleados();
+        var empleadoslst = await EmpleadoMockService.ObtenerEmpleados();
         empleados = empleadoslst.ToList();
 
         // Inicializar ReparacionTemporal con los valores de Reparacion
@@ -105,7 +107,7 @@
                 };
 
             // Llamar al método para agregar la nueva reparación
-            await MockData.AgregarReparacion(InmuebleId, nuevaReparacion);
+            await ReparacionMockService.AgregarReparacion(InmuebleId, nuevaReparacion);
         }
         else  // Si es una reparación existente, se actualiza
         {
@@ -119,7 +121,7 @@
             Reparacion.Empleado = empleados.FirstOrDefault(e => e.EmpleadoId == ReparacionTemporal.EmpleadoId);
 
             // Llamar al método para actualizar la reparación
-            await MockData.ActualizarReparacion(Reparacion);
+            await ReparacionMockService.ActualizarReparacion(Reparacion);
         }
 
         // Invocar el callback para actualizar la vista principal
