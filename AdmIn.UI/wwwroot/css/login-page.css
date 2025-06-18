@@ -1,0 +1,214 @@
+/* Custom Theme Colors */
+:root { /* Define variables at a high scope, accessible throughout this file */
+    --admin-primary-blue: #4A90E2;
+    --admin-primary-blue-dark: #357ABD;
+    --admin-primary-blue-rgb: 74, 144, 226;
+}
+
+/* General Page Styling - Applied to .page div in LoginLayout.razor */
+.page {
+    min-height: 100vh;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 1rem;
+    background-color: #E9F5FE; /* Base soft blue color */
+    background-image:
+        /* Layer 2: Abstract Lines */
+        linear-gradient(to bottom right, transparent 49.5%, rgba(115, 185, 236, 0.1) 50%, transparent 50.5%),
+        linear-gradient(to top right, transparent 49.5%, rgba(115, 185, 236, 0.05) 50%, transparent 50.5%),
+        /* Layer 1: Ambiance Radials */
+        radial-gradient(circle at 5% 5%, rgba(169, 214, 245, 0.3) 0%, transparent 30%),
+        radial-gradient(circle at 95% 95%, rgba(220, 238, 251, 0.3) 0%, transparent 35%);
+    background-size:
+        100px 100px, /* For diagonal lines */
+        150px 150px, /* For other diagonal lines */
+        800px 800px, /* For radial ambiance */
+        1000px 1000px; /* For other radial ambiance */
+    background-position:
+        0 0, /* Lines */
+        0 0, /* Other Lines */
+        center center, /* Radial */
+        center center; /* Other Radial */
+    background-repeat:
+        repeat, /* Lines */
+        repeat, /* Other Lines */
+        no-repeat, /* Radial */
+        no-repeat; /* Other Radial */
+    overflow: hidden;
+    position: relative;
+    box-sizing: border-box; /* Ensure padding doesn't add to width/height */
+}
+
+.login-container-row-mobile {
+    width: 100%;
+    max-width: 500px; /* Max width of the content area on mobile */
+    display: flex;
+    flex-direction: column;
+    z-index: 1;
+}
+
+.login-container-row-desktop {
+    width: 100%;
+    /* max-width: 800px; Let RadzenRow's JustifyContent handle centering of the SizeMD=6 column */
+    z-index: 1;
+    /* background-color, border-radius, box-shadow REMOVED */
+}
+
+/* Removed .login-image-column-mobile, .login-image-card-mobile, .login-image-card-desktop as elements are removed from Razor */
+
+.login-form-card {
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    /* Desktop styles for semi-transparent card */
+    background-color: rgba(255, 255, 255, 0.92);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+    border-radius: 12px;
+    box-sizing: border-box; /* Ensure padding doesn't add to width/height */
+}
+
+/* Login Logo */
+.login-logo {
+    display: block;
+    margin: 0 auto 1.5rem auto;
+    max-width: 150px;
+    height: auto;
+}
+
+/* Login Title */
+.login-title {
+    font-size: 1.8rem;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 2rem !important;
+    text-align: center;
+    position: relative; /* Needed for pseudo-element positioning if more complex things were done */
+}
+
+.login-title::before {
+    content: '● ● ●';
+    display: block;
+    text-align: center;
+    font-size: 0.8rem;
+    color: #A9D6F5; /* Soft, muted blue from the palette */
+    margin-bottom: 0.75rem;
+    letter-spacing: 0.3rem;
+}
+
+.login-form-card .rz-textbox,
+.login-form-card .rz-inputtext {
+    border-radius: 6px;
+    border: 1px solid #ced4da;
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.login-form-card .rz-textbox:focus,
+.login-form-card .rz-inputtext:focus {
+    border-color: var(--admin-primary-blue-dark);
+    box-shadow: 0 0 0 0.2rem rgba(var(--admin-primary-blue-rgb), 0.25);
+}
+
+.login-form-card .rz-label {
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    color: #555;
+    display: block;
+    width: 100%;
+    text-align: left;
+}
+
+.login-form-card .rz-button[type='submit'] {
+    background-color: var(--admin-primary-blue);
+    border: none;
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
+    font-weight: 600;
+    border-radius: 6px;
+    width: 100%;
+    transition: background-color 0.15s ease-in-out;
+    box-sizing: border-box;
+}
+
+.login-form-card .rz-button[type='submit']:hover {
+    background-color: var(--admin-primary-blue-dark);
+}
+
+.login-form-card .rz-form-group {
+    margin-bottom: 1.5rem;
+    width: 100%;
+}
+
+.login-form-card .rz-form-group:last-of-type {
+    margin-bottom: 0;
+}
+
+.login-form-card .RadzenTemplateForm {
+    width: 100%;
+}
+
+@media (max-width: 575.98px) {
+    .login-container-row-desktop {
+        /* Ensure no desktop specific styles apply on mobile if class is somehow present */
+        background-color: transparent;
+        box-shadow: none;
+    }
+
+    .login-logo {
+        max-width: 120px;
+        margin-top: 1rem;
+    }
+
+    .login-title {
+        font-size: 1.6rem;
+        margin-bottom: 1.5rem !important;
+    }
+
+    .login-title::before {
+        font-size: 0.7rem; /* Slightly smaller dots on mobile */
+        margin-bottom: 0.6rem;
+        letter-spacing: 0.25rem;
+    }
+
+    .login-form-card {
+        padding: 1.5rem;
+        /* Mobile: opaque card */
+        background-color: #ffffff;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        border-radius: 8px;
+    }
+
+    /* Removed .login-image-column-mobile and .login-image-card-mobile specific media query rules */
+    /* Removed .login-form-card.rz-p-6 override as rz-p-X classes were removed from Razor */
+}
+
+@media (max-width: 370px) {
+    .page {
+        padding: 0.5rem; /* Reduce page padding on very small screens */
+    }
+
+    .login-form-card {
+        padding: 1rem; /* Further reduce card padding on very small screens */
+    }
+
+    .login-title {
+        font-size: 1.4rem; /* Further reduce title font size */
+        margin-bottom: 1rem !important;
+    }
+
+    .login-title::before {
+        font-size: 0.6rem;
+        margin-bottom: 0.5rem;
+        letter-spacing: 0.2rem;
+    }
+
+    .login-logo {
+        max-width: 100px;
+    }
+}
