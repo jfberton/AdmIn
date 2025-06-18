@@ -13,29 +13,11 @@
     justify-content: center;
     align-items: center;
     padding: 1rem;
-    background-color: #E9F5FE; /* Base soft blue color */
-    background-image:
-        /* Layer 2: Abstract Lines */
-        linear-gradient(to bottom right, transparent 49.5%, rgba(115, 185, 236, 0.1) 50%, transparent 50.5%),
-        linear-gradient(to top right, transparent 49.5%, rgba(115, 185, 236, 0.05) 50%, transparent 50.5%),
-        /* Layer 1: Ambiance Radials */
-        radial-gradient(circle at 5% 5%, rgba(169, 214, 245, 0.3) 0%, transparent 30%),
-        radial-gradient(circle at 95% 95%, rgba(220, 238, 251, 0.3) 0%, transparent 35%);
-    background-size:
-        100px 100px, /* For diagonal lines */
-        150px 150px, /* For other diagonal lines */
-        800px 800px, /* For radial ambiance */
-        1000px 1000px; /* For other radial ambiance */
-    background-position:
-        0 0, /* Lines */
-        0 0, /* Other Lines */
-        center center, /* Radial */
-        center center; /* Other Radial */
-    background-repeat:
-        repeat, /* Lines */
-        repeat, /* Other Lines */
-        no-repeat, /* Radial */
-        no-repeat; /* Other Radial */
+    background-color: #E9F5FE; /* Base soft blue color - Fallback */
+    background-image: url('../img/conceptual-background.jpg');
+    background-size: cover;
+    background-position: center center;
+    background-repeat: no-repeat;
     overflow: hidden;
     position: relative;
     box-sizing: border-box; /* Ensure padding doesn't add to width/height */
@@ -68,6 +50,7 @@
     background-color: rgba(255, 255, 255, 0.92);
     box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
     border-radius: 12px;
+    border: 1px solid rgba(0, 0, 0, 0.05); /* Subtle border */
     box-sizing: border-box; /* Ensure padding doesn't add to width/height */
 }
 
@@ -94,7 +77,7 @@
     display: block;
     text-align: center;
     font-size: 0.8rem;
-    color: #A9D6F5; /* Soft, muted blue from the palette */
+    color: #9CB8D2; /* Changed color for better visibility */
     margin-bottom: 0.75rem;
     letter-spacing: 0.3rem;
 }
