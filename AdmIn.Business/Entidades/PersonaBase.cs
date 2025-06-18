@@ -21,5 +21,12 @@ namespace AdmIn.Business.Entidades
         // Listas asociadas a la Persona
         public List<Direccion> Direcciones { get; set; } = new(); // Lista de direcciones
         public List<Telefono> Telefonos { get; set; } = new(); // Lista de teléfonos
+
+
+        // Relación con los diferentes tipos de persona
+        public Administrador? Administrador { get; set; }
+        public Inquilino? Inquilino { get; set; }
+        public Propietario? Propietario { get; set; }
+        public Empleado? Empleado { get; set; }
     }
 }

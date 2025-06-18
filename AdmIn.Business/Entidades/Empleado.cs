@@ -38,6 +38,8 @@ namespace AdmIn.Business.Entidades
         // Hora de finalización del turno
         public TimeSpan HoraFin { get; set; }
 
+        public bool Disponible { get; set; } 
+
         // Empleado asignado al turno
         public Empleado Empleado { get; set; }
     }

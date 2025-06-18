@@ -20,9 +20,13 @@ namespace AdmIn.Business.Entidades
 
         public DateTime Creacion { get; set; }
 
+        public int PersonaId { get; set; }
+
         #endregion
 
         #region Propiedades de navegación
+        public PersonaBase Persona { get; set; }
+
         public List<Rol>? Roles { get; set; }
 
         public List<Permiso> Permisos
