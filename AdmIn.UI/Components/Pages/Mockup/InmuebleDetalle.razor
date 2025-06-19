@@ -16,39 +16,39 @@
 }
 else
 {
-	<div style="max-width: 1200px; margin: 0 auto;">
-		<!-- Botones de acción -->
-		<div style="margin-bottom: 20px;">
-			<RadzenButton Text="Volver" Icon="arrow_back" Click="@Volver" Style="margin-right: 10px;" />
-
-			<RadzenButton Text="Editar" Icon="edit" Click="@EditarInmueble" Style="margin-right: 10px;" />
-			<RadzenButton Text="Eliminar" Icon="delete" ButtonStyle="ButtonStyle.Danger" Click="@(async () => await EliminarInmueble())" />
-		</div>
-
-		@if (inmueble.Estado.Estado == "Disponible")
-		{
-			<RadzenButton Text="Reservar" Icon="event" Style="margin-right: 10px;" Click="@(() => IrAReservarInmueble(inmueble.Id))" />
-			<RadzenButton Text="Alquilar" Icon="event" Style="margin-right: 10px;" Click="@(() => IrAAlquilarInmueble(inmueble.Id))" />
-		}
-
-		@if (inmueble.Estado.Estado == "Reservado")
-		{
-			<RadzenButton Text="Alquilar" Icon="event" Style="margin-right: 10px;" Click="@(() => IrAAlquilarInmueble(inmueble.Id))" />
-		}
-
+	<div class="main-property-container" style="max-width: 1100px; margin: 2rem auto; padding: 1rem;">
 		<!-- Información principal -->
 		<RadzenCard>
+			<!-- Botones de acción -->
+			<div class="primary-actions" style="margin-bottom: 20px;">
+				<RadzenButton Text="Volver" Icon="arrow_back" Click="@Volver" Style="margin-right: 10px;" />
+
+				<RadzenButton Text="Editar" Icon="edit" Click="@EditarInmueble" Style="margin-right: 10px;" />
+				<RadzenButton Text="Eliminar" Icon="delete" ButtonStyle="ButtonStyle.Danger" Click="@(async () => await EliminarInmueble())" />
+			</div>
 			<Header>
-				<h3>@inmueble.Descripcion</h3>
+				<div class="property-title"><h3>@inmueble.Descripcion</h3></div>
 			</Header>
+			<div class="secondary-actions" style="margin-top: 15px; margin-bottom: 15px; display: flex; gap: 10px;">
+				@if (inmueble.Estado.Estado == "Disponible")
+				{
+					<RadzenButton Text="Reservar" Icon="event" Style="margin-right: 10px;" Click="@(() => IrAReservarInmueble(inmueble.Id))" />
+					<RadzenButton Text="Alquilar" Icon="event" Style="margin-right: 10px;" Click="@(() => IrAAlquilarInmueble(inmueble.Id))" />
+				}
+
+				@if (inmueble.Estado.Estado == "Reservado")
+				{
+					<RadzenButton Text="Alquilar" Icon="event" Style="margin-right: 10px;" Click="@(() => IrAAlquilarInmueble(inmueble.Id))" />
+				}
+			</div>
 			<Content>
 				<RadzenRow>
 					<RadzenColumn Size="12" MD="6">
-						<p><strong>Dirección:</strong> @inmueble.Direccion.ToString()</p>
-						<p><strong>Valor:</strong> @inmueble.Valor.ToString("C")</p>
-						<p><strong>Superficie:</strong> @inmueble.Superficie m²</p>
-						<p><strong>Construido:</strong> @inmueble.Construido m²</p>
-						<RadzenBadge Text="@inmueble.Estado.Estado"
+						<p class="property-address"><strong>Dirección:</strong> @inmueble.Direccion.ToString()</p>
+						<p class="property-value"><strong>Valor:</strong> @inmueble.Valor.ToString("C")</p>
+						<p class="property-area"><strong>Superficie:</strong> @inmueble.Superficie m²</p>
+						<p class="property-built-area"><strong>Construido:</strong> @inmueble.Construido m²</p>
+						<RadzenBadge class="property-status-badge" Text="@inmueble.Estado.Estado"
 						BadgeStyle="@GetBadgeColor(inmueble.Estado.Estado)" />
 						@if (inmueble.Estado.Estado == "Reservado")
 						{
@@ -154,20 +154,21 @@ else
 					<RadzenColumn Size="12" MD="6">
 						@if (inmueble.ImagenPrincipal != null)
 						{
-							<img src="@inmueble.ImagenPrincipal.Url" style="width: 100%; border-radius: 5px;" />
+							<img src="@inmueble.ImagenPrincipal.Url" class="main-property-image" style="width: 100%; border-radius: 5px;" />
 						}
 						else
 						{
-							<div style="width: 100%; height: 200px; background-color: #f0f0f0; display: flex; align-items: center; justify-content: center;">
+							<div class="main-property-image-placeholder" style="width: 100%; height: 200px; background-color: #f0f0f0; display: flex; align-items: center; justify-content: center;">
 								<span>Sin imagen principal</span>
 							</div>
 						}
 
 						<!-- Galería de imágenes -->
-						<div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px;">
+						<div class="thumbnail-gallery" style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px;">
 							@foreach (var imagen in inmueble.Imagenes)
 							{
 								<img src="@imagen.Url"
+								class="thumbnail-image @(imagen.Id == inmueble.ImagenPrincipalId ? "active-thumbnail" : "")"
 								style="width: 100px; height: 75px; object-fit: cover; cursor: pointer;"
 								@onclick="() => CambiarImagenPrincipal(imagen.Id)" />
 							}
@@ -232,6 +233,8 @@ else
 	private void CambiarImagenPrincipal(Guid imagenId)
 	{
 		inmueble.ImagenPrincipalId = imagenId;
+		// Add this line to update the ImagenPrincipal object directly
+		inmueble.ImagenPrincipal = inmueble.Imagenes.FirstOrDefault(img => img.Id == imagenId);
 	}
 
 	private BadgeStyle GetBadgeColor(string estado)
