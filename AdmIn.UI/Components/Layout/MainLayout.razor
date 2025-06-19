@@ -32,11 +32,11 @@
                 <RadzenColumn Size="12">
                     <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center">
                         <RadzenSidebarToggle Click="@(() => sidebar1Expanded = !sidebar1Expanded)" />
-                        <RadzenImage Style="height:40px; margin-left:10px;"
+                        <RadzenImage class="header-logo"
                                      Path="@GetLogoPath()" />
                         @* <RadzenLabel Text="AdmIn" /> *@
                     </RadzenStack>
-                    <RadzenText TextStyle="TextStyle.Body1" Style="display:flex; justify-content:center; align-items:center; width:100%;" class="rz-color-white">
+                    <RadzenText TextStyle="TextStyle.Body1" class="header-title rz-color-white">
                         <strong>@PageTitleService.Titulo</strong>
                         @if (!string.IsNullOrEmpty(PageTitleService.Subtitulo))
                         {
@@ -54,11 +54,11 @@
                 <RadzenColumn Size="11">
                     <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center">
                         <RadzenSidebarToggle Click="@(() => sidebar1Expanded = !sidebar1Expanded)" />
-                        <RadzenImage Style="height:40px; margin-left:10px;"
+                        <RadzenImage class="header-logo"
                                      Path="@GetLogoPath()" />
                        @*  <RadzenLabel Text="AdmIn" /> *@
                     </RadzenStack>
-                    <RadzenText TextStyle="TextStyle.Body1" Style="display:flex; justify-content:center; align-items:center; width:100%;" class="rz-color-white">
+                    <RadzenText TextStyle="TextStyle.Body1" class="header-title rz-color-white">
                         <strong>@PageTitleService.Titulo</strong>
                         @if (!string.IsNullOrEmpty(PageTitleService.Subtitulo))
                         {

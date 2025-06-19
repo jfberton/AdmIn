@@ -1,0 +1,106 @@
+/* General page styling for InmuebleAdmin */
+.inmueble-admin-page { /* Add this class to the top RadzenRow or a wrapping div */
+    font-family: var(--app-font-family);
+    padding: 1rem; /* Add some padding to the page content if not covered by layout */
+    background-color: var(--app-body-bg); /* Ensure page background matches layout body */
+    min-height: 100%; /* Ensure it takes at least full height of content area */
+}
+
+.action-bar { /* Class for the RadzenStack in the first RadzenRow */
+    padding: 1rem;
+    background-color: var(--app-card-bg); /* White background for the bar */
+    border-radius: 6px;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    display: flex; /* Use flex for better alignment of items */
+    flex-wrap: wrap; /* Allow items to wrap on smaller screens */
+    gap: 0.75rem; /* Space between items */
+    align-items: center;
+}
+
+.action-bar .rz-button { /* "Agregar Inmueble" button */
+    background-color: var(--app-primary-color);
+    color: white;
+    /* Radzen's default button transitions should apply if .rz-button is styled globally */
+}
+ .action-bar .rz-button:hover {
+    background-color: var(--app-primary-color-darker);
+}
+
+.filter-badge { /* Class for filter RadzenBadges */
+    cursor: pointer;
+    padding: 0.5em 0.75em;
+    font-size: 0.9rem;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    border: 1px solid transparent; /* For active state */
+    user-select: none; /* Prevent text selection on click */
+}
+
+.filter-badge:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+/* Define styles for specific badge types if default Radzen styles aren't enough
+   or to match the InmuebleDetalle badge styles */
+.filter-badge.rz-badge.rz-primary { background-color: var(--app-primary-color); color: white; }
+.filter-badge.rz-badge.rz-success { background-color: var(--app-success-color); color: white; }
+.filter-badge.rz-badge.rz-info    { background-color: var(--app-info-color);    color: white; }
+.filter-badge.rz-badge.rz-dark    { background-color: var(--app-dark-color);    color: white; }
+.filter-badge.rz-badge.rz-warning { background-color: var(--app-warning-color); color: var(--app-text-color); }
+
+/* Style for an 'active' or 'selected' filter badge - needs C# logic to apply a class */
+.filter-badge.active-filter {
+    border: 1px solid var(--app-primary-color-darker);
+    font-weight: bold;
+    box-shadow: 0 0 8px rgba(var(--app-primary-color), 0.5); /* Softer shadow */
+    transform: translateY(-1px); /* Slight lift for active */
+}
+
+.inmueble-grid { /* Class for the RadzenRow containing InmuebleCards */
+    margin-top: 1rem;
+    /* Using RadzenColumn's Size attributes for responsiveness.
+       Ensure proper gap or padding for cards. */
+}
+
+/* Responsive adjustments for action-bar */
+@media (max-width: 768px) {
+    .action-bar {
+        flex-direction: column; /* Stack items vertically */
+        align-items: stretch; /* Stretch items to full width */
+    }
+
+    .action-bar .rz-button { /* This is the "Agregar Inmueble" button */
+        width: 100%; /* Make button full width */
+        margin-bottom: 10px; /* Add some space below it when stacked */
+    }
+
+    /* The RadzenStack containing filter badges is a direct child of .action-bar */
+    /* It will inherit flex-direction: column from .action-bar, which is not what we want for the badges themselves.
+       The default RadzenStack is horizontal. We need to ensure the badges within it can wrap.
+       The .action-bar itself has flex-wrap: wrap, which applies to its direct children (button and stack of badges).
+       If the RadzenStack itself needs to wrap its internal badges, that's handled by its own flex properties.
+       The existing .action-bar > .rz-stack rule was removed, let's re-evaluate.
+       The RadzenStack with Gap="10px" class="action-bar" in the RAZOR means the RadzenStack *is* the action-bar.
+       So, the flex-direction: column and align-items: stretch apply to the items *inside* the RadzenStack.
+    */
+
+    /* If .action-bar is the RadzenStack: */
+    .action-bar .rz-button { /* This rule is fine, targets the button inside the stack */
+         /* width: 100%; /* This makes the button full width which is good for this layout */
+         /* margin-bottom: 10px; /* Good spacing */
+    }
+
+    /* For the badges within the RadzenStack (which is .action-bar) */
+    .action-bar .filter-badge {
+        margin: 5px; /* Add some margin for wrapped badges */
+        /* Badges are inline-flex by default, they will wrap naturally if the container (.action-bar) allows.
+           The .action-bar already has flex-wrap: wrap; from its main definition.
+           And when it becomes flex-direction: column, its items (button, badges) stack.
+           The badges themselves, if they are direct children of .action-bar, will stack.
+           The current structure is: RadzenStack (class="action-bar") -> RadzenButton, RadzenBadge, RadzenBadge...
+           So, at 768px, RadzenStack becomes a column. Button is first, then each badge on a new line.
+           This is likely the desired behavior.
+        */
+    }
+}

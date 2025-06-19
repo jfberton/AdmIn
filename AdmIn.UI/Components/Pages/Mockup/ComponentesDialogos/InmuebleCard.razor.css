@@ -1,0 +1,108 @@
+.inmueble-card.rz-card { /* Targeting the RadzenCard component with our class */
+    font-family: var(--app-font-family);
+    width: 320px; /* Slightly adjusted width */
+    margin: 1rem; /* Consistent margin */
+    border: 1px solid var(--app-border-color);
+    border-radius: 8px; /* Softer corners */
+    box-shadow: var(--app-card-shadow);
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    cursor: pointer; /* Already on the component, but good to have in CSS */
+    display: flex; /* Ensure flex behavior for RadzenCard internals */
+    flex-direction: column; /* Ensure RadzenCard content flows vertically */
+    background-color: var(--app-card-bg); /* Ensure card background is set */
+}
+
+.inmueble-card.rz-card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--app-card-hover-shadow);
+}
+
+.inmueble-card .rz-card-header { /* Target RadzenCard's header area if it exists */
+    padding: 0; /* Remove padding if image is direct child */
+}
+
+.inmueble-card-image {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+    border-top-left-radius: 7px; /* Adjust to be just inside card's border-radius */
+    border-top-right-radius: 7px;
+    display: block; /* Remove any extra space below image */
+}
+
+.inmueble-card-image-placeholder {
+    width: 100%;
+    height: 200px;
+    background-color: var(--app-light-bg-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--app-secondary-color);
+    font-size: 0.9rem;
+    border-top-left-radius: 7px; /* Adjust to be just inside card's border-radius */
+    border-top-right-radius: 7px;
+}
+
+.inmueble-card-content { /* The div wrapping content below image */
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1; /* Allows content to fill space, useful for consistent card height if needed */
+}
+
+.inmueble-card-title {
+    margin: 0 0 0.25rem 0; /* Original was margin:0 */
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--app-text-color);
+    /* The original h4 was "Inmueble #ID", this might be too small now. Adjust as needed. */
+}
+
+.inmueble-card-description {
+    font-size: 0.9rem;
+    color: var(--app-text-color-muted);
+    margin: 0.25rem 0; /* Original was 5px 0 */
+    flex-grow: 1; /* Allow description to take up available space */
+    line-height: 1.4; /* Improve readability */
+}
+
+.inmueble-card-status-badge.rz-badge { /* Targeting RadzenBadge */
+    margin-bottom: 0.75rem; /* Original was 10px */
+    align-self: flex-start; /* Ensure badge doesn't stretch if container is flex */
+    /* Use previously defined badge color styles from InmuebleDetalle if not already global */
+    /* Assuming .rz-badge.rz-success etc. are globally effective or defined in app.css */
+    /* Explicitly set some badge styles here if needed, or ensure they are globally available */
+    padding: 0.4em 0.6em; /* Slightly adjust padding for card context */
+    font-size: 0.8rem; /* Slightly smaller font for card context */
+}
+
+.inmueble-card-price {
+    font-size: 1.25rem; /* Original 1.2em */
+    font-weight: bold;
+    color: var(--app-primary-color); /* Original #2c3e50, now using primary color */
+    margin: 0.5rem 0 0 0; /* Ensure it's at the bottom */
+    align-self: flex-end; /* Align price to the right if desired, or keep default (left) */
+}
+
+/* Responsive adjustments for InmuebleCard */
+@media (max-width: 380px) { /* When screen is almost same width as card's original fixed width */
+    .inmueble-card.rz-card {
+        width: 95%; /* Allow card to shrink a bit relative to viewport */
+        margin-left: auto; /* Center card if it takes less than 100% and parent is block/flex */
+        margin-right: auto;
+        margin-top: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .inmueble-card-content {
+        padding: 0.75rem; /* Reduce padding */
+    }
+
+    .inmueble-card-title {
+        font-size: 1rem;
+    }
+
+    .inmueble-card-price {
+        font-size: 1.15rem;
+    }
+}

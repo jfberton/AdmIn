@@ -1,31 +1,17 @@
-/* Define CSS variables for colors and fonts at the top */
-:root {
-    --app-primary-color: #007bff;       /* Blue - Professional and trustworthy */
-    --app-primary-color-darker: #0056b3; /* Darker blue for active/selected states */
-    --app-secondary-color: #6c757d;    /* Grey - For secondary text, borders */
-    --app-light-bg-color: #f8f9fa;     /* Light grey - For backgrounds like tab nav */
-    --app-text-color: #212529;         /* Dark grey - Main text color */
-    --app-text-color-muted: #555;      /* Muted text color */
-    --app-success-color: #28a745;      /* Green - For success states, "Disponible" */
-    --app-info-color: #17a2b8;         /* Teal/Info - For "Reservado" */
-    --app-warning-color: #ffc107;      /* Yellow - For "En reparación" */
-    --app-danger-color: #dc3545;       /* Red - For "Eliminar" button */
-    --app-dark-color: #343a40;         /* Dark grey/black - For "Ocupado" */
-    --app-font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* Clean sans-serif font */
-}
-
 /* Apply base font and text color to elements within the component.
    Blazor appends a scope identifier to selectors, so 'div' becomes 'div[b-xxxxxxxxxx]'.
    This won't style the body, but will style top-level elements of the component.
 */
+/* Base font and paragraph colors are now expected to be inherited from app.css body style
+   or defined more specifically if needed.
 * {
     font-family: var(--app-font-family);
 }
 
-/* General text color for paragraphs within the component */
 p {
     color: var(--app-text-color-muted);
 }
+*/
 
 .property-title h3 {
     font-size: 2rem;

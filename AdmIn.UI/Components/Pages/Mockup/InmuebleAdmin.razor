@@ -8,27 +8,29 @@
 
 @inherits BaseComponent
 
-<RadzenRow>
-    <RadzenColumn Size="12">
-        <RadzenStack Orientation="Orientation.Horizontal" Gap="10px">
-            <RadzenButton Text="Agregar Inmueble" Icon="add" Click="@(() => IrA("/agregar-inmueble"))" />
-            <RadzenBadge Text="Todos" BadgeStyle="BadgeStyle.Primary" Style="cursor: pointer;" @onclick="() => FiltrarInmuebles(null)" />
-            <RadzenBadge Text="Disponible" BadgeStyle="BadgeStyle.Success" Style="cursor: pointer;" @onclick="@(() => FiltrarInmuebles("Disponible"))" />
-			<RadzenBadge Text="Reservado" BadgeStyle="BadgeStyle.Info" Style="cursor: pointer;" @onclick="@(() => FiltrarInmuebles("Reservado"))" />
-            <RadzenBadge Text="Ocupado" BadgeStyle="BadgeStyle.Dark" Style="cursor: pointer;" @onclick="@(() => FiltrarInmuebles("Ocupado"))" />
-            <RadzenBadge Text="En reparación" BadgeStyle="BadgeStyle.Warning" Style="cursor: pointer;" @onclick="@(() => FiltrarInmuebles("En reparación"))" />
-        </RadzenStack>
-    </RadzenColumn>
-</RadzenRow>
+<div class="inmueble-admin-page">
+    <RadzenRow>
+        <RadzenColumn Size="12">
+            <RadzenStack Orientation="Orientation.Horizontal" Gap="10px" class="action-bar">
+                <RadzenButton Text="Agregar Inmueble" Icon="add" Click="@(() => IrA("/agregar-inmueble"))" />
+                <RadzenBadge Text="Todos" BadgeStyle="BadgeStyle.Primary" class="filter-badge @(activeFilterEstado == null ? "active-filter" : "")" @onclick="() => FiltrarInmuebles(null)" />
+                <RadzenBadge Text="Disponible" BadgeStyle="BadgeStyle.Success" class="filter-badge @(activeFilterEstado == "Disponible" ? "active-filter" : "")" @onclick="@(() => FiltrarInmuebles("Disponible"))" />
+                <RadzenBadge Text="Reservado" BadgeStyle="BadgeStyle.Info" class="filter-badge @(activeFilterEstado == "Reservado" ? "active-filter" : "")" @onclick="@(() => FiltrarInmuebles("Reservado"))" />
+                <RadzenBadge Text="Ocupado" BadgeStyle="BadgeStyle.Dark" class="filter-badge @(activeFilterEstado == "Ocupado" ? "active-filter" : "")" @onclick="@(() => FiltrarInmuebles("Ocupado"))" />
+                <RadzenBadge Text="En reparación" BadgeStyle="BadgeStyle.Warning" class="filter-badge @(activeFilterEstado == "En reparación" ? "active-filter" : "")" @onclick="@(() => FiltrarInmuebles("En reparación"))" />
+            </RadzenStack>
+        </RadzenColumn>
+    </RadzenRow>
 
-<RadzenRow>
-    @if (InmueblesFiltrados != null)
-    {
-        @foreach (var inmueble in InmueblesFiltrados)
+    <RadzenRow class="inmueble-grid">
+        @if (InmueblesFiltrados != null)
         {
-            <RadzenColumn Size="12" SizeMD="6" SizeLG="4" SizeXL="3" Style="display: flex; justify-content: center;">
-                <InmuebleCard Inmueble="inmueble" OnVerDetalle="VerDetalleInmueble" />
-            </RadzenColumn>
+            @foreach (var inmueble in InmueblesFiltrados)
+            {
+                <RadzenColumn Size="12" SizeMD="6" SizeLG="4" SizeXL="3" Style="display: flex; justify-content: center;">
+                    <InmuebleCard Inmueble="inmueble" OnVerDetalle="VerDetalleInmueble" />
+                </RadzenColumn>
+            }
         }
     }
 </RadzenRow>
@@ -36,6 +38,7 @@
 @code {
     private IEnumerable<Inmueble> Inmuebles;
     private IEnumerable<Inmueble> InmueblesFiltrados;
+    private string? activeFilterEstado = null; // Track active filter
 
     protected override async Task OnInitializedAsync()
     {
@@ -49,6 +52,7 @@
 
     private void FiltrarInmuebles(string? estado)
     {
+        activeFilterEstado = estado; // Set the active filter
         if (string.IsNullOrEmpty(estado))
         {
             InmueblesFiltrados = Inmuebles; // Mostrar todos

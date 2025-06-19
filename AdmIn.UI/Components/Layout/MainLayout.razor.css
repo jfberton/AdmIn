@@ -1,80 +1,117 @@
-.page {
-    position: relative;
-    display: flex;
-    flex-direction: column;
+/* MainLayout specific styles */
+.rz-layout { /* RadzenLayout */
+    font-family: var(--app-font-family);
+    /* Default RadzenLayout might fill the viewport if it's the root component in App.razor */
 }
 
-main {
-    flex: 1;
+.rz-header { /* RadzenHeader */
+    background-color: var(--app-header-bg);
+    color: white;
+    padding: 0 1rem; /* Adjust padding as needed */
+    height: 60px; /* Example height */
+    align-items: center;
+    display: flex; /* Ensure items are aligned */
 }
 
-.sidebar {
-    background-image: linear-gradient(180deg, rgb(5, 39, 103) 0%, #3a0647 70%);
-}
-
-.top-row {
-    background-color: #f7f7f7;
-    border-bottom: 1px solid #d6d5d5;
-    justify-content: flex-end;
-    height: 3.5rem;
-    display: flex;
+.rz-header .rz-row { /* Ensure RadzenRow inside header takes full width and aligns items */
+    width: 100%;
     align-items: center;
 }
 
-    .top-row ::deep a, .top-row ::deep .btn-link {
-        white-space: nowrap;
-        margin-left: 1.5rem;
-        text-decoration: none;
-    }
-
-    .top-row ::deep a:hover, .top-row ::deep .btn-link:hover {
-        text-decoration: underline;
-    }
-
-    .top-row ::deep a:first-child {
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-@media (max-width: 640.98px) {
-    .top-row {
-        justify-content: space-between;
-    }
-
-    .top-row ::deep a, .top-row ::deep .btn-link {
-        margin-left: 0;
-    }
+.rz-header .rz-stack { /* For the toggle and logo stack */
+     gap: 0.5rem; /* Spacing between toggle button and logo/title */
+     align-items: center; /* Vertically align items in the stack */
 }
 
-@media (min-width: 641px) {
-    .page {
-        flex-direction: row;
-    }
-
-    .sidebar {
-        width: 250px;
-        height: 100vh;
-        position: sticky;
-        top: 0;
-    }
-
-    .top-row {
-        position: sticky;
-        top: 0;
-        z-index: 1;
-    }
-
-    .top-row.auth ::deep a:first-child {
-        flex: 1;
-        text-align: right;
-        width: 0;
-    }
-
-    .top-row, article {
-        padding-left: 2rem !important;
-        padding-right: 1.5rem !important;
-    }
+.header-logo {
+    height: 40px; /* From inline style */
+    margin-left: 10px; /* From inline style */
 }
+
+.header-title { /* Class for RadzenText used as title in header */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+}
+
+.header-title .rz-text-body1 { /* Targeting the RadzenText's inner span if needed */
+    color: white !important; /* Ensure text is white, !important if Radzen overrides */
+    font-size: 1.1rem; /* Custom font size */
+}
+
+.header-title strong {
+    font-weight: 600; /* For bold text within title */
+}
+
+.rz-sidebar { /* RadzenSidebar */
+    background-color: var(--app-sidebar-bg);
+    color: var(--app-sidebar-text-color);
+    padding: 0; /* Remove default padding if any, to allow panel menu to fill */
+}
+
+.rz-panel-menu { /* RadzenPanelMenu */
+    background-color: transparent; /* Ensure it uses sidebar background */
+}
+
+.rz-panel-menu .rz-navigation-item-link {
+    color: var(--app-sidebar-text-color);
+    transition: background-color 0.2s ease, color 0.2s ease;
+    padding: 10px 20px; /* Consistent padding for menu items */
+}
+
+.rz-panel-menu .rz-navigation-item-link:hover {
+    background-color: var(--app-sidebar-hover-bg);
+}
+
+.rz-panel-menu .rz-navigation-item-active > .rz-navigation-item-link {
+    background-color: var(--app-sidebar-active-bg);
+    color: white; /* Ensure text is white for active item */
+}
+
+.rz-panel-menu .rz-navigation-item-icon {
+    color: var(--app-sidebar-icon-color);
+}
+
+/* Profile Menu custom styling */
+.rz-profile-menu .rz-navigation-item-link { /* Link part of the profile menu */
+    padding: 0.5rem 1rem; /* Standard padding */
+}
+.rz-profile-menu .rz-gravatar { /* Gravatar image in profile menu */
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+}
+.rz-profile-menu .rz-button { /* Buttons within profile menu popout */
+    color: var(--app-text-color); /* Text color for buttons in profile dropdown */
+}
+.rz-profile-menu .rz-button:hover {
+    background-color: rgba(0,0,0,0.05); /* Slight hover for buttons in dropdown */
+}
+
+
+.rz-body { /* RadzenBody - main content area */
+    background-color: #eaedf1; /* Light grey background for content area */
+    padding: 0; /* Remove default RadzenBody padding if .rz-p-4 is on child */
+}
+
+.rz-body > .rz-p-4 { /* The div often used inside RadzenBody for padding */
+     padding: 1.5rem; /* Standardized padding, avoid !important by ensuring specificity or structure */
+}
+
+
+.rz-footer { /* RadzenFooter */
+    background-color: var(--app-light-bg-color);
+    color: var(--app-text-color-muted);
+    padding: 0.75rem 1rem;
+    text-align: center;
+    font-size: 0.9rem;
+    border-top: 1px solid #dee2e6; /* Light border for separation */
+}
+
+
+/* Comment out default Blazor template styles, keeping #blazor-error-ui */
+/* ... (previous commented out styles remain here) ... */
 
 #blazor-error-ui {
     background: lightyellow;
@@ -94,3 +131,47 @@ main {
         right: 0.75rem;
         top: 0.5rem;
     }
+
+/* --- Responsive adjustments for MainLayout --- */
+@media (max-width: 768px) {
+    .rz-header {
+        padding: 0 0.5rem; /* Reduce padding on smaller screens */
+        height: auto; /* Allow height to adjust if content wraps */
+        min-height: 50px;
+    }
+
+    .header-logo {
+        height: 30px;
+        margin-left: 5px;
+    }
+
+    .header-title .rz-text-body1 { /* Adjusted selector for font size */
+        font-size: 0.9rem; /* Smaller title */
+    }
+
+    .header-title {
+        text-align: center; /* Center title if sidebar toggle takes space */
+    }
+
+    /* Profile menu is hidden on mobile by DeviceService logic in MainLayout.razor */
+
+    .rz-body > .rz-p-4 { /* The div inside RadzenBody */
+         padding: 0.75rem; /* Reduce padding for content area on smaller screens */
+    }
+
+    .rz-footer {
+        font-size: 0.8rem;
+        padding: 0.5rem;
+    }
+}
+
+@media (max-width: 480px) {
+    /* Further adjustments for very small screens if needed */
+    .header-title .rz-text-body1 {
+        /* Example: Hide subtitle if it were part of this element, or further reduce size */
+        /* For now, main title size is handled by 768px media query */
+    }
+    .header-logo {
+        height: 28px; /* Slightly smaller logo for very small screens */
+    }
+}
