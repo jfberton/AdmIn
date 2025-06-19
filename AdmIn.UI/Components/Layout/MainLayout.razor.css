@@ -24,12 +24,19 @@
 }
 
 .header-logo {
-    max-height: 80%; /* Allow it to take up to 80% of the header's inner content area height */
-    max-width: 100%; /* Don't exceed the width of its container column/area */
-    width: auto;     /* Maintain aspect ratio */
-    height: auto;    /* Let max-height and aspect ratio control the actual height */
+    /* These define the 'box' the image is placed into by RadzenImage component */
+    max-height: 80%; /* of the header's effective content height */
+    max-width: 100%; /* of the column it's in */
+
+    /* These apply to the actual <img> tag rendered by RadzenImage if it inherits them,
+       or would apply if .header-logo was directly on an <img> tag. */
+    height: 100%; /* Fill the allocated height defined by max-height constraint */
+    width: 100%;  /* Fill the allocated width defined by max-width constraint */
+    object-fit: contain; /* Scale image to fit within this box, preserving aspect ratio */
+
+    display: block; /* Common for images to control layout behavior */
     margin-left: 10px;
-    vertical-align: middle; /* Helps with alignment if header uses flex */
+    /* vertical-align: middle; /* Less relevant for block element in flex container */
 }
 
 .header-title { /* Class for RadzenText used as title in header */
