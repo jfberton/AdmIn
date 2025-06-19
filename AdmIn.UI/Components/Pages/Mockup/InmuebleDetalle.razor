@@ -233,6 +233,8 @@ else
 	private void CambiarImagenPrincipal(Guid imagenId)
 	{
 		inmueble.ImagenPrincipalId = imagenId;
+		// Add this line to update the ImagenPrincipal object directly
+		inmueble.ImagenPrincipal = inmueble.Imagenes.FirstOrDefault(img => img.Id == imagenId);
 	}
 
 	private BadgeStyle GetBadgeColor(string estado)
