@@ -1,192 +1,554 @@
-/* MainLayout specific styles */
-.rz-layout { /* RadzenLayout */
-    font-family: var(--app-font-family);
-    /* Default RadzenLayout might fill the viewport if it's the root component in App.razor */
+/* ===============================
+   SISTEMA DE VARIABLES MODERNO
+   =============================== */
+:root {
+    /* Paleta de colores principales */
+    --primary-blue: #1e40af;
+    --primary-blue-light: #3b82f6;
+    --primary-blue-dark: #1e3a8a;
+    --accent-gold: #f59e0b;
+    --accent-gold-light: #fbbf24;
+    /* Paleta neutra */
+    --neutral-50: #f8fafc;
+    --neutral-100: #f1f5f9;
+    --neutral-200: #e2e8f0;
+    --neutral-300: #cbd5e1;
+    --neutral-400: #94a3b8;
+    --neutral-500: #64748b;
+    --neutral-600: #475569;
+    --neutral-700: #334155;
+    --neutral-800: #1e293b;
+    --neutral-900: #0f172a;
+    /* Fondos */
+    --bg-primary: #ffffff;
+    --bg-secondary: var(--neutral-50);
+    --bg-tertiary: var(--neutral-100);
+    /* Sombras modernas */
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+    /* Transiciones */
+    --transition-fast: 0.15s ease-out;
+    --transition-normal: 0.25s ease-out;
+    --transition-slow: 0.35s ease-out;
+    /* Espaciado */
+    --spacing-xs: 0.25rem;
+    --spacing-sm: 0.5rem;
+    --spacing-md: 1rem;
+    --spacing-lg: 1.5rem;
+    --spacing-xl: 2rem;
+    --spacing-2xl: 3rem;
+    /* Border radius */
+    --radius-sm: 0.375rem;
+    --radius-md: 0.5rem;
+    --radius-lg: 0.75rem;
+    --radius-xl: 1rem;
 }
 
-.rz-header { /* RadzenHeader */
-    background-color: var(--app-header-bg);
+/* ===============================
+   LAYOUT PRINCIPAL MODERNIZADO
+   =============================== */
+.rz-layout {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+    min-height: 100vh;
+    background-color: var(--bg-secondary);
+}
+
+/* ===============================
+   HEADER MODERNO
+   =============================== */
+.rz-header {
+    background: linear-gradient(135deg, var(--primary-blue) 0%, var(--primary-blue-dark) 100%);
     color: white;
-    padding: 0 1rem; /* Adjust padding as needed */
-    height: 60px; /* Example height */
+    padding: 0 var(--spacing-lg);
+    height: 70px;
     align-items: center;
-    display: flex; /* Ensure items are aligned */
-}
-
-.rz-header .rz-row { /* Ensure RadzenRow inside header takes full width and aligns items */
-    width: 100%;
-    align-items: center;
-}
-
-.rz-header .rz-stack { /* For the toggle and logo stack */
-     gap: 0.5rem; /* Spacing between toggle button and logo/title */
-     align-items: center; /* Vertically align items in the stack */
-}
-
-.header-logo {
-    /* These define the 'box' the image is placed into by RadzenImage component */
-    max-height: 80%; /* of the header's effective content height */
-    max-width: 100%; /* of the column it's in */
-
-    /* These apply to the actual <img> tag rendered by RadzenImage if it inherits them,
-       or would apply if .header-logo was directly on an <img> tag. */
-    height: 100%; /* Fill the allocated height defined by max-height constraint */
-    width: 100%;  /* Fill the allocated width defined by max-width constraint */
-    object-fit: contain; /* Scale image to fit within this box, preserving aspect ratio */
-
-    display: block; /* Common for images to control layout behavior */
-    margin-left: 10px;
-    /* vertical-align: middle; /* Less relevant for block element in flex container */
-}
-
-.header-title { /* Class for RadzenText used as title in header */
     display: flex;
-    justify-content: center;
+    box-shadow: var(--shadow-md);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    position: relative;
+    z-index: 1000;
+}
+
+    .rz-header::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(255,255,255,0.03)" stroke-width="1"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+        pointer-events: none;
+    }
+
+    .rz-header .rz-row {
+        width: 100%;
+        align-items: center;
+        position: relative;
+        z-index: 1;
+    }
+
+    .rz-header .rz-stack {
+        gap: var(--spacing-md);
+        align-items: center;
+    }
+
+/* Logo moderno */
+.header-logo {
+    max-height: 45px !important;
+    max-width: 140px !important;
+    height: 45px !important;
+    width: auto !important;
+    object-fit: contain !important;
+    display: block !important;
+    margin-left: var(--spacing-sm);
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+    transition: transform var(--transition-fast);
+}
+
+    .header-logo:hover {
+        transform: scale(1.02);
+    }
+
+    .header-logo img {
+        max-height: 45px !important;
+        max-width: 140px !important;
+        height: 45px !important;
+        width: auto !important;
+        object-fit: contain !important;
+    }
+
+/* Contenido del header */
+.header-content {
+    display: flex;
     align-items: center;
-    width: 100%;
+    gap: var(--spacing-lg);
+    flex: 1;
+    position: relative;
 }
 
-.header-title .rz-text-body1 { /* Targeting the RadzenText's inner span if needed */
-    color: white !important; /* Ensure text is white, !important if Radzen overrides */
-    font-size: 1.1rem; /* Custom font size */
+.header-title {
+    color: white !important;
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    letter-spacing: -0.025em;
 }
 
-.header-title strong {
-    font-weight: 600; /* For bold text within title */
+    .header-title strong {
+        font-weight: 700;
+        color: var(--accent-gold-light);
+    }
+
+    .header-title span {
+        font-weight: 400;
+        opacity: 0.9;
+    }
+
+/* ===============================
+   SIDEBAR MODERNO
+   =============================== */
+.rz-sidebar {
+    background: linear-gradient(180deg, var(--bg-primary) 0%, var(--neutral-50) 100%);
+    border-right: 1px solid var(--neutral-200);
+    box-shadow: var(--shadow-lg);
+    padding: 0;
+    width: 280px;
+    transition: all var(--transition-normal);
 }
 
-.rz-sidebar { /* RadzenSidebar */
-    background-color: var(--app-sidebar-bg);
-    color: var(--app-sidebar-text-color);
-    padding: 0; /* Remove default padding if any, to allow panel menu to fill */
+    .rz-sidebar[aria-expanded="false"] {
+        width: 70px;
+    }
+
+/* Panel Menu modernizado */
+.rz-panel-menu {
+    background-color: transparent;
+    padding: var(--spacing-md) 0;
 }
 
-.rz-panel-menu { /* RadzenPanelMenu */
-    background-color: transparent; /* Ensure it uses sidebar background */
+    .rz-panel-menu .rz-navigation-item-link {
+        color: var(--neutral-700);
+        transition: all var(--transition-fast);
+        padding: var(--spacing-md) var(--spacing-lg);
+        margin: 0 var(--spacing-md);
+        border-radius: var(--radius-md);
+        font-weight: 500;
+        font-size: 0.95rem;
+        position: relative;
+        overflow: hidden;
+    }
+
+        .rz-panel-menu .rz-navigation-item-link::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            width: 3px;
+            background: var(--primary-blue);
+            transform: scaleY(0);
+            transition: transform var(--transition-fast);
+        }
+
+        .rz-panel-menu .rz-navigation-item-link:hover {
+            background: linear-gradient(135deg, var(--primary-blue-light), var(--primary-blue));
+            color: white;
+            transform: translateX(4px);
+            box-shadow: var(--shadow-md);
+        }
+
+            .rz-panel-menu .rz-navigation-item-link:hover::before {
+                transform: scaleY(1);
+            }
+
+    .rz-panel-menu .rz-navigation-item-active > .rz-navigation-item-link {
+        background: linear-gradient(135deg, var(--primary-blue), var(--primary-blue-dark));
+        color: white;
+        box-shadow: var(--shadow-md);
+        font-weight: 600;
+    }
+
+        .rz-panel-menu .rz-navigation-item-active > .rz-navigation-item-link::before {
+            transform: scaleY(1);
+        }
+
+    .rz-panel-menu .rz-navigation-item-icon {
+        color: inherit;
+        margin-right: var(--spacing-sm);
+        font-size: 1.1rem;
+    }
+
+/* ===============================
+   PROFILE MENU MODERNO
+   =============================== */
+.rz-profile-menu .rz-navigation-item-link {
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--radius-md);
+    transition: all var(--transition-fast);
 }
 
-.rz-panel-menu .rz-navigation-item-link {
-    color: var(--app-sidebar-text-color);
-    transition: background-color 0.2s ease, color 0.2s ease;
-    padding: 10px 20px; /* Consistent padding for menu items */
-}
+    .rz-profile-menu .rz-navigation-item-link:hover {
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+    }
 
-.rz-panel-menu .rz-navigation-item-link:hover {
-    background-color: var(--app-sidebar-hover-bg);
-}
-
-.rz-panel-menu .rz-navigation-item-active > .rz-navigation-item-link {
-    background-color: var(--app-sidebar-active-bg);
-    color: white; /* Ensure text is white for active item */
-}
-
-.rz-panel-menu .rz-navigation-item-icon {
-    color: var(--app-sidebar-icon-color);
-}
-
-/* Profile Menu custom styling */
-.rz-profile-menu .rz-navigation-item-link { /* Link part of the profile menu */
-    padding: 0.5rem 1rem; /* Standard padding */
-}
-.rz-profile-menu .rz-gravatar { /* Gravatar image in profile menu */
-    width: 32px;
-    height: 32px;
+.rz-profile-menu .rz-gravatar {
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
-}
-.rz-profile-menu .rz-button { /* Buttons within profile menu popout */
-    color: var(--app-text-color); /* Text color for buttons in profile dropdown */
-}
-.rz-profile-menu .rz-button:hover {
-    background-color: rgba(0,0,0,0.05); /* Slight hover for buttons in dropdown */
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    box-shadow: var(--shadow-md);
+    transition: all var(--transition-fast);
 }
 
+    .rz-profile-menu .rz-gravatar:hover {
+        transform: scale(1.05);
+        border-color: var(--accent-gold);
+    }
 
-.rz-body { /* RadzenBody - main content area */
-    background-color: #eaedf1; /* Light grey background for content area */
-    padding: 0; /* Remove default RadzenBody padding if .rz-p-4 is on child */
+.rz-profile-menu .rz-button {
+    color: var(--neutral-700);
+    font-weight: 500;
+    border-radius: var(--radius-md);
+    transition: all var(--transition-fast);
 }
 
-.rz-body > .rz-p-4 { /* The div often used inside RadzenBody for padding */
-     padding: 1.5rem; /* Standardized padding, avoid !important by ensuring specificity or structure */
+    .rz-profile-menu .rz-button:hover {
+        background: var(--neutral-100);
+        transform: translateY(-1px);
+    }
+
+/* ===============================
+   BODY PRINCIPAL MODERNO
+   =============================== */
+.rz-body {
+    background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--neutral-100) 100%);
+    padding: 0;
+    min-height: calc(100vh - 140px);
+    position: relative;
 }
 
+    .rz-body::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-image: radial-gradient(circle at 25% 25%, rgba(30, 64, 175, 0.02) 0%, transparent 50%), radial-gradient(circle at 75% 75%, rgba(245, 158, 11, 0.02) 0%, transparent 50%);
+        pointer-events: none;
+    }
 
-.rz-footer { /* RadzenFooter */
-    background-color: var(--app-light-bg-color);
-    color: var(--app-text-color-muted);
-    padding: 0.75rem 1rem;
+    .rz-body > .rz-p-4 {
+        padding: var(--spacing-xl);
+        position: relative;
+        z-index: 1;
+    }
+
+/* ===============================
+   FOOTER MODERNO
+   =============================== */
+.rz-footer {
+    background: linear-gradient(135deg, var(--bg-primary) 0%, var(--neutral-50) 100%);
+    color: var(--neutral-600);
+    padding: var(--spacing-lg);
     text-align: center;
     font-size: 0.9rem;
-    border-top: 1px solid #dee2e6; /* Light border for separation */
+    font-weight: 500;
+    border-top: 1px solid var(--neutral-200);
+    box-shadow: 0 -4px 6px -1px rgb(0 0 0 / 0.05);
+    position: relative;
 }
 
+    .rz-footer::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 60px;
+        height: 2px;
+        background: linear-gradient(90deg, var(--primary-blue), var(--accent-gold));
+        border-radius: 2px;
+    }
 
-/* Comment out default Blazor template styles, keeping #blazor-error-ui */
-/* ... (previous commented out styles remain here) ... */
-
+/* ===============================
+   ERROR UI MODERNO
+   =============================== */
 #blazor-error-ui {
-    background: lightyellow;
+    background: linear-gradient(135deg, #fef3c7, #fde68a);
+    border-top: 3px solid var(--accent-gold);
     bottom: 0;
-    box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.2);
+    box-shadow: var(--shadow-xl);
     display: none;
     left: 0;
-    padding: 0.6rem 1.25rem 0.7rem 1.25rem;
+    padding: var(--spacing-md) var(--spacing-lg);
     position: fixed;
     width: 100%;
-    z-index: 1000;
+    z-index: 10000;
+    color: var(--neutral-800);
+    font-weight: 500;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
 }
 
     #blazor-error-ui .dismiss {
         cursor: pointer;
         position: absolute;
-        right: 0.75rem;
-        top: 0.5rem;
+        right: var(--spacing-lg);
+        top: 50%;
+        transform: translateY(-50%);
+        background: var(--accent-gold);
+        color: white;
+        border-radius: 50%;
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        transition: all var(--transition-fast);
     }
 
-/* --- Responsive adjustments for MainLayout --- */
-@media (max-width: 768px) {
-    .rz-header {
-        padding: 0 0.5rem; /* Reduce padding on smaller screens */
-        height: auto; /* Allow height to adjust if content wraps */
-        min-height: 50px;
+        #blazor-error-ui .dismiss:hover {
+            background: var(--primary-blue);
+            transform: translateY(-50%) scale(1.1);
+        }
+
+/* ===============================
+   RESPONSIVE DESIGN MEJORADO
+   =============================== */
+@media (max-width: 1024px) {
+    .rz-sidebar {
+        width: 260px;
     }
 
-    .header-logo {
-        /* max-height: 80%; is inherited from base */
-        /* max-width: 100%; is inherited */
-        /* width: auto; is inherited */
-        /* height: auto; is inherited */
-        margin-left: 5px; /* Reduced margin for tablets */
-    }
-
-    .header-title .rz-text-body1 { /* Adjusted selector for font size */
-        font-size: 0.9rem; /* Smaller title */
-    }
-
-    .header-title {
-        text-align: center; /* Center title if sidebar toggle takes space */
-    }
-
-    /* Profile menu is hidden on mobile by DeviceService logic in MainLayout.razor */
-
-    .rz-body > .rz-p-4 { /* The div inside RadzenBody */
-         padding: 0.75rem; /* Reduce padding for content area on smaller screens */
-    }
-
-    .rz-footer {
-        font-size: 0.8rem;
-        padding: 0.5rem;
+    .rz-body > .rz-p-4 {
+        padding: var(--spacing-lg);
     }
 }
 
-@media (max-width: 480px) {
-    /* Further adjustments for very small screens if needed */
-    .header-title .rz-text-body1 {
-        /* Example: Hide subtitle if it were part of this element, or further reduce size */
-        /* For now, main title size is handled by 768px media query */
+@media (max-width: 768px) {
+    .rz-header {
+        padding: 0 var(--spacing-md);
+        height: 60px;
     }
+
     .header-logo {
-        /* max-height: 80%; is inherited */
-        /* margin-left: 5px; is inherited from 768px breakpoint if not overridden */
+        max-height: 38px !important;
+        max-width: 110px !important;
+        height: 38px !important;
+        margin-left: var(--spacing-xs);
     }
+
+        .header-logo img {
+            max-height: 38px !important;
+            height: 38px !important;
+            max-width: 110px !important;
+        }
+
+    .header-title {
+        font-size: 1.1rem;
+    }
+
+    .rz-body > .rz-p-4 {
+        padding: var(--spacing-md);
+    }
+
+    .rz-footer {
+        font-size: 0.85rem;
+        padding: var(--spacing-md);
+    }
+
+    .rz-sidebar {
+        width: 100%;
+        transform: translateX(-100%);
+        position: fixed;
+        top: 60px;
+        left: 0;
+        height: calc(100vh - 60px);
+        z-index: 999;
+        transition: transform var(--transition-normal);
+    }
+
+        .rz-sidebar[aria-expanded="true"] {
+            transform: translateX(0);
+        }
+}
+
+@media (max-width: 480px) {
+    .rz-header {
+        padding: 0 var(--spacing-sm);
+    }
+
+    .header-logo {
+        max-height: 32px !important;
+        max-width: 90px !important;
+        height: 32px !important;
+    }
+
+        .header-logo img {
+            max-height: 32px !important;
+            height: 32px !important;
+            max-width: 90px !important;
+        }
+
+    .header-title {
+        font-size: 1rem;
+    }
+
+    .header-content {
+        gap: var(--spacing-sm);
+    }
+
+    .rz-body > .rz-p-4 {
+        padding: var(--spacing-sm);
+    }
+}
+
+/* ===============================
+   ANIMACIONES Y MICRO-INTERACCIONES
+   =============================== */
+@keyframes slideInFromLeft {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.rz-panel-menu .rz-navigation-item {
+    animation: slideInFromLeft 0.3s ease-out forwards;
+}
+
+    .rz-panel-menu .rz-navigation-item:nth-child(1) {
+        animation-delay: 0.1s;
+    }
+
+    .rz-panel-menu .rz-navigation-item:nth-child(2) {
+        animation-delay: 0.2s;
+    }
+
+    .rz-panel-menu .rz-navigation-item:nth-child(3) {
+        animation-delay: 0.3s;
+    }
+
+    .rz-panel-menu .rz-navigation-item:nth-child(4) {
+        animation-delay: 0.4s;
+    }
+
+.rz-body > .rz-p-4 {
+    animation: fadeInUp 0.4s ease-out;
+}
+
+/* ===============================
+   MEJORAS ACCESIBILIDAD
+   =============================== */
+.rz-panel-menu .rz-navigation-item-link:focus-visible {
+    outline: 2px solid var(--accent-gold);
+    outline-offset: 2px;
+}
+
+.rz-profile-menu .rz-button:focus-visible {
+    outline: 2px solid var(--accent-gold);
+    outline-offset: 2px;
+}
+
+/* ===============================
+   UTILIDADES ESPECÍFICAS INMOBILIARIA
+   =============================== */
+.property-highlight {
+    background: linear-gradient(135deg, var(--accent-gold-light), var(--accent-gold));
+    color: white;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.status-indicator {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: var(--spacing-xs);
+}
+
+.status-available {
+    background-color: #10b981;
+}
+
+.status-occupied {
+    background-color: var(--neutral-400);
+}
+
+.status-reserved {
+    background-color: var(--primary-blue);
+}
+
+.status-maintenance {
+    background-color: var(--accent-gold);
 }

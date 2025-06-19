@@ -23,26 +23,27 @@
 
 <RadzenComponents @rendermode="InteractiveServer" />
 
-
 <RadzenLayout>
     @if (DeviceService.IsMobileDevice())
     {
         <RadzenHeader>
             <RadzenRow>
                 <RadzenColumn Size="12">
-                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center">
-                        <RadzenSidebarToggle Click="@(() => sidebar1Expanded = !sidebar1Expanded)" />
-                        <RadzenImage class="header-logo"
-                                     Path="@GetLogoPath()" />
-                        @* <RadzenLabel Text="AdmIn" /> *@
-                    </RadzenStack>
-                    <RadzenText TextStyle="TextStyle.Body1" class="header-title rz-color-white">
-                        <strong>@PageTitleService.Titulo</strong>
-                        @if (!string.IsNullOrEmpty(PageTitleService.Subtitulo))
-                        {
-                            <span>&nbsp;- @PageTitleService.Subtitulo</span>
-                        }
-                    </RadzenText>
+                    <div class="header-content">
+                        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                            <RadzenSidebarToggle Click="@(() => sidebar1Expanded = !sidebar1Expanded)" />
+                            <RadzenImage class="header-logo"
+                                         Path="@GetLogoPath()"
+                                         Style="max-height: 40px; max-width: 120px; height: 40px; width: auto; object-fit: contain;" />
+                        </RadzenStack>
+                        <div class="header-title">
+                            <strong>@PageTitleService.Titulo</strong>
+                            @if (!string.IsNullOrEmpty(PageTitleService.Subtitulo))
+                            {
+                                <span>&nbsp;- @PageTitleService.Subtitulo</span>
+                            }
+                        </div>
+                    </div>
                 </RadzenColumn>
             </RadzenRow>
         </RadzenHeader>
@@ -52,20 +53,21 @@
         <RadzenHeader>
             <RadzenRow>
                 <RadzenColumn Size="11">
-                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center">
-                        <RadzenSidebarToggle Click="@(() => sidebar1Expanded = !sidebar1Expanded)" />
-                        <RadzenImage class="header-logo"
-                                     Path="@GetLogoPath()" />
-                       @*  <RadzenLabel Text="AdmIn" /> *@
-                    </RadzenStack>
-                    <RadzenText TextStyle="TextStyle.Body1" class="header-title rz-color-white">
-                        <strong>@PageTitleService.Titulo</strong>
-                        @if (!string.IsNullOrEmpty(PageTitleService.Subtitulo))
-                        {
-                            <span>&nbsp;- @PageTitleService.Subtitulo</span>
-                        }
-
-                    </RadzenText>
+                    <div class="header-content">
+                        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                            <RadzenSidebarToggle Click="@(() => sidebar1Expanded = !sidebar1Expanded)" />
+                            <RadzenImage class="header-logo"
+                                         Path="@GetLogoPath()"
+                                         Style="max-height: 35px; max-width: 100px; height: 35px; width: auto; object-fit: contain;" />
+                        </RadzenStack>
+                        <div class="header-title">
+                            <strong>@PageTitleService.Titulo</strong>
+                            @if (!string.IsNullOrEmpty(PageTitleService.Subtitulo))
+                            {
+                                <span>&nbsp;- @PageTitleService.Subtitulo</span>
+                            }
+                        </div>
+                    </div>
                 </RadzenColumn>
                 <RadzenColumn>
                     <AuthorizeView>
@@ -90,10 +92,8 @@
         </RadzenHeader>
     }
 
-
     <RadzenSidebar @bind-Expanded="@sidebar1Expanded">
         <RadzenPanelMenu>
-
             <MenuItem Text="Usuarios" Icon="groups" Path="/usuarios" Roles="admin_usuario" OnMenuItemClick="@OnMenuItemClick" />
             <MenuItem Text="Inmuebles" Icon="store" Path="/m/inmuebles" Roles="admin_propiedad" OnMenuItemClick="@OnMenuItemClick" />
             <MenuItem Text="Reparaciones" Icon="store" Path="/m/reparaciones" Roles="add_reparacion, admin_reparacion" OnMenuItemClick="@OnMenuItemClick" />
@@ -106,7 +106,6 @@
                     <RadzenPanelMenuItem Text="Cerrar sesión" Icon="logout" Click="@(() => Logout())"></RadzenPanelMenuItem>
                 </RadzenPanelMenuItem>
             }
-
         </RadzenPanelMenu>
     </RadzenSidebar>
 
@@ -135,10 +134,8 @@
 </div>
 
 @code {
-
     bool sidebar1Expanded = true;
     string footerText = $"Sistema de administración de inmuebles - {DateTime.Now.Year}";
-
     private string userName;
 
     protected override async Task OnInitializedAsync()
@@ -163,7 +160,7 @@
         if (authStateProvider is CustomAuthenticationStateProvider customAuthStateProvider)
         {
             await customAuthStateProvider.Logout();
-            navManager.NavigateTo("/", true); 
+            navManager.NavigateTo("/", true);
         }
     }
 
