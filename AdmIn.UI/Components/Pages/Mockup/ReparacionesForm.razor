@@ -56,15 +56,16 @@
 
 
 
+@using AdmIn.UI.Services.Mock @* Added for new services *@
 @code {
 	[Inject]
-	protected IServ_Mock ServicioReparaciones { get; set; }
+	protected IReparacionService ReparacionMockService { get; set; } // Renamed
 
 	[Inject]
-	protected IServ_Mock InmuebleService { get; set; }
+	protected IInmuebleService InmuebleMockService { get; set; } // Renamed
 
 	[Inject]
-	protected IServ_Mock EmpleadoService { get; set; }
+	protected IEmpleadoService EmpleadoMockService { get; set; } // Renamed
 
 	[Parameter]
 	public Reparacion reparacion { get; set; } = new Reparacion();
@@ -90,9 +91,9 @@
 	protected override async Task OnInitializedAsync()
 	{
 		EstablecerTituloPagina(Titulo);
-		inmuebles = await InmuebleService.ObtenerInmuebles();
-		categorias = await ServicioReparaciones.ObtenerCategoriasReparacion();
-		empleados = await EmpleadoService.ObtenerEmpleados();
+		inmuebles = await InmuebleMockService.ObtenerInmuebles();
+		categorias = await ReparacionMockService.ObtenerCategoriasReparacion();
+		empleados = await EmpleadoMockService.ObtenerEmpleados();
 
 		if (IsNuevaReparacion && categorias.Any())
 		{
@@ -105,7 +106,7 @@
 		// Cargar calificaciones de empleados
 		foreach (var empleado in empleados)
 		{
-			var calificaciones = await ServicioReparaciones.ObtenerCalificacionesEmpleado(empleado.EmpleadoId);
+			var calificaciones = await EmpleadoMockService.ObtenerCalificacionesEmpleado(empleado.EmpleadoId);
 			if (calificaciones.Any())
 			{
 				calificacionesEmpleados[empleado.EmpleadoId] = calificaciones.Average(c => (c.CalificacionTrabajo + c.CalificacionComportamiento) / 2);
@@ -224,7 +225,7 @@
 	{
 		if (value != null && int.TryParse(value.ToString(), out int inmuebleId))
 		{
-			var inmueble = await InmuebleService.ObtenerInmueblePorId(inmuebleId);
+			var inmueble = await InmuebleMockService.ObtenerInmueblePorId(inmuebleId);
 			reparacion.Inmueble = inmueble;
 			reparacion.InmuebleId = inmuebleId;
 		}

@@ -5,9 +5,10 @@
 @using Radzen.Blazor
 @using AdmIn.Business.Entidades
 @using AdmIn.UI.Components.Pages.Mockup.ComponentesDialogos
+@using AdmIn.UI.Services.Mock
 @using AdmIn.UI.Services
 
-@inject IServ_Mock MockData
+@inject IInmuebleService InmuebleMockService // Renamed
 @inject DialogService DialogService
 
 <h3>Editar Inmueble</h3>
@@ -125,7 +126,7 @@ else
 
     private async Task ObtenerInmueble()
     {
-        inmueble = await MockData.ObtenerInmueblePorId(InmuebleId);
+        inmueble = await InmuebleMockService.ObtenerInmueblePorId(InmuebleId);
         inmueble.Caracteristicas = inmueble.Caracteristicas.ToList();
         inmueble.Imagenes = inmueble.Imagenes.ToList();
         StateHasChanged();
@@ -149,7 +150,7 @@ else
 
         if (!string.IsNullOrEmpty(nuevaCaracteristica.Nombre))
         {
-            await MockData.AgregarCaracteristica(inmueble.Id, nuevaCaracteristica);
+            await InmuebleMockService.AgregarCaracteristica(inmueble.Id, nuevaCaracteristica);
         }
 
         await ObtenerInmueble();
@@ -170,7 +171,7 @@ else
 
         if (!string.IsNullOrEmpty(copiaCaracteristica.Nombre))
         {
-            await MockData.ActualizarCaracteristica(inmueble.Id, copiaCaracteristica);
+            await InmuebleMockService.ActualizarCaracteristica(inmueble.Id, copiaCaracteristica);
         }
 
         await ObtenerInmueble();
@@ -178,7 +179,7 @@ else
 
     private async Task EliminarCaracteristica(int caracteristicaId)
     {
-        await MockData.EliminarCaracteristica(inmueble.Id, caracteristicaId);
+        await InmuebleMockService.EliminarCaracteristica(inmueble.Id, caracteristicaId);
 
         await ObtenerInmueble();
     }
@@ -192,7 +193,7 @@ else
 
         if (!string.IsNullOrEmpty(nuevaImagen.Url))
         {
-            await MockData.AgregarImagen(inmueble.Id, nuevaImagen);
+            await InmuebleMockService.AgregarImagen(inmueble.Id, nuevaImagen);
         }
 
         await ObtenerInmueble();
@@ -200,14 +201,14 @@ else
 
     private async Task EliminarImagen(Guid imagenId)
     {
-        await MockData.EliminarImagen(inmueble.Id, imagenId);
+        await InmuebleMockService.EliminarImagen(inmueble.Id, imagenId);
 
-        inmueble = await MockData.ObtenerInmueblePorId(InmuebleId);
+        inmueble = await InmuebleMockService.ObtenerInmueblePorId(InmuebleId);
     }
 
     private async Task EstablecerImagenPrincipal(Guid imagenId)
     {
-        await MockData.EstablecerImagenPrincipal(inmueble.Id, imagenId);
+        await InmuebleMockService.EstablecerImagenPrincipal(inmueble.Id, imagenId);
         await ObtenerInmueble();
     }
 

@@ -5,9 +5,10 @@
 @using Radzen.Blazor
 @using AdmIn.Business.Entidades
 @using AdmIn.UI.Components.Pages.Mockup.ComponentesDialogos
+@using AdmIn.UI.Services.Mock
 @using AdmIn.UI.Services
 
-@inject IServ_Mock MockData
+@inject IInmuebleService InmuebleMockService // Renamed from IMockInmuebleService
 @* @inject NavigationManager NavigationManager *@
 @inject DialogService DialogService
 
@@ -140,7 +141,7 @@
         inmueble.Direccion.CalleNumero = direccionTemporal;
 
         // Crear el inmueble en el servicio Mock y obtener el ID generado
-        int idGenerado = await MockData.CrearInmueble(inmueble);
+        int idGenerado = await InmuebleMockService.CrearInmueble(inmueble);
 
         // Asignar el ID generado al inmueble
         inmueble.Id = idGenerado;
@@ -149,7 +150,7 @@
         inmuebleCreado = true;
 
         // Recargar el inmueble para obtener los datos completos (opcional)
-        inmueble = await MockData.ObtenerInmueblePorId(inmueble.Id);
+        inmueble = await InmuebleMockService.ObtenerInmueblePorId(inmueble.Id);
     }
 
     private async Task Cancelar()
@@ -157,7 +158,7 @@
         if (inmuebleCreado)
         {
             // Si el inmueble ya fue creado, eliminarlo
-            await MockData.EliminarInmueble(inmueble.Id);
+            await InmuebleMockService.EliminarInmueble(inmueble.Id);
         }
 
         // Navegar a la pantalla de administración de inmuebles
@@ -173,7 +174,7 @@
 
         if (!string.IsNullOrEmpty(nuevaCaracteristica.Nombre))
         {
-            await MockData.AgregarCaracteristica(inmueble.Id, nuevaCaracteristica);
+            await InmuebleMockService.AgregarCaracteristica(inmueble.Id, nuevaCaracteristica);
         }
 
         await ObtenerInmueble();
@@ -194,7 +195,7 @@
 
         if (!string.IsNullOrEmpty(copiaCaracteristica.Nombre))
         {
-            await MockData.ActualizarCaracteristica(inmueble.Id, copiaCaracteristica);
+            await InmuebleMockService.ActualizarCaracteristica(inmueble.Id, copiaCaracteristica);
         }
 
         await ObtenerInmueble();
@@ -202,7 +203,7 @@
 
     private async Task EliminarCaracteristica(int caracteristicaId)
     {
-        await MockData.EliminarCaracteristica(inmueble.Id, caracteristicaId);
+        await InmuebleMockService.EliminarCaracteristica(inmueble.Id, caracteristicaId);
 
         await ObtenerInmueble();
     }
@@ -216,7 +217,7 @@
 
         if (!string.IsNullOrEmpty(nuevaImagen.Url))
         {
-            await MockData.AgregarImagen(inmueble.Id, nuevaImagen);
+            await InmuebleMockService.AgregarImagen(inmueble.Id, nuevaImagen);
         }
 
         await ObtenerInmueble();
@@ -224,21 +225,21 @@
 
     private async Task EliminarImagen(Guid imagenId)
     {
-        await MockData.EliminarImagen(inmueble.Id, imagenId);
+        await InmuebleMockService.EliminarImagen(inmueble.Id, imagenId);
 
-        inmueble = await MockData.ObtenerInmueblePorId(inmueble.Id);
+        inmueble = await InmuebleMockService.ObtenerInmueblePorId(inmueble.Id);
     }
 
     private async Task EstablecerImagenPrincipal(Guid imagenId)
     {
-        await MockData.EstablecerImagenPrincipal(inmueble.Id, imagenId);
+        await InmuebleMockService.EstablecerImagenPrincipal(inmueble.Id, imagenId);
         await ObtenerInmueble();
     }
 
     private async Task ObtenerInmueble()
     {
         // Recargar el inmueble para actualizar la lista de características
-        var inmuebleActualizado = await MockData.ObtenerInmueblePorId(inmueble.Id);
+        var inmuebleActualizado = await InmuebleMockService.ObtenerInmueblePorId(inmueble.Id);
 
         // Asignar una nueva instancia para forzar la actualización
         inmueble = new Inmueble

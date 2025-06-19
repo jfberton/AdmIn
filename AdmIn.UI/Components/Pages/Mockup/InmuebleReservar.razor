@@ -3,9 +3,11 @@
 @inherits BaseComponent
 
 @using AdmIn.Business.Entidades
+@using AdmIn.UI.Services.Mock
 @using AdmIn.UI.Services
 @using AdmIn.UI.Components.Pages.Mockup.ComponentesDialogos
-@inject IServ_Mock MockData
+@inject IInmuebleService InmuebleMockService // Renamed
+@inject IContratoService ContratoMockService // Renamed
 @inject IJSRuntime JS
 @inject IWebHostEnvironment Env
 
@@ -138,7 +140,7 @@ else
 	{
 		await base.OnInitializedAsync();
 		base.EstablecerTituloPagina("Inmuebles", "Reservar");
-		inmueble = await MockData.ObtenerInmueblePorId(inmuebleId);
+		inmueble = await InmuebleMockService.ObtenerInmueblePorId(inmuebleId);
 	}
 
 	private void OnPersonaSeleccionada(PersonaBase persona)
@@ -162,7 +164,7 @@ else
 				FechaFinalizacion = fechaFinalizacion
 			};
 
-		reservaGenerada = await MockData.GuardarReservaAsync(reserva);
+		reservaGenerada = await ContratoMockService.GuardarReservaAsync(reserva);
 		reservaConfirmada = true;
 
 		base.MostrarNotificacion(Radzen.NotificationSeverity.Success, "Reserva confirmada", "La reserva se ha registrado correctamente.");

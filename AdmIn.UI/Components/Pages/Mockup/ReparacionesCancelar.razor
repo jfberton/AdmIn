@@ -1,9 +1,10 @@
 ﻿@page "/m/reparaciones/cancelar/{ReparacionId}"
 @using AdmIn.Business.Entidades
+@using AdmIn.UI.Services.Mock @* Added for new services *@
 @using AdmIn.UI.Services
 @using System.ComponentModel.DataAnnotations
 
-@inject IServ_Mock ServicioReparaciones
+@inject IReparacionService ReparacionMockService // Renamed
 @inherits BaseComponent
 
 <EditForm Model="@model" OnValidSubmit="@CancelarReparacion">
@@ -55,12 +56,12 @@
 
     protected override async Task OnInitializedAsync()
     {
-        reparacion = await ServicioReparaciones.ObtenerReparacionPorId(ReparacionId);
+        reparacion = await ReparacionMockService.ObtenerReparacionPorId(ReparacionId);
     }
 
     private async Task CancelarReparacion()
     {
-        var success = await ServicioReparaciones.CancelarReparacion(
+        var success = await ReparacionMockService.CancelarReparacion(
             ReparacionId,
             1, // ID del admin actual
             model.Motivo);

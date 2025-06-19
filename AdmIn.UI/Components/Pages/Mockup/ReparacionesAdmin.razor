@@ -1,10 +1,11 @@
 ﻿@page "/m/reparaciones"
 @using AdmIn.Business.Entidades
 @using AdmIn.Common
+@using AdmIn.UI.Services.Mock @* Added for new services *@
 @using AdmIn.UI.Services
 @using System.Linq.Dynamic.Core
 
-@inject IServ_Mock ServicioReparaciones
+@inject IReparacionService ReparacionMockService // Renamed
 @inherits BaseComponent
 
 <AuthorizeView Roles="add_reparacion">
@@ -102,7 +103,7 @@ else
 
 	private async Task CargarReparaciones()
 	{
-		reparaciones = await ServicioReparaciones.ObtenerReparaciones();
+		reparaciones = await ReparacionMockService.ObtenerReparaciones();
 	}
 
 	private async Task LoadData(LoadDataArgs args)

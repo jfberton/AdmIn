@@ -4,8 +4,9 @@
 
 @using Radzen.Blazor
 @using AdmIn.Business.Entidades
+@using AdmIn.UI.Services.Mock
 @using AdmIn.UI.Services
-@inject IServ_Mock MockData
+@inject IInmuebleService InmuebleMockService // Renamed
 
 @inject DialogService DialogService
 
@@ -193,7 +194,7 @@ else
 
 	protected override async Task OnParametersSetAsync()
 	{
-		inmueble = await MockData.ObtenerInmueblePorId(InmuebleId);
+		inmueble = await InmuebleMockService.ObtenerInmueblePorId(InmuebleId);
 
 		base.EstablecerTituloPagina("Inmuebles", $"Detalle inmueble # {inmueble.Id.ToString()}");
 	}
@@ -208,7 +209,7 @@ else
 		bool? confirmar = await DialogService.Confirm("¿Estás seguro de eliminar este inmueble?", "Eliminar");
 		if (confirmar == true)
 		{
-			MockData.EliminarInmueble(InmuebleId);
+			await InmuebleMockService.EliminarInmueble(InmuebleId); // Added await
 			NavigationManager.NavigateTo("m/inmuebles/");
 		}
 	}

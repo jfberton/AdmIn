@@ -2,9 +2,9 @@
 @using Radzen.Blazor
 @using AdmIn.Business.Entidades
 @using AdmIn.UI.Components.Pages.Mockup.ComponentesDialogos
-@using Services
-@using Services.UtilityServices
-@inject IServ_Mock MockData
+@using AdmIn.UI.Services.Mock
+@using AdmIn.UI.Services.UtilityServices
+@inject IInmuebleService InmuebleMockService // Renamed from IMockInmuebleService
 
 @inherits BaseComponent
 
@@ -43,7 +43,7 @@
 
         base.EstablecerTituloPagina("Inmuebles", "Listado");
 
-        Inmuebles = await MockData.ObtenerInmuebles();
+        Inmuebles = await InmuebleMockService.ObtenerInmuebles();
         InmueblesFiltrados = Inmuebles; // Mostrar todos al inicio
     }
 

@@ -5,9 +5,11 @@
 @using Radzen.Blazor
 @using AdmIn.Business.Entidades
 @using AdmIn.UI.Components.Pages.Mockup.ComponentesDialogos
+@using AdmIn.UI.Services.Mock
 @using AdmIn.UI.Services
 
-@inject IServ_Mock MockData
+@inject IInmuebleService InmuebleMockService // Renamed
+@inject IReparacionService ReparacionMockService // Renamed
 @inject DialogService DialogService
 
 <h3>Reparaciones del Inmueble</h3>
@@ -59,8 +61,29 @@ else
 
     private async Task ObtenerInmueble()
     {
-        inmueble = await MockData.ObtenerInmueblePorId(InmuebleId);
-        inmueble.Reparaciones = inmueble.Reparaciones.ToList();
+        inmueble = await InmuebleMockService.ObtenerInmueblePorId(InmuebleId);
+        // Ensure Reparaciones are loaded. The new MockInmuebleService doesn't explicitly load them from MockReparacionService.
+        // This might require adjustment if Inmueble.Reparaciones is null or empty unexpectedly.
+        // For now, assume it's populated or this page will show empty.
+        if (inmueble != null && inmueble.Reparaciones != null)
+        {
+            inmueble.Reparaciones = inmueble.Reparaciones.ToList();
+        }
+        else if (inmueble != null)
+        {
+            // If MockInmuebleService doesn't populate this, we might need to fetch from ReparacionMockService here
+            // var reparaciones = await ReparacionMockService.ObtenerReparacionesPorInmueble(InmuebleId);
+            // inmueble.Reparaciones = reparaciones.ToList();
+            // This depends on how deep the GetInmuebleById goes or if we should make a separate call.
+            // For now, stick to direct replacement. The previous MockData.ObtenerInmueblePorId DID populate repairs.
+            // The new MockInmuebleService's ObtenerInmueblePorId does NOT.
+            // So, we DO need to fetch them separately here.
+            if (inmueble != null) // inmueble itself should not be null
+            {
+                 var reparaciones = await ReparacionMockService.ObtenerReparacionesPorInmueble(InmuebleId);
+                 inmueble.Reparaciones = reparaciones.ToList();
+            }
+        }
         StateHasChanged();
     }
 
@@ -95,8 +118,8 @@ else
         bool confirmar = await DialogService.Confirm("¿Estás seguro de eliminar esta reparación?", "Eliminar Reparación") == true;
         if (confirmar)
         {
-            await MockData.EliminarReparacion(reparacion.Id);
-            await ObtenerInmueble();
+            await ReparacionMockService.EliminarReparacion(reparacion.Id);
+            await ObtenerInmueble(); // This will re-fetch the inmueble and its reparaciones
         }
     }
 }
