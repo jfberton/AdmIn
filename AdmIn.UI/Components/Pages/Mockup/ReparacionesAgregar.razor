@@ -32,7 +32,7 @@
         {
             // Lógica específica para nueva reparación
             reparacion.FechaSolicitud = DateTime.Now;
-            reparacion.Estado = await ServicioReparaciones.ObtenerEstadoReparacion(1); // Pendiente
+            reparacion.Estado = await ReparacionMockService.ObtenerEstadoReparacionPorId(1); // Pendiente, Changed variable and method name
 
             // Agregar imágenes a la reparación
             foreach (var img in imagenesSeleccionadas)
@@ -44,7 +44,7 @@
                     });
             }
 
-            await ServicioReparaciones.AgregarReparacion(reparacion.InmuebleId, reparacion);
+            await ReparacionMockService.AgregarReparacion(reparacion.InmuebleId, reparacion); // Changed variable
             MostrarNotificacion(NotificationSeverity.Success, "Éxito", "Reparación creada correctamente");
             VolverAListado();
         }

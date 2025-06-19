@@ -618,7 +618,7 @@
 
 	private async Task RechazarReparacion() //ok
 	{
-		var success = await ReparacionMockService.RechazarReparacion(reparacion.Id, reparacion.EmpleadoId.Value); // Assuming EmpleadoId is non-null when this is called
+		var success = await ReparacionMockService.RechazarReparacion(reparacion.Id, reparacion.EmpleadoId); // Removed .Value
 		if (success)
 		{
 			MostrarNotificacion(NotificationSeverity.Success, "Éxito", "Reparación rechazada");
@@ -632,7 +632,7 @@
 
 	private async Task AceptarReparacion() //ok
 	{
-		var success = await ReparacionMockService.AceptarReparacion(reparacion.Id, reparacion.EmpleadoId.Value, reparacion.CostoEstimado.Value, reparacion.FechaInicio.Value); // Assuming EmpleadoId is non-null
+		var success = await ReparacionMockService.AceptarReparacion(reparacion.Id, reparacion.EmpleadoId, reparacion.CostoEstimado.Value, reparacion.FechaInicio.Value); // Removed .Value from EmpleadoId
 		if (success)
 		{
 			MostrarNotificacion(NotificationSeverity.Success, "Éxito", "Reparación rechazada");
@@ -706,7 +706,7 @@
 		if (reparacion != null)
 		{
 			calificacion.ReparacionId = reparacion.Id;
-			calificacion.EmpleadoId = reparacion.EmpleadoId.Value; // Assuming EmpleadoId is non-null
+			calificacion.EmpleadoId = reparacion.EmpleadoId; // Removed .Value
 			var success = await ReparacionMockService.AprobarReparacion(reparacion.Id, calificacion);
 			if (success)
 			{
