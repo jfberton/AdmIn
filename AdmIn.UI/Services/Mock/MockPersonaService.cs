@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace AdmIn.UI.Services.Mock
 {
-    public class MockPersonaService : IPersonaService // Implement updated interface
+    public class MockPersonaService : IPersonaService
     {
         private readonly List<PersonaBase> _personas;
         private static readonly Random random = new Random();

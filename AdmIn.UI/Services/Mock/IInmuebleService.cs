@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace AdmIn.UI.Services.Mock
 {
-    public interface IInmuebleService // Renamed from IMockInmuebleService
+    public interface IInmuebleService
     {
         Task<IEnumerable<Inmueble>> ObtenerInmuebles();
         Task<Inmueble?> ObtenerInmueblePorId(int id);

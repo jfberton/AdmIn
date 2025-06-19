@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace AdmIn.UI.Services.Mock
 {
-    public class MockInmuebleService : IInmuebleService // Implement updated interface
+    public class MockInmuebleService : IInmuebleService 
     {
         private readonly List<Inmueble> _inmuebles;
         private readonly List<EstadoInmueble> _estadosInmueble;
@@ -42,8 +42,7 @@ namespace AdmIn.UI.Services.Mock
                     Superficie = random.Next(50, 500),
                     Construido = random.Next(30, 450),
                     Telefono = new Telefono { Numero = $"+54 9 {random.Next(1000, 9999)}-{random.Next(100000, 999999)}" },
-                    Estado = estadoDisponible, // Default a disponible
-                    // EstadoId = estadoDisponible.Id, // Removed
+                    Estado = estadoDisponible, 
                     Direccion = new Direccion
                     {
                         DireccionId = i, // Assuming DireccionId can be same as InmuebleId for mock
@@ -90,9 +89,6 @@ namespace AdmIn.UI.Services.Mock
         public async Task<Inmueble?> ObtenerInmueblePorId(int id)
         {
             var inmueble = _inmuebles.FirstOrDefault(i => i.Id == id);
-            // Reparaciones are populated by MockReparacionService if needed by specific views,
-            // or this service could fetch them if it had a dependency on MockReparacionService.
-            // For now, keeping it simple.
             return await Task.FromResult(inmueble);
         }
 

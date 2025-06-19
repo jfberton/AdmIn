@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 
 namespace AdmIn.UI.Services.Mock
 {
-    public interface IContratoService // Renamed from IMockContratoService
+    public interface IContratoService
     {
         Task<IEnumerable<Contrato>> ObtenerContratos();
         Task<Contrato?> ObtenerContratoPorId(int id);

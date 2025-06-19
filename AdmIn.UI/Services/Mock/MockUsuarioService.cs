@@ -6,18 +6,15 @@ using System.Threading.Tasks;
 
 namespace AdmIn.UI.Services.Mock
 {
-    public class MockUsuarioService : IUsuarioService // Implement updated interface
+    public class MockUsuarioService : IUsuarioService 
     {
         private readonly List<Usuario> _usuarios;
-        private readonly IPersonaService _mockPersonaService; // Updated type
+        private readonly IPersonaService _mockPersonaService; 
         private static readonly Random random = new Random();
 
-        public MockUsuarioService(IPersonaService mockPersonaService) // Updated type
+        public MockUsuarioService(IPersonaService mockPersonaService)
         {
             _mockPersonaService = mockPersonaService;
-            // It's generally better to make data generation async if it involves async calls.
-            // However, for mocks and simplicity, .Result can be used if deadlocks are not an issue in the setup.
-            // Consider an async InitializeAsync method for more robust scenarios.
             var personas = _mockPersonaService.BuscarPersonasAsync(null, null).Result;
             _usuarios = GenerarUsuarios(personas).ToList();
         }
@@ -26,8 +23,6 @@ namespace AdmIn.UI.Services.Mock
         {
             if (personas == null || !personas.Any())
             {
-                // Fallback if no personas are available (e.g. service not ready)
-                // This should ideally not happen if services are initialized in correct order.
                 yield break;
             }
 
@@ -37,11 +32,11 @@ namespace AdmIn.UI.Services.Mock
                 yield return new Usuario
                 {
                     Id = i + 1,
-                    Nombre = persona.Email, // Using email as username for simplicity
-                    Password = "mockhashedpassword", // In real app, this would be properly hashed
+                    Nombre = persona.Email,
+                    Password = "mockhashedpassword", 
                     Email = persona.Email,
                     Token = Guid.NewGuid().ToString(),
-                    Activo = random.Next(10) < 9, // 90% active
+                    Activo = random.Next(10) < 9,
                     Creacion = DateTime.Now.AddDays(-random.Next(1, 365)),
                     PersonaId = persona.PersonaId,
                     Persona = persona,
@@ -54,7 +49,7 @@ namespace AdmIn.UI.Services.Mock
         {
             var roles = new List<Rol>();
             var allRoleNames = new[] { "Administrador", "GestorInmuebles", "GestorContratos", "UsuarioConsulta" };
-            int numberOfRoles = random.Next(1, 3); // 1 or 2 roles per user
+            int numberOfRoles = random.Next(1, 3); 
 
             var userRoleNames = new HashSet<string>();
             while(userRoleNames.Count < numberOfRoles)
@@ -62,7 +57,7 @@ namespace AdmIn.UI.Services.Mock
                 userRoleNames.Add(allRoleNames[random.Next(allRoleNames.Length)]);
             }
 
-            int rolIdCounter = 1; // simple id for roles within this user
+            int rolIdCounter = 1; 
             foreach (var roleName in userRoleNames)
             {
                 var rol = new Rol
@@ -81,7 +76,6 @@ namespace AdmIn.UI.Services.Mock
             var permisos = new List<Permiso>();
             var permisoIdCounter = 1;
 
-            // Example permissions based on role
             if (roleName == "Administrador")
             {
                 permisos.Add(new Permiso { Id = permisoIdCounter++, Nombre = "VerTodo" });

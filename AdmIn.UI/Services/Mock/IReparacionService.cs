@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace AdmIn.UI.Services.Mock
 {
-    public interface IReparacionService // Renamed from IMockReparacionService
+    public interface IReparacionService
     {
         Task<IEnumerable<Reparacion>> ObtenerReparaciones();
         Task<Reparacion?> ObtenerReparacionPorId(int id);

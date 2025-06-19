@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 
 namespace AdmIn.UI.Services.Mock
 {
-    public interface IPersonaService // Renamed from IMockPersonaService
+    public interface IPersonaService
     {
         Task<List<PersonaBase>> BuscarPersonasAsync(string apellido, string rfc);
         Task<PersonaBase> CrearPersonaAsync(PersonaBase persona);

@@ -6,17 +6,17 @@ using System.Threading.Tasks;
 
 namespace AdmIn.UI.Services.Mock
 {
-    public class MockReparacionService : IReparacionService // Implement updated interface
+    public class MockReparacionService : IReparacionService
     {
         private readonly List<Reparacion> _reparaciones;
         private readonly List<ReparacionEstado> _reparacionEstados;
         private readonly List<ReparacionCategoria> _reparacionCategorias;
 
-        private readonly IInmuebleService _mockInmuebleService; // Updated type
-        private readonly IEmpleadoService _mockEmpleadoService; // Updated type
+        private readonly IInmuebleService _mockInmuebleService; 
+        private readonly IEmpleadoService _mockEmpleadoService;
         private static readonly Random random = new Random();
 
-        public MockReparacionService(IInmuebleService mockInmuebleService, IEmpleadoService mockEmpleadoService) // Updated types
+        public MockReparacionService(IInmuebleService mockInmuebleService, IEmpleadoService mockEmpleadoService) 
         {
             _mockInmuebleService = mockInmuebleService;
             _mockEmpleadoService = mockEmpleadoService;
@@ -24,7 +24,6 @@ namespace AdmIn.UI.Services.Mock
             _reparacionEstados = GenerarReparacionEstados().ToList();
             _reparacionCategorias = GenerarCategoriasReparacion().ToList();
 
-            // Fetch dependent data. Using .Result for simplicity in mocks.
             var inmuebles = _mockInmuebleService.ObtenerInmuebles().Result.ToList();
             var empleados = _mockEmpleadoService.ObtenerEmpleados().Result.ToList();
             var estadosInmueble = _mockInmuebleService.ObtenerEstadosInmueble().Result.ToList();
@@ -75,29 +74,25 @@ namespace AdmIn.UI.Services.Mock
                 DateTime? fechaInicioFinal;
                 int? costoEstimado;
 
-                if (!tieneEmpleado) // No employee assigned yet or rejected
+                if (!tieneEmpleado) 
                 {
-                    estadoId = 2; // "Pendiente sin asignar"
+                    estadoId = 2; 
                     fechaInicioFinal = null;
                     costoEstimado = null;
                 }
-                else // Employee assigned
+                else 
                 {
-                    // If employee assigned, it's at least "Pendiente" (awaiting acceptance)
-                    // or could be "En proceso" if details already exist from original mock logic
-                    estadoId = 1; // "Pendiente"
-                    fechaInicioFinal = null; // Not started yet
-                    costoEstimado = null; // Not estimated yet
+                    estadoId = 1; 
+                    fechaInicioFinal = null; 
+                    costoEstimado = null; 
                 }
 
                 var estadoActual = _reparacionEstados.First(e => e.Id == estadoId);
 
                 var inmuebleParaReparar = inmuebles[random.Next(0, inmuebles.Count)];
-                // Set inmueble to "En Reparación" state if not already
                 if(inmuebleParaReparar.Estado.Estado != "En reparación")
                 {
                     inmuebleParaReparar.Estado = estadoEnReparacion;
-                    // inmuebleParaReparar.EstadoId = estadoEnReparacion.Id; // Removed
                 }
 
 
@@ -106,17 +101,15 @@ namespace AdmIn.UI.Services.Mock
                     Id = i,
                     FechaSolicitud = fechaSolicitud,
                     FechaInicio = fechaInicioFinal,
-                    // FechaFin will be set when finalized
                     Categoria = _reparacionCategorias[random.Next(0, _reparacionCategorias.Count)],
                     Descripcion = $"Reparación #{i} para {inmuebleParaReparar.Descripcion}",
                     CostoEstimado = costoEstimado,
-                    // CostoFinal will be set when finalized
                     Inmueble = inmuebleParaReparar,
                     InmuebleId = inmuebleParaReparar.Id,
                     Estado = estadoActual,
                     EstadoId = estadoActual.Id,
                     Empleado = empleado,
-                    EmpleadoId = empleado?.EmpleadoId ?? 0, // Changed
+                    EmpleadoId = empleado?.EmpleadoId ?? 0, 
                     Detalles = new List<ReparacionDetalle>(),
                     HistorialEstados = new List<ReparacionEstadoHistorial>()
                 };
@@ -158,7 +151,6 @@ namespace AdmIn.UI.Services.Mock
             var inmueble = await _mockInmuebleService.ObtenerInmueblePorId(inmuebleId);
             if (inmueble != null)
             {
-                 // Assuming Inmueble.Reparaciones is populated correctly or we filter global list
                 return await Task.FromResult(_reparaciones.Where(r => r.InmuebleId == inmuebleId));
             }
             return new List<Reparacion>();
@@ -170,9 +162,9 @@ namespace AdmIn.UI.Services.Mock
             if (index != -1)
             {
                 _reparaciones[index] = reparacion;
-                if (reparacion.EmpleadoId != 0 && reparacion.Empleado == null) // Changed
+                if (reparacion.EmpleadoId != 0 && reparacion.Empleado == null)
                 {
-                    reparacion.Empleado = await _mockEmpleadoService.ObtenerEmpleadoPorId(reparacion.EmpleadoId); // Changed
+                    reparacion.Empleado = await _mockEmpleadoService.ObtenerEmpleadoPorId(reparacion.EmpleadoId);
                 }
             }
             await Task.CompletedTask;
@@ -199,11 +191,10 @@ namespace AdmIn.UI.Services.Mock
             reparacion.Inmueble = inmueble;
             reparacion.InmuebleId = inmueble.Id;
 
-            if(reparacion.EmpleadoId != 0) // Changed
-                reparacion.Empleado = await _mockEmpleadoService.ObtenerEmpleadoPorId(reparacion.EmpleadoId); // Changed
+            if(reparacion.EmpleadoId != 0) 
+                reparacion.Empleado = await _mockEmpleadoService.ObtenerEmpleadoPorId(reparacion.EmpleadoId);
 
-            // Initial state: "Pendiente sin asignar" if no employee, "Pendiente" if employee assigned
-            int initialStateId = reparacion.EmpleadoId != 0 ? 1 : 2; // Changed
+            int initialStateId = reparacion.EmpleadoId != 0 ? 1 : 2;
             await ActualizarEstadoReparacionInterno(reparacion, initialStateId, "Reparación creada.");
 
             _reparaciones.Add(reparacion);
@@ -215,8 +206,6 @@ namespace AdmIn.UI.Services.Mock
             if (estadoEnReparacion != null && inmueble.Estado.Id != estadoEnReparacion.Id)
             {
                 inmueble.Estado = estadoEnReparacion;
-                // inmueble.EstadoId = estadoEnReparacion.Id; // Removed
-               // await _mockInmuebleService.ActualizarInmueble(inmueble); // if state change needs to persist in that service's list
             }
         }
 
@@ -239,14 +228,13 @@ namespace AdmIn.UI.Services.Mock
         public async Task<bool> RechazarReparacion(int reparacionId, int empleadoId)
         {
             var reparacion = _reparaciones.FirstOrDefault(r => r.Id == reparacionId);
-            // Can be rejected if "Pendiente" (state 1) and assigned to this employee
             if (reparacion == null || reparacion.EstadoId != 1 || reparacion.EmpleadoId != empleadoId) return false;
 
             var empleado = await _mockEmpleadoService.ObtenerEmpleadoPorId(empleadoId);
             string empleadoNombre = empleado?.Nombre ?? $"Empleado Id {empleadoId}";
 
-            await ActualizarEstadoReparacionInterno(reparacion, 2, $"{empleadoNombre} rechazó la solicitud."); // Pendiente sin asignar
-            reparacion.EmpleadoId = 0; // Unassign employee // Changed
+            await ActualizarEstadoReparacionInterno(reparacion, 2, $"{empleadoNombre} rechazó la solicitud."); 
+            reparacion.EmpleadoId = 0; 
             reparacion.Empleado = null;
             reparacion.FechaInicio = null;
             reparacion.CostoEstimado = null;
@@ -256,58 +244,50 @@ namespace AdmIn.UI.Services.Mock
         public async Task<bool> AgregarDetalleReparacion(int reparacionId, ReparacionDetalle detalle)
         {
             var reparacion = _reparaciones.FirstOrDefault(r => r.Id == reparacionId);
-            // Can only add details if "En Proceso" (state 3) or "En Disputa" (state 4)
             if (reparacion == null || (reparacion.EstadoId != 3 && reparacion.EstadoId != 4)) return false;
 
             detalle.Id = reparacion.Detalles.Any() ? reparacion.Detalles.Max(d => d.Id) + 1 : 1;
             detalle.Reparacion = reparacion;
-            // detalle.ReparacionId = reparacionId; // Removed
             detalle.Fecha = DateTime.Now;
-            // Default ACargoDe based on current mock logic (inquilino if any, else propietario)
             detalle.ACargoDeInquilino = reparacion.Inmueble.Inquilinos != null && reparacion.Inmueble.Inquilinos.Any();
             detalle.ACargoDePropietario = !detalle.ACargoDeInquilino;
             reparacion.Detalles.Add(detalle);
 
-            // If it was "Pendiente" and first detail is added, it moves to "En Proceso"
-            // But our AceptarReparacion already moves it to "En Proceso". So, this just adds detail.
-            // If it's in "En Disputa", adding a new detail might not change the main state unless all disputes resolved.
-            // For simplicity, just ensure it's "En Proceso" if not "En Disputa"
-            if(reparacion.EstadoId != 4) // if not in dispute
-                 await ActualizarEstadoReparacionInterno(reparacion, 3, "Detalle de reparación agregado."); // En Proceso
+            if(reparacion.EstadoId != 4)
+                 await ActualizarEstadoReparacionInterno(reparacion, 3, "Detalle de reparación agregado."); 
             return true;
         }
 
         public async Task<bool> DisputarDetalle(int reparacionId, int detalleId)
         {
             var reparacion = _reparaciones.FirstOrDefault(r => r.Id == reparacionId);
-            if (reparacion == null || reparacion.EstadoId != 3) return false; // Must be "En Proceso"
+            if (reparacion == null || reparacion.EstadoId != 3) return false;
 
             var detalle = reparacion.Detalles.FirstOrDefault(d => d.Id == detalleId);
             if (detalle == null || detalle.Disputada) return false;
 
-            detalle.ACargoDePropietario = true; // Assume dispute means inquilino wants propietario to pay
+            detalle.ACargoDePropietario = true; 
             detalle.ACargoDeInquilino = false;
             detalle.Disputada = true;
-            await ActualizarEstadoReparacionInterno(reparacion, 4, $"Detalle ID {detalleId} en disputa."); // En Disputa
+            await ActualizarEstadoReparacionInterno(reparacion, 4, $"Detalle ID {detalleId} en disputa."); 
             return true;
         }
 
         public async Task<bool> ResolverDisputa(int reparacionId, int detalleId, bool aceptarDisputaDelInquilino)
         {
             var reparacion = _reparaciones.FirstOrDefault(r => r.Id == reparacionId);
-            if (reparacion == null || reparacion.EstadoId != 4) return false; // Must be "En Disputa"
+            if (reparacion == null || reparacion.EstadoId != 4) return false;
 
             var detalle = reparacion.Detalles.FirstOrDefault(d => d.Id == detalleId && d.Disputada);
             if (detalle == null) return false;
 
             detalle.Disputada = false;
-            detalle.ACargoDePropietario = aceptarDisputaDelInquilino; // If admin accepts inquilino's dispute, propietario pays
+            detalle.ACargoDePropietario = aceptarDisputaDelInquilino; 
             detalle.ACargoDeInquilino = !aceptarDisputaDelInquilino;
 
-            // If no other details are in dispute, move back to "En Proceso"
             if (!reparacion.Detalles.Any(d => d.Disputada))
             {
-                await ActualizarEstadoReparacionInterno(reparacion, 3, $"Disputa del detalle ID {detalleId} resuelta."); // En Proceso
+                await ActualizarEstadoReparacionInterno(reparacion, 3, $"Disputa del detalle ID {detalleId} resuelta."); 
             }
             return true;
         }
@@ -315,10 +295,9 @@ namespace AdmIn.UI.Services.Mock
         public async Task<bool> FinalizarReparacion(int reparacionId)
         {
             var reparacion = _reparaciones.FirstOrDefault(r => r.Id == reparacionId);
-            // Can only be finalized if "En Proceso" (state 3) and has details
             if (reparacion == null || reparacion.EstadoId != 3 || !reparacion.Detalles.Any()) return false;
 
-            await ActualizarEstadoReparacionInterno(reparacion, 5, "Reparación finalizada por empleado, pendiente aprobación."); // Finalizado por Aprobar
+            await ActualizarEstadoReparacionInterno(reparacion, 5, "Reparación finalizada por empleado, pendiente aprobación."); 
             reparacion.FechaFin = DateTime.Now;
             reparacion.CostoFinal = reparacion.Detalles.Sum(d => d.Costo);
             return true;
@@ -327,16 +306,14 @@ namespace AdmIn.UI.Services.Mock
         public async Task<bool> AprobarReparacion(int reparacionId, EmpleadoCalificacion calificacion)
         {
             var reparacion = _reparaciones.FirstOrDefault(r => r.Id == reparacionId);
-            // Can only be approved if "Finalizado por Aprobar" (state 5)
             if (reparacion == null || reparacion.EstadoId != 5) return false;
 
-            await ActualizarEstadoReparacionInterno(reparacion, 6, "Reparación aprobada por administrador."); // Finalizado
+            await ActualizarEstadoReparacionInterno(reparacion, 6, "Reparación aprobada por administrador."); 
 
-            if (reparacion.EmpleadoId != 0) // Changed
+            if (reparacion.EmpleadoId != 0) 
             {
                 calificacion.ReparacionId = reparacionId;
-                calificacion.EmpleadoId = reparacion.EmpleadoId; // Changed
-                // The AddCalificacionAsync will handle setting its own ID
+                calificacion.EmpleadoId = reparacion.EmpleadoId; 
                 await _mockEmpleadoService.AddCalificacionAsync(calificacion);
             }
             return true;
@@ -345,32 +322,29 @@ namespace AdmIn.UI.Services.Mock
         public async Task<bool> DesaprobarReparacion(int reparacionId)
         {
             var reparacion = _reparaciones.FirstOrDefault(r => r.Id == reparacionId);
-            // Can only be disapproved if "Finalizado por Aprobar" (state 5)
             if (reparacion == null || reparacion.EstadoId != 5) return false;
 
-            await ActualizarEstadoReparacionInterno(reparacion, 3, "Reparación desaprobada, vuelve a 'En Proceso'."); // En Proceso
-            reparacion.FechaFin = null; // Clear finish date
-            reparacion.CostoFinal = null; // Clear final cost
+            await ActualizarEstadoReparacionInterno(reparacion, 3, "Reparación desaprobada, vuelve a 'En Proceso'.");
+            reparacion.FechaFin = null;
+            reparacion.CostoFinal = null;
             return true;
         }
 
         public async Task<bool> CancelarReparacion(int reparacionId, int adminId, string motivoCancelacion)
         {
             var reparacion = _reparaciones.FirstOrDefault(r => r.Id == reparacionId);
-            // Can be cancelled if "Pendiente sin asignar" (2) or "Pendiente" (1)
             if (reparacion == null || (reparacion.EstadoId != 1 && reparacion.EstadoId != 2)) return false;
 
-            await ActualizarEstadoReparacionInterno(reparacion, 7, $"Reparación cancelada por Admin ID {adminId}. Motivo: {motivoCancelacion}"); // Cancelado
+            await ActualizarEstadoReparacionInterno(reparacion, 7, $"Reparación cancelada por Admin ID {adminId}. Motivo: {motivoCancelacion}"); 
             reparacion.MotivoCancelacion = motivoCancelacion;
             reparacion.FechaCancelacion = DateTime.Now;
-            reparacion.CanceladoPorId = adminId; // Assuming Admin has an ID, not a full object here.
+            reparacion.CanceladoPorId = adminId;
             return true;
         }
 
         public async Task<bool> AsignarEmpleado(int reparacionId, int empleadoId)
         {
             var reparacion = _reparaciones.FirstOrDefault(r => r.Id == reparacionId);
-            // Can only assign if "Pendiente sin asignar" (state 2)
             if (reparacion == null || reparacion.EstadoId != 2) return false;
 
             var empleado = await _mockEmpleadoService.ObtenerEmpleadoPorId(empleadoId);

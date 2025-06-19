@@ -6,19 +6,18 @@ using System.Threading.Tasks;
 
 namespace AdmIn.UI.Services.Mock
 {
-    public class MockEmpleadoService : IEmpleadoService // Implement updated interface
+    public class MockEmpleadoService : IEmpleadoService 
     {
         private readonly List<Empleado> _empleados;
         private readonly List<EmpleadoCalificacion> _calificaciones;
-        private readonly IPersonaService _mockPersonaService; // Retained for potential future use, updated type
+        private readonly IPersonaService _mockPersonaService;
         private static readonly Random random = new Random();
 
-        // Simplified constructor for mock setup: Generates its own Personas or uses a predefined simple list.
         public MockEmpleadoService(IPersonaService mockPersonaService) // Updated type
         {
-            _mockPersonaService = mockPersonaService; // Store it
+            _mockPersonaService = mockPersonaService; 
             _empleados = GenerarEmpleados().ToList();
-            _calificaciones = new List<EmpleadoCalificacion>(); // Calificaciones are added by ReparacionService
+            _calificaciones = new List<EmpleadoCalificacion>(); 
         }
 
         private IEnumerable<Empleado> GenerarEmpleados()
@@ -52,7 +51,6 @@ namespace AdmIn.UI.Services.Mock
             }
         }
 
-        // Helper to generate placeholder PersonaBase objects for employees to avoid complex dependencies during mock init
         private IEnumerable<PersonaBase> GenerarPersonasInternasParaEmpleados(int cantidad)
         {
              var nombres = new[] { "Eduardo", "Fernanda", "Roberto", "Gabriela", "Arturo" };
@@ -66,7 +64,7 @@ namespace AdmIn.UI.Services.Mock
                 var apellidoM = apellidosM[random.Next(apellidosM.Length)];
                 yield return new PersonaBase
                 {
-                    PersonaId = 100 + i, // Ensure unique IDs if combined with other personas
+                    PersonaId = 100 + i, 
                     Nombre = nombre,
                     ApellidoPaterno = apellidoP,
                     ApellidoMaterno = apellidoM,
@@ -88,17 +86,16 @@ namespace AdmIn.UI.Services.Mock
                 var fecha = DateTime.Now.AddDays(random.Next(1, 30));
                 var horaInicioNum = random.Next(9, 17);
                 var horaInicio = TimeSpan.FromHours(horaInicioNum);
-                var horaFin = TimeSpan.FromHours(horaInicioNum + random.Next(1, 3)); // Duration 1 to 2 hours
+                var horaFin = TimeSpan.FromHours(horaInicioNum + random.Next(1, 3));
 
                 yield return new EmpleadoAgenda
                 {
-                    Id = j + 1, // Simple ID per employee's agenda
+                    Id = j + 1, 
                     Fecha = fecha,
                     HoraInicio = horaInicio,
                     HoraFin = horaFin,
-                    Disponible = random.Next(0, 2) == 0, // 50% chance of being available
-                    Empleado = empleado // Link back to the employee
-                    // EmpleadoId = empleado.EmpleadoId // Removed
+                    Disponible = random.Next(0, 2) == 0, 
+                    Empleado = empleado
                 };
             }
         }
@@ -119,13 +116,11 @@ namespace AdmIn.UI.Services.Mock
         public async Task<IEnumerable<EmpleadoCalificacion>> ObtenerCalificacionesEmpleado(int empleadoId)
         {
             await Task.CompletedTask;
-            // Calificaciones are added by MockReparacionService, this service just stores and returns them.
             return _calificaciones.Where(c => c.EmpleadoId == empleadoId).ToList();
         }
 
         public async Task AddCalificacionAsync(EmpleadoCalificacion calificacion)
         {
-            // Ensure ID is unique for the new calificacion
             calificacion.Id = _calificaciones.Any() ? _calificaciones.Max(c => c.Id) + 1 : 1;
             _calificaciones.Add(calificacion);
             await Task.CompletedTask;
