@@ -24,10 +24,12 @@
 }
 
 .header-logo {
-    height: 38px; /* Default height for larger screens */
-    width: auto;  /* Maintain aspect ratio */
-    margin-left: 10px; /* Consistent with original inline style */
-    vertical-align: middle; /* Helps with alignment in flex container */
+    max-height: 80%; /* Allow it to take up to 80% of the header's inner content area height */
+    max-width: 100%; /* Don't exceed the width of its container column/area */
+    width: auto;     /* Maintain aspect ratio */
+    height: auto;    /* Let max-height and aspect ratio control the actual height */
+    margin-left: 10px;
+    vertical-align: middle; /* Helps with alignment if header uses flex */
 }
 
 .header-title { /* Class for RadzenText used as title in header */
@@ -143,7 +145,10 @@
     }
 
     .header-logo {
-        height: 30px; /* Smaller for tablets */
+        /* max-height: 80%; is inherited from base */
+        /* max-width: 100%; is inherited */
+        /* width: auto; is inherited */
+        /* height: auto; is inherited */
         margin-left: 5px; /* Reduced margin for tablets */
     }
 
@@ -174,7 +179,7 @@
         /* For now, main title size is handled by 768px media query */
     }
     .header-logo {
-        height: 28px; /* Smaller for mobile phones */
-        /* margin-left is inherited from 768px breakpoint or base if not specified */
+        /* max-height: 80%; is inherited */
+        /* margin-left: 5px; is inherited from 768px breakpoint if not overridden */
     }
 }
