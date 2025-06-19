@@ -13,11 +13,11 @@
         <RadzenColumn Size="12">
             <RadzenStack Orientation="Orientation.Horizontal" Gap="10px" class="action-bar">
                 <RadzenButton Text="Agregar Inmueble" Icon="add" Click="@(() => IrA("/agregar-inmueble"))" />
-                <RadzenBadge Text="Todos" BadgeStyle="BadgeStyle.Primary" class="filter-badge @(activeFilterEstado == null ? "active-filter" : "")" @onclick="() => FiltrarInmuebles(null)" />
-                <RadzenBadge Text="Disponible" BadgeStyle="BadgeStyle.Success" class="filter-badge @(activeFilterEstado == "Disponible" ? "active-filter" : "")" @onclick="@(() => FiltrarInmuebles("Disponible"))" />
-                <RadzenBadge Text="Reservado" BadgeStyle="BadgeStyle.Info" class="filter-badge @(activeFilterEstado == "Reservado" ? "active-filter" : "")" @onclick="@(() => FiltrarInmuebles("Reservado"))" />
-                <RadzenBadge Text="Ocupado" BadgeStyle="BadgeStyle.Dark" class="filter-badge @(activeFilterEstado == "Ocupado" ? "active-filter" : "")" @onclick="@(() => FiltrarInmuebles("Ocupado"))" />
-                <RadzenBadge Text="En reparación" BadgeStyle="BadgeStyle.Warning" class="filter-badge @(activeFilterEstado == "En reparación" ? "active-filter" : "")" @onclick="@(() => FiltrarInmuebles("En reparación"))" />
+                <RadzenBadge Text="Todos" BadgeStyle="BadgeStyle.Primary" class="@GetFilterBadgeClass(null)" @onclick="() => FiltrarInmuebles(null)" />
+                <RadzenBadge Text="Disponible" BadgeStyle="BadgeStyle.Success" class="@GetFilterBadgeClass("Disponible")" @onclick="@(() => FiltrarInmuebles("Disponible"))" />
+                <RadzenBadge Text="Reservado" BadgeStyle="BadgeStyle.Info" class="@GetFilterBadgeClass("Reservado")" @onclick="@(() => FiltrarInmuebles("Reservado"))" />
+                <RadzenBadge Text="Ocupado" BadgeStyle="BadgeStyle.Dark" class="@GetFilterBadgeClass("Ocupado")" @onclick="@(() => FiltrarInmuebles("Ocupado"))" />
+                <RadzenBadge Text="En reparación" BadgeStyle="BadgeStyle.Warning" class="@GetFilterBadgeClass("En reparación")" @onclick="@(() => FiltrarInmuebles("En reparación"))" />
             </RadzenStack>
         </RadzenColumn>
     </RadzenRow>
@@ -66,5 +66,21 @@
     private void VerDetalleInmueble(int inmuebleId)
     {
         IrA($"/inmueble/{inmuebleId}");
+    }
+
+    private string GetFilterBadgeClass(string? filterType)
+    {
+        var baseClass = "filter-badge";
+        // Special handling for "Todos" which corresponds to null filterEstado
+        if (filterType == null && activeFilterEstado == null)
+        {
+            return $"{baseClass} active-filter";
+        }
+        // For other specific states
+        if (activeFilterEstado == filterType && filterType != null)
+        {
+            return $"{baseClass} active-filter";
+        }
+        return baseClass;
     }
 }
