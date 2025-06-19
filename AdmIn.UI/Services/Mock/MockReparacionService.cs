@@ -212,7 +212,7 @@ namespace AdmIn.UI.Services.Mock
 
             // Update inmueble state to "En reparación"
             var estadoEnReparacion = (await _mockInmuebleService.ObtenerEstadosInmueble()).FirstOrDefault(e => e.Estado == "En reparación");
-            if (estadoEnReparacion != null && inmueble.EstadoId != estadoEnReparacion.Id)
+            if (estadoEnReparacion != null && inmueble.Estado.Id != estadoEnReparacion.Id)
             {
                 inmueble.Estado = estadoEnReparacion;
                 // inmueble.EstadoId = estadoEnReparacion.Id; // Removed
