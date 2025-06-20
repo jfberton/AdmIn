@@ -6,265 +6,254 @@
 @using AdmIn.Business.Entidades
 @using AdmIn.UI.Services.Mock
 @using AdmIn.UI.Services
-@inject IInmuebleService InmuebleMockService // Renamed
-
+@inject IInmuebleService InmuebleMockService
 @inject DialogService DialogService
 
 @if (inmueble == null)
 {
-	<RadzenAlert Text="Cargando..." Style="margin: 20px;" />
+    <RadzenAlert Text="Cargando..." Style="margin: 20px;" />
 }
 else
 {
-	<div class="main-property-container" style="max-width: 1100px; margin: 2rem auto; padding: 1rem;">
-		<!-- Información principal -->
-		<RadzenCard>
-			<!-- Botones de acción -->
-			<div class="primary-actions" style="margin-bottom: 20px;">
-				<RadzenButton Text="Volver" Icon="arrow_back" Click="@Volver" Style="margin-right: 10px;" />
+    <div class="main-property-container">
+        <RadzenCard>
+            <!-- Botones de acción -->
+            <div class="primary-actions" style="margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 10px;">
+                <RadzenButton Text="Volver" Icon="arrow_back" Click="@Volver" />
+                <RadzenButton Text="Editar" Icon="edit" Click="@EditarInmueble" />
+                <RadzenButton Text="Eliminar" Icon="delete" ButtonStyle="ButtonStyle.Danger" Click="@(async () => await EliminarInmueble())" />
+            </div>
 
-				<RadzenButton Text="Editar" Icon="edit" Click="@EditarInmueble" Style="margin-right: 10px;" />
-				<RadzenButton Text="Eliminar" Icon="delete" ButtonStyle="ButtonStyle.Danger" Click="@(async () => await EliminarInmueble())" />
-			</div>
-			<Header>
-				<div class="property-title"><h3>@inmueble.Descripcion</h3></div>
-			</Header>
-			<div class="secondary-actions" style="margin-top: 15px; margin-bottom: 15px; display: flex; gap: 10px;">
-				@if (inmueble.Estado.Estado == "Disponible")
-				{
-					<RadzenButton Text="Reservar" Icon="event" Style="margin-right: 10px;" Click="@(() => IrAReservarInmueble(inmueble.Id))" />
-					<RadzenButton Text="Alquilar" Icon="event" Style="margin-right: 10px;" Click="@(() => IrAAlquilarInmueble(inmueble.Id))" />
-				}
+            <Header>
+                <div class="property-title">
+                    <h3>@inmueble.Descripcion</h3>
+                </div>
+            </Header>
 
-				@if (inmueble.Estado.Estado == "Reservado")
-				{
-					<RadzenButton Text="Alquilar" Icon="event" Style="margin-right: 10px;" Click="@(() => IrAAlquilarInmueble(inmueble.Id))" />
-				}
-			</div>
-			<Content>
-				<RadzenRow>
-					<RadzenColumn Size="12" MD="6">
-						<p class="property-address"><strong>Dirección:</strong> @inmueble.Direccion.ToString()</p>
-						<p class="property-value"><strong>Valor:</strong> @inmueble.Valor.ToString("C")</p>
-						<p class="property-area"><strong>Superficie:</strong> @inmueble.Superficie m²</p>
-						<p class="property-built-area"><strong>Construido:</strong> @inmueble.Construido m²</p>
-						<RadzenBadge class="property-status-badge" Text="@inmueble.Estado.Estado"
-						BadgeStyle="@GetBadgeColor(inmueble.Estado.Estado)" />
-						@if (inmueble.Estado.Estado == "Reservado")
-						{
-							<RadzenBadge Text="@ObtenerDetalleReserva(inmueble.Reserva)"
-							BadgeStyle="BadgeStyle.Light" />							
-						}
-						@if (inmueble.Estado.Estado == "Ocupado")
-						{
-							<RadzenBadge Text="@ObtenerDetalleOcupacion(contratoVigente)"
-										 BadgeStyle="BadgeStyle.Light" />
-						}
-					</RadzenColumn>
-				</RadzenRow>
+            <div class="secondary-actions" style="display: flex; flex-wrap: wrap; gap: 10px; margin: 15px 0;">
+                @if (inmueble.Estado.Estado == "Disponible")
+                {
+                    <RadzenButton Text="Reservar" Icon="event" Click="@(() => IrAReservarInmueble(inmueble.Id))" />
+                    <RadzenButton Text="Alquilar" Icon="event" Click="@(() => IrAAlquilarInmueble(inmueble.Id))" />
+                }
+                @if (inmueble.Estado.Estado == "Reservado")
+                {
+                    <RadzenButton Text="Alquilar" Icon="event" Click="@(() => IrAAlquilarInmueble(inmueble.Id))" />
+                }
+            </div>
 
-				<!-- Tabs para más secciones -->
-				<RadzenTabs Style="margin-top: 20px;">
-					<Tabs>
-						<RadzenTabsItem Text="Características">
-							<RadzenDataGrid Data="@inmueble.Caracteristicas" TItem="CaracteristicaInmueble" Style="margin-top: 10px;">
-								<Columns>
-									<RadzenDataGridColumn Title="Nombre" Property="Nombre" />
-									<RadzenDataGridColumn Title="Valor" Property="Valor" />
-								</Columns>
-							</RadzenDataGrid>
-						</RadzenTabsItem>
+            <Content>
+                <RadzenRow>
+                    <RadzenColumn Size="12" MD="6">
+                        <p class="property-address"><strong>Dirección:</strong> @inmueble.Direccion.ToString()</p>
+                        <p class="property-value"><strong>Valor:</strong> @inmueble.Valor.ToString("C")</p>
+                        <p class="property-area"><strong>Superficie:</strong> @inmueble.Superficie m²</p>
+                        <p class="property-built-area"><strong>Construido:</strong> @inmueble.Construido m²</p>
 
-						<RadzenTabsItem Text="Inquilinos">
-							<RadzenDataGrid Data="@inmueble.Inquilinos" TItem="Inquilino" Style="margin-top: 10px;">
-								<Columns>
-									<RadzenDataGridColumn Title="Nombre" Property="Nombre" />
-									<RadzenDataGridColumn Title="Correo" Property="Email" />
-									<RadzenDataGridColumn Title="Teléfono">
-										<Template Context="inquilino">
-											@if (inquilino.Telefonos != null && inquilino.Telefonos.Any())
-											{
-												@inquilino.Telefonos[0].ToString() <!-- Muestra el primer teléfono -->
-											}
-											else
-											{
-												<span>Sin teléfono</span>
-											}
-										</Template>
-									</RadzenDataGridColumn>
-								</Columns>
-							</RadzenDataGrid>
-						</RadzenTabsItem>
+                        <RadzenBadge class="property-status-badge" Text="@inmueble.Estado.Estado" BadgeStyle="@GetBadgeColor(inmueble.Estado.Estado)" />
 
-						<RadzenTabsItem Text="Pagos">
-							@if (contratoVigente != null && contratoVigente.Pagos?.Any() == true)
-							{
-								<RadzenDataGrid Data="@contratoVigente.Pagos" TItem="Pago">
-									<Columns>
-										<RadzenDataGridColumn TItem="Pago" Title="Fecha Vencimiento">
-											<Template Context="pago">
-												@pago.FechaVencimiento.ToString("d")
-											</Template>
-										</RadzenDataGridColumn>
-										<RadzenDataGridColumn TItem="Pago" Title="Monto">
-											<Template Context="pago">
-												@pago.Monto.ToString("C")
-											</Template>
-										</RadzenDataGridColumn>
-										<RadzenDataGridColumn TItem="Pago" Title="Estado">
-											<Template Context="pago">
-												@pago.Estado.Estado
-											</Template>
-										</RadzenDataGridColumn>
-									</Columns>
-								</RadzenDataGrid>
-							}
-							else
-							{
-								<p>No hay pagos disponibles para mostrar.</p>
-							}
-						</RadzenTabsItem>
+                        @if (inmueble.Estado.Estado == "Reservado")
+                        {
+                            <RadzenBadge Text="@ObtenerDetalleReserva(inmueble.Reserva)" BadgeStyle="BadgeStyle.Light" />
+                        }
+                        @if (inmueble.Estado.Estado == "Ocupado")
+                        {
+                            <RadzenBadge Text="@ObtenerDetalleOcupacion(contratoVigente)" BadgeStyle="BadgeStyle.Light" />
+                        }
+                    </RadzenColumn>
+                </RadzenRow>
 
-						<RadzenTabsItem Text="Reparaciones">
-							<!-- Botón para administrar reparaciones -->
-							<div style="margin-bottom: 10px;">
-								<RadzenButton Text="Administrar Reparaciones" Icon="settings" Click="() => IrAAdministrarReparaciones(inmueble.Id)" />
-							</div>
+                <RadzenTabs>
+                    <Tabs>
+                        <RadzenTabsItem Text="Características">
+                            <RadzenDataGrid Data="@inmueble.Caracteristicas" TItem="CaracteristicaInmueble" Style="margin-top: 10px;">
+                                <Columns>
+                                    <RadzenDataGridColumn Title="Nombre" Property="Nombre" />
+                                    <RadzenDataGridColumn Title="Valor" Property="Valor" />
+                                </Columns>
+                            </RadzenDataGrid>
+                        </RadzenTabsItem>
 
-							<!-- Tabla de reparaciones -->
-							<RadzenDataGrid Data="@inmueble.Reparaciones" TItem="Reparacion">
-								<Columns>
-									<RadzenDataGridColumn Title="Descripción" Property="Descripcion" />
-									<RadzenDataGridColumn TItem="Reparacion" Title="Costo Final">
-										<Template Context="reparacion">
-											@(
-																																																													(reparacion.CostoFinal ?? 0).ToString("C")
-																																																													)
-										</Template>
-									</RadzenDataGridColumn>
-									<RadzenDataGridColumn Title="Estado" Property="Estado.Estado" />
-								</Columns>
-							</RadzenDataGrid>
-						</RadzenTabsItem>
-					</Tabs>
-				</RadzenTabs>
+                        <RadzenTabsItem Text="Inquilinos">
+                            <RadzenDataGrid Data="@inmueble.Inquilinos" TItem="Inquilino" Style="margin-top: 10px;">
+                                <Columns>
+                                    <RadzenDataGridColumn Title="Nombre" Property="Nombre" />
+                                    <RadzenDataGridColumn Title="Correo" Property="Email" />
+                                    <RadzenDataGridColumn Title="Teléfono">
+                                        <Template Context="inquilino">
+                                            @if (inquilino.Telefonos != null && inquilino.Telefonos.Any())
+                                            {
+                                                @inquilino.Telefonos[0].ToString()
+                                            }
+                                            else
+                                            {
+                                                <span>Sin teléfono</span>
+                                            }
+                                        </Template>
+                                    </RadzenDataGridColumn>
+                                </Columns>
+                            </RadzenDataGrid>
+                        </RadzenTabsItem>
 
-				<!-- Imagen principal y galería -->
-				<RadzenRow>
-					<RadzenColumn Size="12" MD="6">
-						@if (inmueble.ImagenPrincipal != null)
-						{
-							<img src="@inmueble.ImagenPrincipal.Url" class="main-property-image" style="width: 100%; border-radius: 5px;" />
-						}
-						else
-						{
-							<div class="main-property-image-placeholder" style="width: 100%; height: 200px; background-color: #f0f0f0; display: flex; align-items: center; justify-content: center;">
-								<span>Sin imagen principal</span>
-							</div>
-						}
+                        <RadzenTabsItem Text="Pagos">
+                            @if (contratoVigente != null && contratoVigente.Pagos?.Any() == true)
+                            {
+                                <RadzenDataGrid Data="@contratoVigente.Pagos" TItem="Pago">
+                                    <Columns>
+                                        <RadzenDataGridColumn TItem="Pago" Title="Fecha Vencimiento">
+                                            <Template Context="pago">
+                                                @pago.FechaVencimiento.ToString("d")
+                                            </Template>
+                                        </RadzenDataGridColumn>
+                                        <RadzenDataGridColumn TItem="Pago" Title="Monto">
+                                            <Template Context="pago">
+                                                @pago.Monto.ToString("C")
+                                            </Template>
+                                        </RadzenDataGridColumn>
+                                        <RadzenDataGridColumn TItem="Pago" Title="Estado">
+                                            <Template Context="pago">
+                                                @pago.Estado.Estado
+                                            </Template>
+                                        </RadzenDataGridColumn>
+                                    </Columns>
+                                </RadzenDataGrid>
+                            }
+                            else
+                            {
+                                <p>No hay pagos disponibles para mostrar.</p>
+                            }
+                        </RadzenTabsItem>
 
-						<!-- Galería de imágenes -->
-						<div class="thumbnail-gallery" style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px;">
-							@foreach (var imagen in inmueble.Imagenes)
-							{
-								<img src="@imagen.Url"
-								class="thumbnail-image @(imagen.Id == inmueble.ImagenPrincipalId ? "active-thumbnail" : "")"
-								style="width: 100px; height: 75px; object-fit: cover; cursor: pointer;"
-								@onclick="() => CambiarImagenPrincipal(imagen.Id)" />
-							}
-						</div>
-					</RadzenColumn>
-				</RadzenRow>
-			</Content>
-		</RadzenCard>
-	</div>
+                        <RadzenTabsItem Text="Reparaciones">
+                            <div>
+                                <RadzenButton Text="Administrar Reparaciones" Icon="settings" Click="() => IrAAdministrarReparaciones(inmueble.Id)" />
+                            </div>
+
+                            <RadzenDataGrid Data="@inmueble.Reparaciones" TItem="Reparacion">
+                                <Columns>
+                                    <RadzenDataGridColumn Title="Descripción" Property="Descripcion" />
+                                    <RadzenDataGridColumn TItem="Reparacion" Title="Costo Final">
+                                        <Template Context="reparacion">
+                                            @((reparacion.CostoFinal ?? 0).ToString("C"))
+                                        </Template>
+                                    </RadzenDataGridColumn>
+                                    <RadzenDataGridColumn Title="Estado" Property="Estado.Estado" />
+                                </Columns>
+                            </RadzenDataGrid>
+                        </RadzenTabsItem>
+                    </Tabs>
+                </RadzenTabs>
+
+                <RadzenRow>
+                    <RadzenColumn Size="12" MD="6">
+                        @if (inmueble.ImagenPrincipal != null)
+                        {
+                            <img src="@inmueble.ImagenPrincipal.Url" class="main-property-image" />
+                        }
+                        else
+                        {
+                            <div class="main-property-image-placeholder">
+                                <span>Sin imagen principal</span>
+                            </div>
+                        }
+
+                        <div class="thumbnail-gallery">
+                            @foreach (var imagen in inmueble.Imagenes)
+                            {
+                                <img src="@imagen.Url"
+                                     class="thumbnail-image @(imagen.Id == inmueble.ImagenPrincipalId ? "active-thumbnail" : "")"
+                                     @onclick="() => CambiarImagenPrincipal(imagen.Id)" />
+                            }
+                        </div>
+                    </RadzenColumn>
+                </RadzenRow>
+            </Content>
+        </RadzenCard>
+    </div>
 }
 
 @code {
-	[Parameter]
-	public int InmuebleId { get; set; }
+    [Parameter]
+    public int InmuebleId { get; set; }
 
-	private Inmueble? inmueble;
+    private Inmueble? inmueble;
 
-	Contrato? contratoVigente => inmueble.Contratos?.FirstOrDefault(c => c.Estado.Descripcion == "Vigente");
+    Contrato? contratoVigente => inmueble.Contratos?.FirstOrDefault(c => c.Estado.Descripcion == "Vigente");
 
-	protected override async Task OnInitializedAsync()
-	{
-		await base.OnInitializedAsync();
-	}
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+    }
 
-	protected override async Task OnParametersSetAsync()
-	{
-		inmueble = await InmuebleMockService.ObtenerInmueblePorId(InmuebleId);
+    protected override async Task OnParametersSetAsync()
+    {
+        inmueble = await InmuebleMockService.ObtenerInmueblePorId(InmuebleId);
+        base.EstablecerTituloPagina("Inmuebles", $"Detalle inmueble # {inmueble.Id.ToString()}");
+    }
 
-		base.EstablecerTituloPagina("Inmuebles", $"Detalle inmueble # {inmueble.Id.ToString()}");
-	}
+    private void EditarInmueble()
+    {
+        NavigationManager.NavigateTo($"/editar-inmueble/{inmueble.Id}");
+    }
 
-	private void EditarInmueble()
-	{
-		NavigationManager.NavigateTo($"/editar-inmueble/{inmueble.Id}");
-	}
+    private async Task EliminarInmueble()
+    {
+        bool? confirmar = await DialogService.Confirm("¿Estás seguro de eliminar este inmueble?", "Eliminar");
+        if (confirmar == true)
+        {
+            await InmuebleMockService.EliminarInmueble(InmuebleId);
+            NavigationManager.NavigateTo("m/inmuebles/");
+        }
+    }
 
-	private async Task EliminarInmueble()
-	{
-		bool? confirmar = await DialogService.Confirm("¿Estás seguro de eliminar este inmueble?", "Eliminar");
-		if (confirmar == true)
-		{
-			await InmuebleMockService.EliminarInmueble(InmuebleId); // Added await
-			NavigationManager.NavigateTo("m/inmuebles/");
-		}
-	}
+    private void IrAReservarInmueble(int inmuebleId)
+    {
+        NavigationManager.NavigateTo($"/inmueble/reservar/{inmuebleId}");
+    }
 
-	private void IrAReservarInmueble(int inmuebleId)
-	{
-		NavigationManager.NavigateTo($"/inmueble/reservar/{inmuebleId}");
-	}
+    private void IrAAlquilarInmueble(int inmuebleId)
+    {
+        NavigationManager.NavigateTo($"/inmueble/alquilar/{inmuebleId}");
+    }
 
-	private void IrAAlquilarInmueble(int inmuebleId)
-	{
-		NavigationManager.NavigateTo($"/inmueble/alquilar/{inmuebleId}");
-	}
+    private void IrAAdministrarReparaciones(int inmuebleId)
+    {
+        NavigationManager.NavigateTo($"/inmueble/{inmuebleId}/reparaciones");
+    }
 
-	private void IrAAdministrarReparaciones(int inmuebleId)
-	{
-		NavigationManager.NavigateTo($"/inmueble/{inmuebleId}/reparaciones");
-	}
+    private void CambiarImagenPrincipal(Guid imagenId)
+    {
+        inmueble.ImagenPrincipalId = imagenId;
+    }
 
-	private void CambiarImagenPrincipal(Guid imagenId)
-	{
-		inmueble.ImagenPrincipalId = imagenId;
-	}
+    private BadgeStyle GetBadgeColor(string estado)
+    {
+        return estado switch
+        {
+            "Disponible" => BadgeStyle.Success,
+            "Ocupado" => BadgeStyle.Dark,
+            "Reservado" => BadgeStyle.Info,
+            "En reparación" => BadgeStyle.Warning,
+            _ => BadgeStyle.Light
+        };
+    }
 
-	private BadgeStyle GetBadgeColor(string estado)
-	{
-		return estado switch
-		{
-			"Disponible" => BadgeStyle.Success, // Verde
-			"Ocupado" => BadgeStyle.Dark, // Gris
-			"Reservado" => BadgeStyle.Info, // Azul"
-			"En reparación" => BadgeStyle.Warning, // Amarillo
-			_ => BadgeStyle.Light
-		};
-	}
+    private string ObtenerDetalleReserva(Reserva? reserva)
+    {
+        if (reserva != null)
+            return $" A: ({reserva.Persona.Rfc}) - {reserva.Persona.Nombre}, {reserva.Persona.ApellidoPaterno} {reserva.Persona.ApellidoMaterno}. Hasta: {reserva.FechaFinalizacion.ToShortDateString()}";
+        return string.Empty;
+    }
 
-	private string ObtenerDetalleReserva(Reserva? reserva)
-	{
-		if (reserva != null)
-			return $" A: ({reserva.Persona.Rfc}) - {reserva.Persona.Nombre}, {reserva.Persona.ApellidoPaterno} {reserva.Persona.ApellidoMaterno}. Hasta: {reserva.FechaFinalizacion.ToShortDateString()}";
+    private string ObtenerDetalleOcupacion(Contrato? contrato)
+    {
+        if (contrato != null)
+            return $" Inquilino: ({contrato.Inquilino.Rfc}) - {contrato.Inquilino.Nombre}, {contrato.Inquilino.ApellidoPaterno} {contrato.Inquilino.ApellidoMaterno}. Hasta: {contrato.FechaFin.ToShortDateString()}";
+        return string.Empty;
+    }
 
-		return string.Empty;
-	}
-
-	private string ObtenerDetalleOcupacion(Contrato? contrato)
-	{
-		if (contrato != null)
-			return $" Inquilino: ({contrato.Inquilino.Rfc}) - {contrato.Inquilino.Nombre}, {contrato.Inquilino.ApellidoPaterno} {contrato.Inquilino.ApellidoMaterno}. Hasta: {contrato.FechaFin.ToShortDateString()}";
-
-		return string.Empty;
-	}
-
-	private void Volver()
-	{
-		IrA("m/inmuebles");
-	}
+    private void Volver()
+    {
+        IrA("m/inmuebles");
+    }
 }

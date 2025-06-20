@@ -1,42 +1,50 @@
-/* Apply base font and text color to elements within the component.
-   Blazor appends a scope identifier to selectors, so 'div' becomes 'div[b-xxxxxxxxxx]'.
-   This won't style the body, but will style top-level elements of the component.
-*/
-/* Base font and paragraph colors are now expected to be inherited from app.css body style
-   or defined more specifically if needed.
-* {
-    font-family: var(--app-font-family);
-}
+/* ===============================
+   DETALLE DE INMUEBLE - REDISEÑO
+   =============================== */
 
-p {
-    color: var(--app-text-color-muted);
+.main-property-container {
+    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+    border-radius: var(--radius-xl);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
+    border: 1px solid var(--neutral-200);
+    max-width: 1100px;
+    margin: 2rem auto;
+    padding: 1rem;
 }
-*/
 
 .property-title h3 {
     font-size: 2rem;
-    color: var(--app-text-color); /* Updated */
+    color: var(--app-text-color);
     margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 
-.property-address {
-    font-size: 1rem;
-    color: var(--app-text-color-muted); /* Updated */
-    margin-bottom: 0.75rem;
-}
+    .property-title h3::before {
+        content: "\1F3E0"; /* Emoji Casa */
+        font-size: 1.5rem;
+        color: var(--primary-blue);
+    }
 
-.property-value {
-    font-size: 1.5rem;
-    font-weight: bold;
-    color: var(--app-primary-color); /* Updated */
-    margin-bottom: 0.75rem;
-}
-
+.property-address,
 .property-area,
 .property-built-area {
     font-size: 1rem;
-    color: var(--app-text-color-muted); /* Updated */
+    color: var(--app-text-color-muted);
     margin-bottom: 0.5rem;
+}
+
+.property-value {
+    background-color: rgba(255, 255, 255, 0.85);
+    display: inline-block;
+    padding: 0.4rem 0.75rem;
+    border-radius: var(--radius-sm);
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--neutral-900);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    margin-bottom: 0.75rem;
 }
 
 .property-status-badge {
@@ -44,28 +52,26 @@ p {
     font-size: 0.9rem;
 }
 
-/* Adjust default Radzen badge styles */
 .rz-badge.rz-success {
-    background-color: var(--app-success-color); /* Updated */
+    background-color: var(--app-success-color);
     color: white;
 }
 
 .rz-badge.rz-info {
-    background-color: var(--app-info-color); /* Updated */
+    background-color: var(--app-info-color);
     color: white;
 }
 
 .rz-badge.rz-dark {
-    background-color: var(--app-dark-color); /* Updated */
+    background-color: var(--app-dark-color);
     color: white;
 }
 
 .rz-badge.rz-warning {
-    background-color: var(--app-warning-color); /* Updated */
-    color: var(--app-text-color); /* Updated for readability */
+    background-color: var(--app-warning-color);
+    color: var(--app-text-color);
 }
 
-/* Image gallery styles */
 .main-property-image {
     max-width: 100%;
     height: auto;
@@ -77,13 +83,13 @@ p {
 .main-property-image-placeholder {
     width: 100%;
     height: 300px;
-    background-color: #e9ecef; /* Could use var(--app-light-bg-color) or a specific placeholder bg */
+    background-color: #e9ecef;
     display: flex;
     align-items: center;
     justify-content: center;
     border-radius: 8px;
     margin-bottom: 15px;
-    color: var(--app-secondary-color); /* Updated */
+    color: var(--app-secondary-color);
 }
 
 .thumbnail-gallery {
@@ -91,6 +97,7 @@ p {
     flex-wrap: wrap;
     gap: 10px;
     margin-top: 10px;
+    justify-content: center;
 }
 
 .thumbnail-image {
@@ -103,168 +110,130 @@ p {
     transition: border-color 0.3s ease, transform 0.3s ease;
 }
 
-.thumbnail-image:hover {
-    border-color: var(--app-primary-color); /* Updated */
-    transform: scale(1.05);
-}
+    .thumbnail-image:hover {
+        border-color: var(--app-primary-color);
+        transform: scale(1.05);
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
 
 .active-thumbnail {
-    border-color: var(--app-primary-color-darker); /* Updated */
+    border-color: var(--app-primary-color-darker);
     transform: scale(1.05);
 }
 
-/* Styles for RadzenTabs */
-.rz-tabview {
-    margin-top: 25px;
+.primary-actions .rz-button,
+.secondary-actions .rz-button {
+    background: linear-gradient(135deg, var(--primary-blue-light) 0%, var(--primary-blue) 100%);
+    color: white;
+    font-weight: 600;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
 }
+
+    .primary-actions .rz-button:hover,
+    .secondary-actions .rz-button:hover {
+        background: linear-gradient(135deg, var(--primary-blue) 0%, var(--primary-blue-dark) 100%);
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-lg);
+    }
 
 .rz-tabview-nav {
-    background-color: var(--app-light-bg-color); /* Updated */
-    border-bottom: 2px solid #dee2e6; /* Could use var(--app-secondary-color) with opacity or a lighter version */
+    background-color: var(--app-light-bg-color);
+    border-bottom: 2px solid #dee2e6;
 }
 
-.rz-tabview-nav .rz-tabview-nav-link {
-    padding: 10px 15px;
-    color: var(--app-secondary-color); /* Updated */
-    font-weight: 500;
-    transition: color 0.3s ease, border-bottom-color 0.3s ease;
-    border-bottom: 2px solid transparent;
-    margin-bottom: -2px; /* Align with the bottom border of the nav */
-}
+    .rz-tabview-nav .rz-tabview-nav-link {
+        padding: 10px 15px;
+        color: var(--app-secondary-color);
+        font-weight: 500;
+        transition: color 0.3s ease, border-bottom-color 0.3s ease;
+        border-bottom: 2px solid transparent;
+        margin-bottom: -2px;
+    }
 
-.rz-tabview-nav .rz-tabview-nav-link:hover {
-    color: var(--app-primary-color); /* Updated */
-    border-bottom-color: var(--app-primary-color); /* Updated */
-}
+        .rz-tabview-nav .rz-tabview-nav-link:hover {
+            color: var(--app-primary-color);
+            border-bottom-color: var(--app-primary-color);
+        }
 
-.rz-tabview-nav .rz-tabview-selected .rz-tabview-nav-link {
-    color: var(--app-primary-color-darker); /* Updated */
-    border-bottom-color: var(--app-primary-color-darker); /* Updated */
-}
+    .rz-tabview-nav .rz-tabview-selected .rz-tabview-nav-link {
+        color: var(--app-primary-color-darker);
+        border-bottom-color: var(--app-primary-color-darker);
+    }
 
 .rz-tabview-panel {
-    padding-top: 20px; /* Add some padding to the content of the tabs */
+    padding-top: 20px;
 }
 
-/* Styles for RadzenDataGrid within tabs */
-.rz-tabview-panel .rz-datatable {
-    border: 1px solid #dee2e6; /* Could use var(--app-secondary-color) with opacity */
-    border-radius: 4px;
-}
+    .rz-tabview-panel .rz-datatable {
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+    }
 
-.rz-tabview-panel .rz-datatable .rz-datatable-thead > tr > th {
-    background-color: #e9ecef; /* Could use var(--app-light-bg-color) */
-    color: var(--app-text-color); /* Updated */
-    font-weight: 600;
-    border-bottom-width: 1px;
-}
+        .rz-tabview-panel .rz-datatable .rz-datatable-thead > tr > th {
+            background-color: #e9ecef;
+            color: var(--app-text-color);
+            font-weight: 600;
+            border-bottom-width: 1px;
+        }
 
-.rz-tabview-panel .rz-datatable .rz-datatable-tbody > tr > td {
-    padding: 10px 12px; /* Adjust cell padding */
-    border-color: #e9ecef; /* Lighter border for cells */
-}
+        .rz-tabview-panel .rz-datatable .rz-datatable-tbody > tr > td {
+            padding: 10px 12px;
+            border-color: #e9ecef;
+        }
 
-.rz-tabview-panel .rz-datatable .rz-datatable-tbody > tr:nth-child(odd) > td {
-    background-color: #fdfdfd; /* Subtle striping for table rows, could be a light var */
-}
+        .rz-tabview-panel .rz-datatable .rz-datatable-tbody > tr:nth-child(odd) > td {
+            background-color: #fdfdfd;
+        }
 
-.rz-tabview-panel .rz-datatable .rz-datatable-tbody > tr:hover > td {
-    background-color: #f0f0f0; /* Hover effect for table rows, could be a light var */
-}
+        .rz-tabview-panel .rz-datatable .rz-datatable-tbody > tr:hover > td {
+            background-color: rgba(0, 0, 0, 0.03);
+            transition: background-color 0.2s ease;
+        }
 
-/* Adjustments for buttons inside tabs, like 'Administrar Reparaciones' */
-.rz-tabview-panel .rz-button {
-    margin-bottom: 15px; /* Add some space below buttons in tab content */
-}
-
-/* General Radzen Button transition and hover effect */
-.rz-button {
-    transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out, transform 0.1s ease-in-out, box-shadow 0.2s ease-in-out;
-}
-
-.rz-button:hover {
-    transform: translateY(-2px);
-    /* Optional: Add a subtle shadow to enhance the "lift" effect */
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-}
-
-
-/* Radzen Button Style Overrides to use CSS Variables */
-/* This assumes RadzenButton uses these classes or similar for ButtonStyle attribute */
-/* For default button (primary action often) */
-.rz-button.rz-primary, /* If Radzen uses .rz-primary for ButtonStyle.Primary */
-.rz-button:not([class*="rz-"]), /* A guess for default Radzen buttons if no specific style class is applied */
-.rz-button.rz-button-md.rz-variant-flat.rz-primary /* More specific selector if needed */ {
-    /* background-color: var(--app-primary-color) !important;
-    color: white !important; */ /* Using important might be necessary if Radzen's default styles are too specific */
-}
-
-/* For Danger button (e.g., Eliminar) */
-.rz-button.rz-danger, /* If Radzen uses .rz-danger for ButtonStyle.Danger */
-.rz-button.rz-button-md.rz-variant-flat.rz-danger {
-   /* background-color: var(--app-danger-color) !important;
-    color: white !important; */
-}
-
-/* Note: Styling Radzen components like RadzenButton effectively with CSS variables
-   can sometimes require more specific selectors or using ::deep if their default styles
-   are heavily specified or don't easily inherit. The commented-out button styles are
-   placeholders; actual Radzen component styling might need inspection and adjustment.
-   For now, the subtask focuses on replacing existing custom styles.
-*/
-
-/* --- Responsive adjustments --- */
-
-/* For tablets and smaller devices */
 @media (max-width: 768px) {
     .property-title h3 {
-        font-size: 1.75rem; /* Slightly smaller title */
+        font-size: 1.75rem;
     }
 
     .property-value {
-        font-size: 1.25rem; /* Slightly smaller price */
+        font-size: 1.25rem;
     }
 
-    /* Adjust action buttons layout */
     .primary-actions,
     .secondary-actions {
         flex-direction: column;
-        align-items: stretch; /* Make buttons in column stretch */
-        gap: 5px; /* Reduce gap for stacked buttons */
+        align-items: stretch;
+        gap: 5px;
     }
 
-    .primary-actions .rz-button,
-    .secondary-actions .rz-button {
-        width: 100%; /* Make buttons take full width in column */
-        margin-right: 0; /* Remove right margin if any */
-        margin-bottom: 10px; /* Add bottom margin for spacing */
-    }
-    .primary-actions .rz-button:last-child,
-    .secondary-actions .rz-button:last-child {
-        margin-bottom: 0; /* No margin for the last button in a group */
-    }
+        .primary-actions .rz-button,
+        .secondary-actions .rz-button {
+            width: 100%;
+            margin-right: 0;
+            margin-bottom: 10px;
+        }
 
-
-    .thumbnail-gallery {
-        justify-content: center; /* Center thumbnails if they wrap */
-    }
+            .primary-actions .rz-button:last-child,
+            .secondary-actions .rz-button:last-child {
+                margin-bottom: 0;
+            }
 
     .rz-tabview-nav-link {
-        padding: 8px 10px; /* Smaller padding for tab links */
+        padding: 8px 10px;
         font-size: 0.9rem;
     }
 
-    /* Reduce padding in data grid cells for more space */
     .rz-tabview-panel .rz-datatable .rz-datatable-tbody > tr > td {
         padding: 8px 10px;
     }
 }
 
-/* For mobile phones */
 @media (max-width: 576px) {
     .main-property-container {
-         margin: 1rem auto;
-         padding: 0.5rem;
+        margin: 1rem auto;
+        padding: 0.5rem;
     }
 
     .property-title h3 {
@@ -275,11 +244,8 @@ p {
         font-size: 1.15rem;
     }
 
-    /* Ensure all main action buttons stack nicely and take full width */
-    /* The rules from 768px should already stack them, this can be for further refinement if needed */
-    /* .action-button-group .rz-button { width: 100%; } /* Covered by .primary-actions/.secondary-actions */
-
-    .main-property-image, .main-property-image-placeholder {
+    .main-property-image,
+    .main-property-image-placeholder {
         margin-bottom: 10px;
     }
 

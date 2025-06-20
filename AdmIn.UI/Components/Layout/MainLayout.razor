@@ -3,6 +3,7 @@
 @using AdmIn.UI.Services;
 @using AdmIn.UI.Services.UtilityServices;
 @using Microsoft.AspNetCore.Components.Authorization
+@using Radzen
 
 @inherits LayoutComponentBase
 
@@ -80,7 +81,7 @@
                                     <RadzenStack Gap="0" Orientation="Orientation.Vertical" AlignItems="AlignItems.Center" class="rz-p-2">
                                         <RadzenText TextStyle="TextStyle.Overline">Bienvenido</RadzenText>
                                         <RadzenText TextStyle="TextStyle.Body1"><b>@userName</b></RadzenText>
-                                        <RadzenButton Icon="password" Variant="Variant.Text" Size="ButtonSize.Small" Click="@(() => CambiarPassword())">Cambiar contraseña</RadzenButton>
+                                        <RadzenButton Icon="lock_reset" Variant="Variant.Text" Size="ButtonSize.Small" Click="@(() => CambiarPassword())">Cambiar contraseña</RadzenButton>
                                         <RadzenButton Icon="logout" Variant="Variant.Text" Size="ButtonSize.Small" Click="@(() => Logout())">Cerrar sesión</RadzenButton>
                                     </RadzenStack>
                                 </ChildContent>
@@ -94,15 +95,15 @@
 
     <RadzenSidebar @bind-Expanded="@sidebar1Expanded">
         <RadzenPanelMenu>
-            <MenuItem Text="Usuarios" Icon="groups" Path="/usuarios" Roles="admin_usuario" OnMenuItemClick="@OnMenuItemClick" />
-            <MenuItem Text="Inmuebles" Icon="store" Path="/m/inmuebles" Roles="admin_propiedad" OnMenuItemClick="@OnMenuItemClick" />
-            <MenuItem Text="Reparaciones" Icon="store" Path="/m/reparaciones" Roles="add_reparacion, admin_reparacion" OnMenuItemClick="@OnMenuItemClick" />
+            <MenuItem Text="Usuarios" Icon="person_outline" Path="/usuarios" Roles="admin_usuario" OnMenuItemClick="@OnMenuItemClick" />
+            <MenuItem Text="Inmuebles" Icon="apartment" Path="/m/inmuebles" Roles="admin_propiedad" OnMenuItemClick="@OnMenuItemClick" />
+            <MenuItem Text="Reparaciones" Icon="build" Path="/m/reparaciones" Roles="add_reparacion, admin_reparacion" OnMenuItemClick="@OnMenuItemClick" />
 
             @if (DeviceService.IsMobileDevice())
             {
                 <RadzenPanelMenuItem Text="Sesión" Icon="account_circle">
                     <RadzenPanelMenuItem TextStyle="TextStyle.Subtitle2" Text="@userName" Click="@(() => OnMenuItemClick())"></RadzenPanelMenuItem>
-                    <RadzenPanelMenuItem Text="Cambiar contraseña" Icon="password" Click="@(() => CambiarPassword())"></RadzenPanelMenuItem>
+                    <RadzenPanelMenuItem Text="Cambiar contraseña" Icon="lock_reset" Click="@(() => CambiarPassword())"></RadzenPanelMenuItem>
                     <RadzenPanelMenuItem Text="Cerrar sesión" Icon="logout" Click="@(() => Logout())"></RadzenPanelMenuItem>
                 </RadzenPanelMenuItem>
             }

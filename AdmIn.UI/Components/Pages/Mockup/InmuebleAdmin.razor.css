@@ -1,106 +1,201 @@
-/* General page styling for InmuebleAdmin */
-.inmueble-admin-page { /* Add this class to the top RadzenRow or a wrapping div */
-    font-family: var(--app-font-family);
-    padding: 1rem; /* Add some padding to the page content if not covered by layout */
-    background-color: var(--app-body-bg); /* Ensure page background matches layout body */
-    min-height: 100%; /* Ensure it takes at least full height of content area */
+/* ===============================
+   VISTA DE ADMINISTRACIÓN DE INMUEBLES
+   =============================== */
+
+/* Asegura que la página tenga un padding y background coherente con el layout */
+.inmueble-admin-page {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif; /* Usar la fuente global */
+    padding: var(--spacing-lg); /* Padding generoso */
+    background-color: var(--bg-secondary); /* Fondo secundario del layout */
+    min-height: 100%; /* Asegura que ocupe todo el espacio disponible */
 }
 
-.action-bar { /* Class for the RadzenStack in the first RadzenRow */
-    padding: 1rem;
-    background-color: var(--app-card-bg); /* White background for the bar */
-    border-radius: 6px;
-    margin-bottom: 1.5rem;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-    display: flex; /* Use flex for better alignment of items */
-    flex-wrap: wrap; /* Allow items to wrap on smaller screens */
-    gap: 0.75rem; /* Space between items */
-    align-items: center;
-}
+/* ===============================
+   BARRA DE ACCIONES Y FILTROS
+   =============================== */
+/* InmuebleAdmin.css */
 
-.action-bar .rz-button { /* "Agregar Inmueble" button */
-    background-color: var(--app-primary-color);
+.action-bar .rz-button { /* Botón "Agregar Inmueble" */
+    /* Antiguo: background-color: var(--primary-blue); color: white; */
+    background: linear-gradient(135deg, var(--primary-blue-light) 0%, var(--primary-blue) 100%); /* Degradado consistente */
     color: white;
-    /* Radzen's default button transitions should apply if .rz-button is styled globally */
-}
- .action-bar .rz-button:hover {
-    background-color: var(--app-primary-color-darker);
-}
-
-.filter-badge { /* Class for filter RadzenBadges */
-    cursor: pointer;
-    padding: 0.5em 0.75em;
-    font-size: 0.9rem;
-    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
-    border: 1px solid transparent; /* For active state */
-    user-select: none; /* Prevent text selection on click */
+    font-weight: 600; /* Un poco más de peso */
+    border-radius: var(--radius-md); /* Bordes redondeados consistentes */
+    transition: all var(--transition-fast); /* Transición suave */
+    padding: var(--spacing-sm) var(--spacing-md); /* Ajuste de padding */
+    box-shadow: var(--shadow-md); /* Sombra consistente y prominente */
+    border: 1px solid rgba(255, 255, 255, 0.2); /* Borde blanco semi-transparente sutil */
+    text-shadow: 0px 1px 2px rgba(0, 0, 0, 0.2); /* Sombra para el texto */
+    display: flex; /* Asegura que ícono y texto se centren si hay espacio */
+    align-items: center;
+    gap: var(--spacing-xs); /* Espacio entre ícono y texto */
 }
 
-.filter-badge:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    .action-bar .rz-button .rz-button-icon {
+        font-size: 1.1em; /* Asegura que el ícono tenga un tamaño adecuado */
+        color: var(--accent-gold-light); /* Color de acento para el ícono dentro del botón principal */
+    }
+
+
+    .action-bar .rz-button:hover {
+        background: linear-gradient(135deg, var(--primary-blue) 0%, var(--primary-blue-dark) 100%); /* Degradado más oscuro al hover */
+        transform: translateY(-2px); /* Ligero levantamiento */
+        box-shadow: var(--shadow-lg); /* Sombra un poco más pronunciada */
+    }
+
+    .action-bar .rz-button:active {
+        transform: translateY(0); /* Vuelve a la posición original al hacer clic */
+        box-shadow: var(--shadow-sm); /* Sombra más pequeña al active */
+    }
+
+/* Contenedor de las pestañas de filtro */
+.filter-tabs-container {
+    display: flex;
+    border-radius: var(--radius-md);
+    background-color: var(--neutral-100); /* Fondo suave para el grupo de pestañas */
+    padding: var(--spacing-xs); /* Padding interno para las pestañas */
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.08); /* Sombra interna sutil */
+    flex-wrap: wrap; /* Permite que las pestañas se envuelvan en móvil */
 }
 
-/* Define styles for specific badge types if default Radzen styles aren't enough
-   or to match the InmuebleDetalle badge styles */
-.filter-badge.rz-badge.rz-primary { background-color: var(--app-primary-color); color: white; }
-.filter-badge.rz-badge.rz-success { background-color: var(--app-success-color); color: white; }
-.filter-badge.rz-badge.rz-info    { background-color: var(--app-info-color);    color: white; }
-.filter-badge.rz-badge.rz-dark    { background-color: var(--app-dark-color);    color: white; }
-.filter-badge.rz-badge.rz-warning { background-color: var(--app-warning-color); color: var(--app-text-color); }
-
-/* Style for an 'active' or 'selected' filter badge - needs C# logic to apply a class */
-.filter-badge.active-filter {
-    border: 1px solid var(--app-primary-color-darker);
-    font-weight: bold;
-    box-shadow: 0 0 8px rgba(var(--app-primary-color), 0.5); /* Softer shadow */
-    transform: translateY(-1px); /* Slight lift for active */
+.filter-tab {
+    cursor: pointer; /* Mano para indicar clickeable */
+    padding: 0.6rem 1rem; /* Padding adecuado para el texto */
+    font-size: 0.875rem; /* Tamaño de fuente legible */
+    font-weight: 500; /* Semi-bold */
+    border: none;
+    background-color: transparent; /* Fondo transparente por defecto */
+    color: var(--neutral-600); /* Color de texto suave */
+    border-radius: var(--radius-sm); /* Bordes ligeramente redondeados */
+    transition: all var(--transition-fast);
+    flex-grow: 1; /* Permite que las pestañas se distribuyan equitativamente */
+    text-align: center;
+    white-space: nowrap; /* Evita que el texto se rompa */
 }
 
-.inmueble-grid { /* Class for the RadzenRow containing InmuebleCards */
-    margin-top: 1rem;
-    /* Using RadzenColumn's Size attributes for responsiveness.
-       Ensure proper gap or padding for cards. */
+    .filter-tab:hover {
+        background-color: var(--neutral-200); /* Fondo más oscuro al hover */
+        color: var(--neutral-800); /* Texto más oscuro */
+        box-shadow: var(--shadow-sm); /* Sombra ligera al hover */
+    }
+
+    .filter-tab.active-tab {
+        background: linear-gradient(135deg, var(--primary-blue-light) 0%, var(--primary-blue) 100%); /* Degradado primario para activo */
+        color: var(--accent-gold-light); /* ¡Cambiamos a dorado claro para mejor contraste! */
+        font-weight: 700; /* Aumentamos un poco más el peso para que resalte más */
+        box-shadow: var(--shadow-md); /* Sombra más pronunciada para el activo */
+        transform: translateY(-1px); /* Ligero levantamiento */
+        text-shadow: 0px 0px 3px rgba(0, 0, 0, 0.4); /* Sombra sutil para el texto, quizás un poco más fuerte para el dorado */
+        /* Añadimos un borde inferior para una indicación visual adicional de que está activo */
+        border-bottom: 3px solid var(--accent-gold); /* Una línea dorada debajo */
+        padding-bottom: calc(0.6rem - 3px); /* Ajustar padding para compensar el borde */
+    }
+
+/* Responsivo para las pestañas */
+@media (max-width: 768px) {
+    .filter-tabs-container {
+        flex-direction: column; /* Apilar las pestañas verticalmente */
+        width: 100%; /* Ocupar todo el ancho */
+        padding: 0; /* Remover padding del contenedor si se apilan */
+        box-shadow: none; /* Remover sombra del contenedor si se apilan */
+        background-color: transparent; /* Fondo transparente */
+    }
+
+    .filter-tab {
+        border-radius: var(--radius-md); /* Restaurar border-radius completo para cada pestaña */
+        margin-bottom: var(--spacing-xs); /* Espacio entre pestañas apiladas */
+    }
+
+        .filter-tab:last-child {
+            margin-bottom: 0;
+        }
 }
+
+/* ===============================
+   GRID DE INMUEBLES
+   =============================== */
+.inmueble-grid {
+    /* RadzenColumn se encarga de la distribución.
+       Aseguramos un buen espaciado entre las tarjetas. */
+    display: flex;
+    flex-wrap: wrap; /* Permitir que las columnas se envuelvan */
+    justify-content: center; /* Centrar las tarjetas en la fila */
+    gap: var(--spacing-md); /* Espacio entre las filas y columnas */
+}
+
+    /* Asegura que cada columna tenga el padding necesario para que InmuebleCard se vea bien */
+    .inmueble-grid .rz-column {
+        padding: var(--spacing-sm); /* Padding alrededor de cada tarjeta dentro de su columna */
+        display: flex; /* Usar flex en la columna para centrar la tarjeta si es necesario */
+        justify-content: center; /* Centra la tarjeta horizontalmente */
+        align-items: flex-start; /* Alinea las tarjetas en la parte superior */
+    }
 
 /* Responsive adjustments for action-bar */
 @media (max-width: 768px) {
     .action-bar {
-        flex-direction: column; /* Stack items vertically */
-        align-items: stretch; /* Stretch items to full width */
+        flex-direction: column; /* Apilar ítems verticalmente */
+        align-items: stretch; /* Estirar ítems para ocupar el ancho completo */
+        gap: var(--spacing-sm); /* Menor espacio entre ítems apilados */
     }
 
-    .action-bar .rz-button { /* This is the "Agregar Inmueble" button */
-        width: 100%; /* Make button full width */
-        margin-bottom: 10px; /* Add some space below it when stacked */
+        .action-bar .rz-button {
+            width: 100%; /* Botón "Agregar Inmueble" a todo el ancho */
+            margin-bottom: var(--spacing-sm); /* Espacio adicional debajo del botón */
+        }
+
+        .action-bar .filter-badge {
+            width: 100%; /* Badges de filtro a todo el ancho */
+            text-align: center; /* Centrar texto en los badges apilados */
+            margin-left: 0;
+            margin-right: 0;
+        }
+}
+
+/* Animaciones y micro-interacciones (opcional, si queremos animar la entrada del grid) */
+.inmueble-grid .rz-column {
+    opacity: 0;
+    animation: fadeInUp 0.5s ease-out forwards;
+}
+
+    .inmueble-grid .rz-column:nth-child(1) {
+        animation-delay: 0.1s;
     }
 
-    /* The RadzenStack containing filter badges is a direct child of .action-bar */
-    /* It will inherit flex-direction: column from .action-bar, which is not what we want for the badges themselves.
-       The default RadzenStack is horizontal. We need to ensure the badges within it can wrap.
-       The .action-bar itself has flex-wrap: wrap, which applies to its direct children (button and stack of badges).
-       If the RadzenStack itself needs to wrap its internal badges, that's handled by its own flex properties.
-       The existing .action-bar > .rz-stack rule was removed, let's re-evaluate.
-       The RadzenStack with Gap="10px" class="action-bar" in the RAZOR means the RadzenStack *is* the action-bar.
-       So, the flex-direction: column and align-items: stretch apply to the items *inside* the RadzenStack.
-    */
-
-    /* If .action-bar is the RadzenStack: */
-    .action-bar .rz-button { /* This rule is fine, targets the button inside the stack */
-         /* width: 100%; /* This makes the button full width which is good for this layout */
-         /* margin-bottom: 10px; /* Good spacing */
+    .inmueble-grid .rz-column:nth-child(2) {
+        animation-delay: 0.15s;
     }
 
-    /* For the badges within the RadzenStack (which is .action-bar) */
-    .action-bar .filter-badge {
-        margin: 5px; /* Add some margin for wrapped badges */
-        /* Badges are inline-flex by default, they will wrap naturally if the container (.action-bar) allows.
-           The .action-bar already has flex-wrap: wrap; from its main definition.
-           And when it becomes flex-direction: column, its items (button, badges) stack.
-           The badges themselves, if they are direct children of .action-bar, will stack.
-           The current structure is: RadzenStack (class="action-bar") -> RadzenButton, RadzenBadge, RadzenBadge...
-           So, at 768px, RadzenStack becomes a column. Button is first, then each badge on a new line.
-           This is likely the desired behavior.
-        */
+    .inmueble-grid .rz-column:nth-child(3) {
+        animation-delay: 0.2s;
     }
+
+    .inmueble-grid .rz-column:nth-child(4) {
+        animation-delay: 0.25s;
+    }
+
+    .inmueble-grid .rz-column:nth-child(5) {
+        animation-delay: 0.3s;
+    }
+/* Puedes extender esto o usar un bucle JS para un número dinámico de elementos si tienes muchos */
+
+/* ===============================
+   ESTILO PARA CUANDO NO HAY PROPIEDADES
+   =============================== */
+.no-properties-card.rz-card {
+    background-color: var(--bg-primary); /* Fondo blanco */
+    border-radius: var(--radius-lg); /* Bordes redondeados */
+    box-shadow: var(--shadow-md); /* Sombra sutil */
+    padding: var(--spacing-xl); /* Padding generoso */
+    text-align: center;
+    margin-top: var(--spacing-xl); /* Margen superior */
+    border: 1px solid var(--neutral-200); /* Borde suave */
+}
+
+.no-properties-card .rz-text {
+    color: var(--neutral-700);
+}
+
+.no-properties-card .rz-button {
+    margin-top: var(--spacing-lg); /* Espacio superior para el botón */
 }

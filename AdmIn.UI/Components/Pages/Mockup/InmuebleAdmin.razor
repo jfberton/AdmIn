@@ -5,40 +5,56 @@
 @using AdmIn.UI.Components.Pages.Mockup.ComponentesDialogos
 @using AdmIn.UI.Services.Mock
 @using AdmIn.UI.Services.UtilityServices
-@inject IInmuebleService InmuebleMockService 
+@inject IInmuebleService InmuebleMockService
 
 @inherits BaseComponent
 
 <div class="inmueble-admin-page">
-    <RadzenRow>
-        <RadzenColumn Size="12">
-            <RadzenStack Orientation="Orientation.Horizontal" Gap="10px" class="action-bar">
-                <RadzenButton Text="Agregar Inmueble" Icon="add" Click="@(() => IrA("/agregar-inmueble"))" />
-                <RadzenBadge Text="Todos" BadgeStyle="BadgeStyle.Primary" class="@GetFilterBadgeClass(null)" @onclick="() => FiltrarInmuebles(null)" />
-                <RadzenBadge Text="Disponible" BadgeStyle="BadgeStyle.Success" class="@GetFilterBadgeClass("Disponible")" @onclick="@(() => FiltrarInmuebles("Disponible"))" />
-                <RadzenBadge Text="Reservado" BadgeStyle="BadgeStyle.Info" class="@GetFilterBadgeClass("Reservado")" @onclick="@(() => FiltrarInmuebles("Reservado"))" />
-                <RadzenBadge Text="Ocupado" BadgeStyle="BadgeStyle.Dark" class="@GetFilterBadgeClass("Ocupado")" @onclick="@(() => FiltrarInmuebles("Ocupado"))" />
-                <RadzenBadge Text="En reparación" BadgeStyle="BadgeStyle.Warning" class="@GetFilterBadgeClass("En reparación")" @onclick="@(() => FiltrarInmuebles("En reparación"))" />
-            </RadzenStack>
-        </RadzenColumn>
-    </RadzenRow>
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="var(--spacing-md)" class="action-bar rz-mb-4" Wrap="FlexWrap.Wrap">
+        <RadzenButton Text="Agregar Inmueble" Icon="add_home" Click="@(() => IrA("/agregar-inmueble"))" />
+
+        <div class="filter-tabs-container">
+            <button class="filter-tab @GetFilterTabClass(null)" @onclick="() => FiltrarInmuebles(null)">Todos</button>
+            <button class="filter-tab @GetFilterTabClass("Disponible")" @onclick="@(() => FiltrarInmuebles("Disponible"))">Disponible</button>
+            <button class="filter-tab @GetFilterTabClass("Reservado")" @onclick="@(() => FiltrarInmuebles("Reservado"))">Reservado</button>
+            <button class="filter-tab @GetFilterTabClass("Ocupado")" @onclick="@(() => FiltrarInmuebles("Ocupado"))">Ocupado</button>
+            <button class="filter-tab @GetFilterTabClass("En reparación")" @onclick="@(() => FiltrarInmuebles("En reparación"))">En reparación</button>
+        </div>
+    </RadzenStack>
 
     <RadzenRow class="inmueble-grid">
-        @if (InmueblesFiltrados != null)
+        @if (InmueblesFiltrados != null && InmueblesFiltrados.Any())
         {
             @foreach (var inmueble in InmueblesFiltrados)
             {
-                <RadzenColumn Size="12" SizeMD="6" SizeLG="4" SizeXL="3" Style="display: flex; justify-content: center;">
+                <RadzenColumn Size="12" SizeMD="6" SizeLG="4" SizeXL="3">
                     <InmuebleCard Inmueble="inmueble" OnVerDetalle="VerDetalleInmueble" />
                 </RadzenColumn>
             }
         }
-    }
-</RadzenRow>
+        else
+        {
+            <RadzenColumn Size="12">
+                <RadzenCard class="no-properties-card">
+                    <RadzenStack Orientation="Orientation.Vertical" AlignItems="AlignItems.Center" Gap="var(--spacing-md)">
+                        <RadzenIcon Icon="info" Style="font-size: 3rem; color: var(--neutral-400);" />
+                        <RadzenText TextStyle="TextStyle.H6" class="text-center">
+                            No se encontraron inmuebles para este filtro.
+                        </RadzenText>
+                        <RadzenText TextStyle="TextStyle.Body1" class="text-center">
+                            Intenta ajustar tus criterios de búsqueda o agrega nuevas propiedades.
+                        </RadzenText>
+                        <RadzenButton Text="Volver a Todos los Inmuebles" Icon="refresh" Click="@(() => FiltrarInmuebles(null))" ButtonStyle="ButtonStyle.Secondary" />
+                    </RadzenStack>
+                </RadzenCard>
+            </RadzenColumn>
+        }
+    </RadzenRow>
+</div>
 
 @code {
-    private IEnumerable<Inmueble> Inmuebles;
-    private IEnumerable<Inmueble> InmueblesFiltrados;
+    private IEnumerable<Inmueble>? Inmuebles; // Hacer nullable para mejor práctica
+    private IEnumerable<Inmueble>? InmueblesFiltrados; // Hacer nullable
     private string? activeFilterEstado = null; // Track active filter
 
     protected override async Task OnInitializedAsync()
@@ -47,7 +63,8 @@
 
         base.EstablecerTituloPagina("Inmuebles", "Listado");
 
-        Inmuebles = await InmuebleMockService.ObtenerInmuebles();
+        var result = await InmuebleMockService.ObtenerInmuebles();
+        Inmuebles = result; // Asigna directamente el resultado
         InmueblesFiltrados = Inmuebles; // Mostrar todos al inicio
     }
 
@@ -60,8 +77,9 @@
         }
         else
         {
-            InmueblesFiltrados = Inmuebles.Where(i => i.Estado.Estado == estado);
+            InmueblesFiltrados = Inmuebles?.Where(i => i.Estado?.Estado == estado); // Usar operador ?. para seguridad
         }
+        StateHasChanged(); // Forzar la actualización de la UI
     }
 
     private void VerDetalleInmueble(int inmuebleId)
@@ -69,20 +87,18 @@
         IrA($"/inmueble/{inmuebleId}");
     }
 
-    private string GetFilterBadgeClass(string? filterType)
+    // Nuevo método para la clase de las pestañas
+    private string GetFilterTabClass(string? filterType)
     {
-        var baseClass = "filter-badge";
-        // Special handling for "Todos" which corresponds to null filterEstado
+        var baseClass = ""; // No necesita una clase base para el estilo del cursor, ya lo manejaremos globalmente para botones
         if (filterType == null && activeFilterEstado == null)
         {
-            return $"{baseClass} active-filter";
+            return "active-tab";
         }
-        // For other specific states
         if (activeFilterEstado == filterType && filterType != null)
         {
-            return $"{baseClass} active-filter";
+            return "active-tab";
         }
         return baseClass;
     }
 }
-</div>
