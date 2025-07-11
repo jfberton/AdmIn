@@ -31,12 +31,12 @@ builder.Services.AddScoped<IServ_Rol, Serv_Rol>();
 
 //Servicio de mock
 // builder.Services.AddScoped<IServ_Mock, MockData>(); // Removed
-builder.Services.AddScoped<AdmIn.UI.Services.Mock.IPersonaService, AdmIn.UI.Services.Mock.MockPersonaService>();
-builder.Services.AddScoped<AdmIn.UI.Services.Mock.IInmuebleService, AdmIn.UI.Services.Mock.MockInmuebleService>();
-builder.Services.AddScoped<AdmIn.UI.Services.Mock.IEmpleadoService, AdmIn.UI.Services.Mock.MockEmpleadoService>();
-builder.Services.AddScoped<AdmIn.UI.Services.Mock.IUsuarioService, AdmIn.UI.Services.Mock.MockUsuarioService>();
-builder.Services.AddScoped<AdmIn.UI.Services.Mock.IContratoService, AdmIn.UI.Services.Mock.MockContratoService>();
-builder.Services.AddScoped<AdmIn.UI.Services.Mock.IReparacionService, AdmIn.UI.Services.Mock.MockReparacionService>();
+builder.Services.AddSingleton<AdmIn.UI.Services.Mock.IPersonaService, AdmIn.UI.Services.Mock.MockPersonaService>();
+builder.Services.AddSingleton<AdmIn.UI.Services.Mock.IInmuebleService, AdmIn.UI.Services.Mock.MockInmuebleService>();
+builder.Services.AddSingleton<AdmIn.UI.Services.Mock.IEmpleadoService, AdmIn.UI.Services.Mock.MockEmpleadoService>();
+builder.Services.AddSingleton<AdmIn.UI.Services.Mock.IUsuarioService, AdmIn.UI.Services.Mock.MockUsuarioService>();
+builder.Services.AddSingleton<AdmIn.UI.Services.Mock.IContratoService, AdmIn.UI.Services.Mock.MockContratoService>();
+builder.Services.AddSingleton<AdmIn.UI.Services.Mock.IReparacionService, AdmIn.UI.Services.Mock.MockReparacionService>();
 
 //Mis Servicios Utiles
 builder.Services.AddHttpContextAccessor();

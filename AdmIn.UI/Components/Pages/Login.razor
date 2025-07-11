@@ -4,6 +4,7 @@
 @using AdmIn.Business.Utilidades
 @using AdmIn.UI.Components.Layout
 @using AdmIn.UI.Services
+@using AdmIn.UI.Services.Mock
 @using AdmIn.UI.Services.UtilityServices
 @using AdmIn.UI.Authentication
 @using Microsoft.AspNetCore.Components.Authorization
@@ -15,6 +16,7 @@
 @inject IServ_Auth serv_Auth
 @inject DialogService dialogService
 @inject DeviceService DeviceService
+@inject IServiceProvider ServiceProvider
 
 
 @if (DeviceService.IsMobileDevice())
@@ -106,6 +108,10 @@ else
                 Password = model.Password
             });
 
+        // Inicializar servicios Mock usando el provider inyectado
+        AdmIn.UI.Services.Mock.MockDataInitializer.InicializarDatosMock(ServiceProvider);
+
+        //Redirigir a la página de inicio
         navManager.NavigateTo("/home", true);
 
     }
