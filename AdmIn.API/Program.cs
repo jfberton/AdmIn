@@ -1,5 +1,7 @@
 using AdmIn.Business.Servicios;
 using AdmIn.Common;
+using AdmIn.Data.Repositorios;
+using AdmIn.Common.Repositorios;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 
@@ -39,9 +41,13 @@ builder.Services.AddCors(options =>
 
 // Register application services
 builder.Services.AddScoped<IServ_Usuario, Serv_Usuario>();
-builder.Services.AddScoped<IServ_Rol, Serv_Rol>();
-builder.Services.AddScoped<IServ_Permiso, Serv_Permiso>();
 
+builder.Services.AddScoped<IUsuarioRepository>(sp =>
+{
+    var config = sp.GetRequiredService<IConfiguration>();
+    var connectionString = config.GetConnectionString("DefaultConnection");
+    return new UsuarioRepository(connectionString);
+});
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.

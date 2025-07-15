@@ -150,27 +150,44 @@ namespace AdmIn.Common
     public static class EntityMappings
     {
         public static readonly Dictionary<string, Dictionary<string, string>> EntityFieldMappings = new()
+    {
         {
+            "Usuario", new Dictionary<string, string>
             {
-                "Usuario", new Dictionary<string, string>
-                {
-                    { "Id", "USU_ID" },
-                    { "Nombre", "USU_NOMBRE" },
-                    { "Password", "USU_PASSWORD" },
-                    { "Email", "USU_EMAIL" },
-                    { "Activo", "USU_ACTIVO" },
-                    { "Creacion", "USU_FECHA_CREACION" }
-                }
-            },
-            {
-                "Rol", new Dictionary<string, string>
-                {
-                    { "Id", "ROL_ID" },
-                    { "Nombre", "ROL_NOMBRE" },
-                    { "Descripcion", "ROL_DESCRIPCION" }
-                }
+                { "Id", "UsuarioID" },
+                { "Nombre", "Nombre" },
+                { "Email", "Email" },
+                { "Password", "Password" },
+                { "Pais", "Pais" },
+                { "Telefono", "Telefono" },
+                { "PersonaId", "PersonaID" },
+                { "EmpresaId", "EmpresaID" },
+                { "MonedaId", "MonedaID" },
+                { "Activo", "Activo" },
+                { "FechaCreacion", "FechaCreacion" },
+                { "FechaModificacion", "FechaModificacion" },
+                { "UsuarioCreador", "UsuarioCreadorID" },
+                { "UsuarioModificador", "UsuarioModificadorID" }
+                // `Roles` no va porque es navegación
             }
-        };
+        },
+        {
+            "Rol", new Dictionary<string, string>
+            {
+                { "Id", "RolID" },
+                { "Nombre", "Nombre" }
+            }
+        },
+        {
+            "UsuarioRol", new Dictionary<string, string>
+            {
+                { "UsuarioRolID", "UsuarioRolID" },
+                { "UsuarioID", "UsuarioID" },
+                { "RolID", "RolID" }
+            }
+        }
+    };
     }
+
 
 }

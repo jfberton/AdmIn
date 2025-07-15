@@ -1,96 +1,127 @@
-﻿using AdmIn.Business.Entidades;
-using AdmIn.Business.Utilidades;
+﻿using AdmIn.Business.Utilidades;
 using AdmIn.Common;
-using AdmIn.Data.Repositorios;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using AdmIn.Common.Entidades;
+using AdmIn.Common.Repositorios;
 
 namespace AdmIn.Business.Servicios
 {
     public class Serv_Usuario : IServ_Usuario
     {
-        private readonly R_Usuario _repUsuario;
-        private readonly R_Usuario_Rol _repUsuarioRol;
+        private readonly IUsuarioRepository _usuarioRepo;
 
-        public Serv_Usuario()
+        public Serv_Usuario(IUsuarioRepository usuarioRepository)
         {
-            _repUsuario = new R_Usuario();
-            _repUsuarioRol = new R_Usuario_Rol();
+            _usuarioRepo = usuarioRepository;
         }
 
-        public async Task<DTO<Usuario>> Crear(Usuario usuario)
+        public async Task<DTO<Usuario>> Crear(Usuario usuarioNuevo)
         {
-            usuario.Password = MiHash.GenerarHash(usuario.Password);
-            usuario.Creacion = DateTime.Now;
+            // Encripto la contraseña antes de guardar
+            usuarioNuevo.Password = MiHash.GenerarHash(usuarioNuevo.Password);
 
-            var resultado = await _repUsuario.Crear(usuario);
+            var resultado = await _usuarioRepo.Crear(usuarioNuevo);
 
-            if (resultado.Correcto && resultado.Datos != null)
-            {
-                usuario.Id = resultado.Datos.Id;
-
-                foreach (var rol in usuario.Roles)
-                {
-                    await _repUsuarioRol.Crear(new UsuarioRol { UsuarioId = usuario.Id, RolId = rol.Id });
-                }
-            }
-
-            return new DTO<Usuario>
-            {
-                Datos = resultado.Datos,
-                Correcto = resultado.Correcto,
-                Mensaje = resultado.Mensaje
-            };
+            return resultado;
         }
 
         public async Task<DTO<Usuario>> Actualizar(Usuario usuario)
         {
-            var resultado = await _repUsuario.Actualizar(usuario);
-
-            if (resultado.Correcto && resultado.Datos != null)
-            {
-                var rolesActuales = await _repUsuarioRol.Obtener_todos();
-                foreach (var rol in rolesActuales.Datos.Where(r => r.UsuarioId == usuario.Id))
-                {
-                    await _repUsuarioRol.Eliminar(rol);
-                }
-
-                foreach (var rol in usuario.Roles)
-                {
-                    await _repUsuarioRol.Crear(new UsuarioRol { UsuarioId = usuario.Id, RolId = rol.Id });
-                }
-            }
-
-            return new DTO<Usuario>
-            {
-                Datos = resultado.Datos,
-                Correcto = resultado.Correcto,
-                Mensaje = resultado.Mensaje
-            };
+            var resultado = await _usuarioRepo.Actualizar(usuario);
+            return resultado;
         }
 
         public async Task<DTO<bool>> Eliminar(Usuario usuario)
         {
-            return await _repUsuario.Eliminar(usuario);
+            return await _usuarioRepo.Eliminar(usuario);
         }
 
-        public async Task<DTO<Usuario>> Obtener_por_id(int id)
+        public async Task<DTO<Usuario>> Obtener_por_id(Usuario usuario)
         {
-            var resultado = await _repUsuario.Obtener_por_id(new Usuario { Id = id });
-
-            if (resultado.Correcto && resultado.Datos != null)
-            {
-                var roles = await _repUsuarioRol.Obtener_todos();
-                resultado.Datos.Roles = roles.Datos.Where(r => r.UsuarioId == id).Select(r => new Rol { Id = r.RolId }).ToList();
-            }
+            var resultado = await _usuarioRepo.Obtener_por_id(usuario);
 
             return resultado;
         }
 
         public async Task<DTO<IEnumerable<Usuario>>> Obtener_todos()
         {
-            return await _repUsuario.Obtener_todos();
+            var resultado = await _usuarioRepo.Obtener_todos();
+            return resultado;
+        }
+
+        public async Task<DTO<Items_pagina<Usuario>>> Obtener_paginado(Filtros_paginado filtros)
+        {
+            var resultado = await _usuarioRepo.Obtener_paginado(filtros);
+            return resultado;
+        }
+
+        public async Task<DTO<Usuario>> Validar_credenciales(LoginModel login)
+        {
+            var usuarioResult = await _usuarioRepo.Obtener_por_email(login.Email);
+            if (!usuarioResult.Correcto || usuarioResult.Datos == null)
+            {
+                return new DTO<Usuario>
+                {
+                    Correcto = false,
+                    Mensaje = "Usuario no encontrado"
+                };
+            }
+
+            string passwordHasheado = MiHash.GenerarHash(login.Password);
+            if (usuarioResult.Datos.Password == passwordHasheado)
+            {
+                return new DTO<Usuario>
+                {
+                    Correcto = true,
+                    Datos = usuarioResult.Datos,
+                    Mensaje = "Credenciales validadas correctamente."
+                };
+            }
+            else
+            {
+                return new DTO<Usuario>
+                {
+                    Correcto = false,
+                    Mensaje = "Contraseña incorrecta."
+                };
+            }
+        }
+
+        public async Task<DTO<Usuario>> Obtener_por_mail(string mail)
+        {
+            return await _usuarioRepo.Obtener_por_email(mail);
+        }
+
+        public async Task<DTO<bool>> Modificar_contraseña(CambioClaveModel datos)
+        {
+            var usuarioResult = await _usuarioRepo.Obtener_por_email(datos.Email);
+
+            if (!usuarioResult.Correcto || usuarioResult.Datos == null)
+                return new DTO<bool> { Correcto = false, Mensaje = "Usuario no encontrado." };
+
+            string passwordActualHasheada = MiHash.GenerarHash(datos.Password);
+
+            if (usuarioResult.Datos.Password != passwordActualHasheada)
+            {
+                return new DTO<bool>
+                {
+                    Correcto = false,
+                    Datos = false,
+                    Mensaje = "Contraseña actual incorrecta."
+                };
+            }
+
+            usuarioResult.Datos.Password = MiHash.GenerarHash(datos.NuevaPassword);
+
+            var actualizado = await _usuarioRepo.Actualizar(usuarioResult.Datos);
+
+            return new DTO<bool>
+            {
+                Correcto = actualizado.Correcto,
+                Datos = actualizado.Correcto,
+                Mensaje = actualizado.Correcto
+                    ? "Contraseña actualizada correctamente."
+                    : actualizado.Mensaje
+            };
         }
     }
 }

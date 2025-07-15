@@ -1,5 +1,5 @@
 ﻿using AdmIn.Business.Servicios;
-using AdmIn.Business.Entidades;
+using AdmIn.Common.Entidades;
 using AdmIn.Business.Utilidades;
 using AdmIn.Common;
 using Microsoft.AspNetCore.Authorization;
@@ -41,7 +41,7 @@ namespace AdmIn.API.Controllers
                     var claims = new List<Claim>() { new Claim(ClaimTypes.Name, respuesta.Datos.Nombre) };
 
 
-                    foreach (var permiso in respuesta.Datos.Permisos)
+                    foreach (var permiso in respuesta.Datos.Roles)
                     {
                         claims.Add(new Claim(ClaimTypes.Role, permiso.Nombre));
                     }

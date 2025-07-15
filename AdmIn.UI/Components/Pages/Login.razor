@@ -30,8 +30,8 @@
                 </RadzenText>
                 <RadzenTemplateForm Data=@("LoginWithDefaultValues")>
                     <RadzenLogin AllowRegister="false" AllowResetPassword="false" UserText="Usuario" PasswordText="Contraseña"
-                    AllowRememberMe="false" RememberMe="false" LoginText="Ingresar"
-                    Login=@(args => OnLogin(args, "Login with default values")) />
+                                 AllowRememberMe="false" RememberMe="false" LoginText="Ingresar"
+                                 Login=@(args => OnLogin(args, "Login with default values")) />
                 </RadzenTemplateForm>
             </RadzenCard>
         </RadzenColumn>
@@ -48,8 +48,8 @@ else
                 </RadzenText>
                 <RadzenTemplateForm Data=@("LoginWithDefaultValues")>
                     <RadzenLogin AllowRegister="false" AllowResetPassword="false" UserText="Usuario" PasswordText="Contraseña"
-                    AllowRememberMe="false" RememberMe="false" LoginText="Ingresar"
-                    Login=@(args => OnLogin(args, "Login with default values")) />
+                                 AllowRememberMe="false" RememberMe="false" LoginText="Ingresar"
+                                 Login=@(args => OnLogin(args, "Login with default values")) />
                 </RadzenTemplateForm>
             </RadzenCard>
         </RadzenColumn>
@@ -62,10 +62,10 @@ else
     {
 
         var model = new LoginModel
-            {
-                Email = args.Username,
-                Password = args.Password
-            };
+        {
+            Email = args.Username,
+            Password = args.Password
+        };
 
 
         Usuario user = null;
@@ -74,15 +74,15 @@ else
         {
             case "propietario":
                 user = new Usuario()
-                    {
-                        Nombre = "Propietario",
-                        Email = "propietario@mock.com",
-                        Roles = new List<Rol> { new Rol { Nombre = "MockPropietario", Permisos = new List<Permiso> { new Permiso { Nombre = "propietario" } } } },
-                        Token = "mock token",
-                        Password = "123456",
-                        Activo = true,
-                        Creacion = DateTime.Now
-                    };
+                {
+                    Nombre = "Propietario",
+                    Email = "propietario@mock.com",
+                    Roles = new List<Rol> { new Rol { Nombre = "MockPropietario", Permisos = new List<Permiso> { new Permiso { Nombre = "propietario" } } } },
+                    Token = "mock token",
+                    Password = "123456",
+                    Activo = true,
+                    Creacion = DateTime.Now
+                };
                 break;
             default:
                 user = await serv_Auth.Login(model);
@@ -100,13 +100,13 @@ else
 
         var customAuthStateProvider = authStateProvider as CustomAuthenticationStateProvider;
         await customAuthStateProvider.UpdateAuthenticationState(new UserSession
-            {
-                Nombre = user.Nombre,
-                Email = user.Email,
-                Roles = user.PermisoString,
-                Token = user.Token,
-                Password = model.Password
-            });
+        {
+            Nombre = user.Nombre,
+            Email = user.Email,
+            Roles = user.RolString,
+            Token = user.Token,
+            Password = model.Password
+        });
 
         // Inicializar servicios Mock usando el provider inyectado
         AdmIn.UI.Services.Mock.MockDataInitializer.InicializarDatosMock(ServiceProvider);
