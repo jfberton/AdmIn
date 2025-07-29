@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace AdmIn.Business.Utilidades
+namespace AdmIn.Common.Utilidades
 {
     public class LoginModel
     {

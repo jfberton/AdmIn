@@ -1,6 +1,6 @@
 ﻿using AdmIn.Business.Servicios;
 using AdmIn.Common.Entidades;
-using AdmIn.Business.Utilidades;
+using AdmIn.Common.Utilidades;
 using AdmIn.Common;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

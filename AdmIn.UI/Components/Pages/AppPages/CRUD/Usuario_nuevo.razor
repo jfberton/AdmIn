@@ -1,7 +1,7 @@
 ﻿@page "/usuarios/new"
 @inherits BaseComponent
 
-@using AdmIn.Business.Entidades
+@using AdmIn.Common.Entidades
 @using System.Text.RegularExpressions
 @using AdmIn.Common
 @using AdmIn.UI.Services
@@ -9,7 +9,7 @@
 
 @inject IServ_Usuario serv_usuario;
 @inject IServ_Rol serv_rol;
-@inject IServ_Permiso serv_permiso;
+@inject IServ_Moneda serv_moneda;
 
 <RadzenTemplateForm @ref="form" TItem="Usuario" Data="@usuario">
     <RadzenRow class="rz-mx-2 rz-mb-8">
@@ -51,9 +51,36 @@
         </RadzenColumn>
     </RadzenRow>
 
-    <!-- Nuevo campo Activo -->
     <RadzenRow class="rz-mx-2 rz-mb-8">
-        <RadzenColumn>
+        <RadzenColumn Size="6">
+            <RadzenFormField Text="País" Variant="Variant.Outlined" Style="width:100%">
+                <ChildContent>
+                    <RadzenTextBox @bind-Value=usuario.Pais MaxLength="100" Name="componente_pais" TValue="string" />
+                </ChildContent>
+            </RadzenFormField>
+        </RadzenColumn>
+        <RadzenColumn Size="6">
+            <RadzenFormField Text="Teléfono" Variant="Variant.Outlined" Style="width:100%">
+                <ChildContent>
+                    <RadzenTextBox @bind-Value=usuario.Telefono MaxLength="20" Name="componente_telefono" TValue="string" />
+                </ChildContent>
+            </RadzenFormField>
+        </RadzenColumn>
+    </RadzenRow>
+
+    <RadzenRow class="rz-mx-2 rz-mb-8">
+        <RadzenColumn Size="6">
+            <RadzenFormField Text="Moneda" Variant="Variant.Outlined" Style="width:100%">
+                <ChildContent>
+                    <RadzenDropDown @bind-Value="usuario.MonedaId" Data="@monedas" AllowClear="false"
+                                    TextProperty="Nombre" ValueProperty="Id" Style="width:100%" Name="componente_moneda" />
+                </ChildContent>
+                <Helper>
+                    <RadzenCustomValidator Component="componente_moneda" Validator="@(() => Validar_moneda(usuario.MonedaId))" Text="Seleccione una moneda" Popup=true />
+                </Helper>
+            </RadzenFormField>
+        </RadzenColumn>
+        <RadzenColumn Size="6">
             <RadzenFormField Text="Estado">
                 <Start>
                     <RadzenCheckBox @bind-Value="usuario.Activo" Name="componente_activo" />
@@ -66,22 +93,10 @@
     </RadzenRow>
 
     <RadzenRow class="rz-mx-2 rz-mb-8">
-        <RadzenColumn Size="6">
+        <RadzenColumn>
             <RadzenLabel Text="Roles" />
-            <RadzenListBox @bind-Value="valuesRoles" TValue="IEnumerable<int>" Change="@(args => PermisosRolesSeleccionados(args as IEnumerable<int>))" Data="@roles" AllowSelectAll="false"
+            <RadzenListBox @bind-Value="valuesRoles" TValue="IEnumerable<int>" Data="@roles" AllowSelectAll="false"
                            TextProperty="Nombre" ValueProperty="Id" Style="width:100%" Multiple="true" />
-        </RadzenColumn>
-        <RadzenColumn Size="6">
-            <RadzenLabel Text="Permisos asociados a los roles seleccionados" />
-            @if (permisos != null && permisos.Any())
-            {
-                <RadzenListBox TValue="int" Data="@permisos" Style="width: 100%; height:200px"
-                               TextProperty="Nombre" ValueProperty="Id" AllowSelectAll="false" ReadOnly="true" />
-            }
-            else
-            {
-                <RadzenText Text="No existen permisos asociados.-" />
-            }
         </RadzenColumn>
     </RadzenRow>
 
@@ -97,9 +112,8 @@
     RadzenTemplateForm<Usuario> form;
     Usuario usuario = new Usuario();
 
-    private List<Permiso> permisos { get; set; } = new List<Permiso>();
-
     private List<Rol> roles { get; set; }
+    private List<Moneda> monedas { get; set; }
 
     IEnumerable<int> valuesPermisos;
     IEnumerable<int> valuesRoles;
@@ -131,6 +145,11 @@
         return valid && regex.IsMatch(email);
     }
 
+    bool Validar_moneda(int monedaId)
+    {
+        return monedaId > 0;
+    }
+
     #endregion
 
     protected override async Task OnInitializedAsync()
@@ -144,32 +163,21 @@
             usuario.Roles = new List<Rol>();
         }
 
-        var rta_roles = await serv_rol.Obtener_todos();
+        // Inicializar campos por defecto
+        usuario.Activo = true;
+        usuario.MonedaId = 1; // Moneda por defecto
 
+        var rta_roles = await serv_rol.Obtener_todos();
         if (rta_roles.Correcto)
         {
             roles = rta_roles.Datos.ToList();
         }
-    }
 
-    async Task PermisosRolesSeleccionados(IEnumerable<int> idRoles)
-    {
-        var permisosUnicos = new HashSet<Permiso>();
-
-        foreach (int idRol in idRoles)
+        var rta_monedas = await serv_moneda.Obtener_todos();
+        if (rta_monedas.Correcto)
         {
-            var rta_permisos = await serv_permiso.Obtener_por_rol(idRol);
-            if (rta_permisos.Correcto && rta_permisos.Datos != null)
-            {
-                permisosUnicos.UnionWith(rta_permisos.Datos.Where(p => p != null && p.Id > 0));
-            }
-            else
-            {
-                base.MostrarNotificacion(NotificationSeverity.Error, "Error!", "Error al obtener los permisos asociados al rol");
-            }
+            monedas = rta_monedas.Datos.ToList();
         }
-
-        permisos = permisosUnicos.ToList();
     }
 
     async Task OnSubmit()

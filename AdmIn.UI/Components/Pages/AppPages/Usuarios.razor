@@ -2,7 +2,7 @@
 
 @inherits BaseComponent
 
-@using AdmIn.Business.Entidades
+@using AdmIn.Common.Entidades
 @using AdmIn.Common
 @using AdmIn.UI.Services
 @using AdmIn.UI.Services.UtilityServices
@@ -16,15 +16,22 @@
 LoadData="@LoadData" AllowSorting="true" AllowFiltering="true" FilterMode="FilterMode.Simple" AllowPaging="true" PageSize="5"
 PagerHorizontalAlign="HorizontalAlign.Center" TItem="Usuario">
     <Columns>
-        <RadzenDataGridColumn TItem="Usuario" Property="Nombre" Title="Nombre" MinWidth="200px" />
-        <RadzenDataGridColumn TItem="Usuario" Title="Activo" MinWidth="200px" Filterable="false">
+        <RadzenDataGridColumn TItem="Usuario" Property="Nombre" Title="Nombre" MinWidth="150px" />
+        <RadzenDataGridColumn TItem="Usuario" Property="Email" Title="Email" MinWidth="200px" />
+        <RadzenDataGridColumn TItem="Usuario" Property="Pais" Title="País" MinWidth="120px" />
+        <RadzenDataGridColumn TItem="Usuario" Property="Telefono" Title="Teléfono" MinWidth="120px" />
+        <RadzenDataGridColumn TItem="Usuario" Title="Moneda" MinWidth="100px" Filterable="false">
+            <Template Context="usu">
+                @(usu.Moneda?.Nombre ?? "No asignada")
+            </Template>
+        </RadzenDataGridColumn>
+        <RadzenDataGridColumn TItem="Usuario" Title="Activo" MinWidth="80px" Filterable="false">
             <Template Context="usu">
                 <RadzenCheckBox @bind-Value="usu.Activo" Disabled="true" />
             </Template>
         </RadzenDataGridColumn>
-        <RadzenDataGridColumn TItem="Usuario" Property="Email" Title="Email" MinWidth="200px" />
-        <RadzenDataGridColumn TItem="Usuario" Property="RolString" Title="Roles" MinWidth="200px" />
-        <RadzenDataGridColumn Width="200px" TItem="Usuario" Context="usu" MinWidth="200px">
+        <RadzenDataGridColumn TItem="Usuario" Property="RolString" Title="Roles" MinWidth="150px" />
+        <RadzenDataGridColumn Width="250px" TItem="Usuario" Context="usu" MinWidth="250px">
             <Template>
                 <MiRadzenButton ButtonStyle="ButtonStyle.Primary" Variant="Variant.Outlined" Shade="Shade.Lighter" Title="Ver" Icon="visibility" Size="ButtonSize.ExtraSmall" OnClick=@(() => Ver(usu)) />
                 <AuthorizeView Roles="admin_usuario">

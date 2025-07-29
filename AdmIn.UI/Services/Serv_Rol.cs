@@ -1,4 +1,4 @@
-﻿using AdmIn.Business.Entidades;
+﻿using AdmIn.Common.Entidades;
 using AdmIn.Common;
 using AdmIn.UI.Services.UtilityServices;
 using Microsoft.AspNetCore.Components.Authorization;

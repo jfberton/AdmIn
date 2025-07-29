@@ -1,10 +1,10 @@
 ﻿@page "/"
 
-@using AdmIn.Business.Entidades
-@using AdmIn.Business.Utilidades
+@using AdmIn.Common.Entidades
+@using AdmIn.Common.Utilidades
 @using AdmIn.UI.Components.Layout
 @using AdmIn.UI.Services
-@using AdmIn.UI.Services.Mock
+@* @using AdmIn.UI.Services.Mock *@
 @using AdmIn.UI.Services.UtilityServices
 @using AdmIn.UI.Authentication
 @using Microsoft.AspNetCore.Components.Authorization
@@ -72,19 +72,7 @@ else
 
         switch (args.Username)
         {
-            case "propietario":
-                user = new Usuario()
-                {
-                    Nombre = "Propietario",
-                    Email = "propietario@mock.com",
-                    Roles = new List<Rol> { new Rol { Nombre = "MockPropietario", Permisos = new List<Permiso> { new Permiso { Nombre = "propietario" } } } },
-                    Token = "mock token",
-                    Password = "123456",
-                    Activo = true,
-                    Creacion = DateTime.Now
-                };
-                break;
-            default:
+           default:
                 user = await serv_Auth.Login(model);
                 break;
         }
@@ -109,7 +97,7 @@ else
         });
 
         // Inicializar servicios Mock usando el provider inyectado
-        AdmIn.UI.Services.Mock.MockDataInitializer.InicializarDatosMock(ServiceProvider);
+        // AdmIn.UI.Services.Mock.MockDataInitializer.InicializarDatosMock(ServiceProvider);
 
         //Redirigir a la página de inicio
         navManager.NavigateTo("/home", true);

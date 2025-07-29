@@ -55,6 +55,11 @@ namespace AdmIn.UI.Services
             return await EjecutarPeticion<DTO<T>>(HttpMethod.Get, $"obtener_por_id/{id}");
         }
 
+        public async Task<DTO<IEnumerable<T>>> Obtener_todos()
+        {
+            return await EjecutarPeticion<DTO<IEnumerable<T>>>(HttpMethod.Get, "obtener_todos");
+        }
+
         public async Task<DTO<Items_pagina<T>>> Obtener_paginado(Filtros_paginado filtros)
         {
             return await EjecutarPeticion<DTO<Items_pagina<T>>>(HttpMethod.Post, "obtener_paginado", filtros);

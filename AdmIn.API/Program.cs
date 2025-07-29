@@ -41,13 +41,16 @@ builder.Services.AddCors(options =>
 
 // Register application services
 builder.Services.AddScoped<IServ_Usuario, Serv_Usuario>();
+builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
 
-builder.Services.AddScoped<IUsuarioRepository>(sp =>
-{
-    var config = sp.GetRequiredService<IConfiguration>();
-    var connectionString = config.GetConnectionString("DefaultConnection");
-    return new UsuarioRepository(connectionString);
-});
+// Register Rol services
+builder.Services.AddScoped<IServ_Rol, Serv_Rol>();
+builder.Services.AddScoped<IRolRepository, RolRepository>();
+
+// Register Moneda services
+builder.Services.AddScoped<IServ_Moneda, Serv_Moneda>();
+builder.Services.AddScoped<IMonedaRepository, MonedaRepository>();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.

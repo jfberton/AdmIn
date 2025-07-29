@@ -1,66 +1,57 @@
-﻿namespace AdmIn.Business.Servicios
+﻿using AdmIn.Common;
+using AdmIn.Common.Entidades;
+using AdmIn.Common.Repositorios;
+
+
+namespace AdmIn.Business.Servicios
 {
-    //public class Serv_Rol : IServ_Rol
-    //{
-    //    private readonly R_Rol _repRol;
-    //    private readonly R_Usuario_Rol _repUsuarioRol;
+    public class Serv_Rol : IServ_Rol
+    {
+        private readonly IRolRepository _rolRepo;
 
-    //    public Serv_Rol()
-    //    {
-    //        _repRol = new R_Rol();
-    //        _repUsuarioRol = new R_Usuario_Rol();
-    //    }
+        public Serv_Rol(IRolRepository rolRepository)
+        {
+            _rolRepo = rolRepository;
+        }
 
-    //    public async Task<DTO<Rol>> Crear(Rol rol)
-    //    {
-    //        var resultado = await _repRol.Crear(rol);
+        public async Task<DTO<Rol>> Crear(Rol rol)
+        {
+            var resultado = await _rolRepo.Crear(rol);
+            return resultado;
+        }
 
-    //        return new DTO<Rol>
-    //        {
-    //            Datos = resultado.Datos,
-    //            Correcto = resultado.Correcto,
-    //            Mensaje = resultado.Mensaje
-    //        };
-    //    }
+        public async Task<DTO<Rol>> Actualizar(Rol rol)
+        {
+            var resultado = await _rolRepo.Actualizar(rol);
+            return resultado;
+        }
 
-    //    public async Task<DTO<Rol>> Actualizar(Rol rol)
-    //    {
-    //        var resultado = await _repRol.Actualizar(rol);
+        public async Task<DTO<bool>> Eliminar(Rol rol)
+        {
+            return await _rolRepo.Eliminar(rol);
+        }
 
-    //        return new DTO<Rol>
-    //        {
-    //            Datos = resultado.Datos,
-    //            Correcto = resultado.Correcto,
-    //            Mensaje = resultado.Mensaje
-    //        };
-    //    }
+        public async Task<DTO<Rol>> Obtener_por_id(Rol rol)
+        {
+            var resultado = await _rolRepo.Obtener_por_id(rol);
+            return resultado;
+        }
 
-    //    public async Task<DTO<bool>> Eliminar(Rol rol)
-    //    {
-    //        return await _repRol.Eliminar(rol);
-    //    }
+        public async Task<DTO<IEnumerable<Rol>>> Obtener_todos()
+        {
+            var resultado = await _rolRepo.Obtener_todos();
+            return resultado;
+        }
 
-    //    public async Task<DTO<Rol>> Obtener_por_id(int id)
-    //    {
-    //        return await _repRol.Obtener_por_id(new Rol { Id = id });
-    //    }
+        public async Task<DTO<Items_pagina<Rol>>> Obtener_paginado(Filtros_paginado filtros)
+        {
+            var resultado = await _rolRepo.Obtener_paginado(filtros);
+            return resultado;
+        }
 
-    //    public async Task<DTO<IEnumerable<Rol>>> Obtener_todos()
-    //    {
-    //        return await _repRol.Obtener_todos();
-    //    }
-
-    //    public async Task<DTO<IEnumerable<Rol>>> Obtener_por_usuario(int usuarioId)
-    //    {
-    //        var rolesUsuario = await _repUsuarioRol.Obtener_todos();
-    //        var roles = rolesUsuario.Datos.Where(r => r.UsuarioId == usuarioId).Select(r => new Rol { Id = r.RolId }).ToList();
-
-    //        return new DTO<IEnumerable<Rol>>
-    //        {
-    //            Datos = roles,
-    //            Correcto = true,
-    //            Mensaje = "Roles obtenidos correctamente."
-    //        };
-    //    }
-    //}
+        public async Task<DTO<IEnumerable<Rol>>> Obtener_por_usuario(int usuarioId)
+        {
+            return await _rolRepo.Obtener_por_usuario(usuarioId);
+        }
+    }
 }

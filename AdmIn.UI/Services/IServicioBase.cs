@@ -8,6 +8,7 @@ namespace AdmIn.UI.Services
         Task<DTO<T>> Actualizar(T entidad);
         Task<DTO<bool>> Eliminar(int id);
         Task<DTO<T>> Obtener_por_id(int id);
+        Task<DTO<IEnumerable<T>>> Obtener_todos();
         Task<DTO<Items_pagina<T>>> Obtener_paginado(Filtros_paginado filtros);
 
         void Diccionario_local_agregar(int id, T objeto);

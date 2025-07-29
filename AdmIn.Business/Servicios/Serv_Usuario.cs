@@ -1,4 +1,4 @@
-﻿using AdmIn.Business.Utilidades;
+﻿using AdmIn.Common.Utilidades;
 using AdmIn.Common;
 using AdmIn.Common.Entidades;
 using AdmIn.Common.Repositorios;

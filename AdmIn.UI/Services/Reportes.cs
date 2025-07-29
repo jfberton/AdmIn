@@ -1,6 +1,6 @@
 ﻿namespace AdmIn.UI.Services
 {
-    using AdmIn.Business.Entidades;
+    using AdmIn.Common.Entidades;
     using iText.Kernel.Pdf;
     using iText.Layout;
     using iText.Layout.Element;
@@ -21,7 +21,7 @@
             _env = env;
         }
 
-        public async Task<byte[]> GenerarPDFReserva(Reserva? rec)
+        public async Task<byte[]> GenerarPDFReserva(ContratoRenta? rec)
         {
             byte[] ret = null;
 
@@ -78,7 +78,7 @@
 
 
                             // Detalles de la reserva
-                            doc.Add(new Paragraph($"Bueno por: {rec.CostoReserva:C}").SetFontSize(9));
+                            doc.Add(new Paragraph($"Bueno por: {rec.Deposito:C}").SetFontSize(9));
                             doc.Add(new Paragraph($"Fecha de Reserva: {rec.FechaCreacion.ToString("d", CultureInfo.CurrentCulture)}").SetTextAlignment(TextAlignment.RIGHT).SetFontSize(9));
 
                             #region convierto el valor en letras
@@ -87,13 +87,13 @@
                             nl.LetraCapital = true;
                             nl.MascaraSalidaDecimal = "00/100 M.N.";
 
-                            string montoDocumentoString = "Son " + nl.ToCustomCardinal(rec.CostoReserva).Replace("/100", "/100 M.N.");
+                            string montoDocumentoString = "Son " + nl.ToCustomCardinal(rec.Deposito??0).Replace("/100", "/100 M.N.");
                             #endregion
 
                             doc.Add(new Paragraph($"Cantidad con letra: {montoDocumentoString}").SetFontSize(9));
 
-                            doc.Add(new Paragraph($"Recibimos de {rec.Persona.Nombre} {rec.Persona.ApellidoPaterno} {rec.Persona.ApellidoMaterno}, " +
-                                $"la cantidad arriba mencionada por concepto de pago de investigación y apartado hasta el día {rec.FechaFinalizacion.ToLongDateString()}" +
+                            doc.Add(new Paragraph($"Recibimos de {rec.Inquilino.Nombre} " +
+                                $"la cantidad arriba mencionada por concepto de pago de investigación y apartado hasta el día {rec.FechaFin?.ToLongDateString()}" +
                                 $" sobre una opción de casa en arrendamiento ubicada en {rec.Inmueble.Direccion.ToString()}. ").SetTextAlignment(TextAlignment.JUSTIFIED).SetFontSize(9));
 
                             #region Condiciones adicionales

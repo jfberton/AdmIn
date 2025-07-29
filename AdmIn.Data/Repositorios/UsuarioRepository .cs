@@ -12,16 +12,13 @@ namespace AdmIn.Data.Repositorios
 {
     public class UsuarioRepository : IUsuarioRepository
     {
-        private readonly string _connectionString;
-
-        public UsuarioRepository(string connectionString)
+        public UsuarioRepository()
         {
-            _connectionString = connectionString;
         }
 
         public async Task<DTO<Usuario>> Crear(Usuario usuario)
         {
-            using var conexion = new SqlConnection(_connectionString);
+            using var conexion = new SqlConnection(InfoSQL.Conexion);
             await conexion.OpenAsync();
             using var transaccion = conexion.BeginTransaction();
 
@@ -29,7 +26,20 @@ namespace AdmIn.Data.Repositorios
             {
                 var sqlUsuario = @"INSERT INTO Usuario 
                     (Nombre, Email, Password, Pais, Telefono, PersonaID, EmpresaID, MonedaID, Activo, FechaCreacion, FechaModificacion, UsuarioCreadorID)
-                    OUTPUT INSERTED.*
+                    OUTPUT INSERTED.UsuarioID as Id,
+                           INSERTED.Nombre,
+                           INSERTED.Email,
+                           INSERTED.Password,
+                           INSERTED.Pais,
+                           INSERTED.Telefono,
+                           INSERTED.PersonaID,
+                           INSERTED.EmpresaID,
+                           INSERTED.MonedaID,
+                           INSERTED.Activo,
+                           INSERTED.FechaCreacion,
+                           INSERTED.FechaModificacion,
+                           INSERTED.UsuarioCreadorID,
+                           INSERTED.UsuarioModificadorID
                     VALUES (@Nombre, @Email, @Password, @Pais, @Telefono, @PersonaID, @EmpresaID, @MonedaID, @Activo, GETDATE(), GETDATE(), @UsuarioCreadorID);";
 
                 var usuarioCreado = await conexion.QuerySingleOrDefaultAsync<Usuario>(sqlUsuario, new
@@ -60,6 +70,14 @@ namespace AdmIn.Data.Repositorios
                     }
                 }
 
+                // Obtener los roles del usuario creado para devolverlo completo
+                var sqlRoles = @"SELECT r.RolID as Id, r.Nombre FROM Rol r
+                                 INNER JOIN UsuarioRol ur ON ur.RolID = r.RolID
+                                 WHERE ur.UsuarioID = @UsuarioID;";
+                
+                var roles = await conexion.QueryAsync<Rol>(sqlRoles, new { UsuarioID = usuarioCreado.Id }, transaccion);
+                usuarioCreado.Roles = roles.ToList();
+
                 transaccion.Commit();
 
                 return new DTO<Usuario>
@@ -82,7 +100,7 @@ namespace AdmIn.Data.Repositorios
 
         public async Task<DTO<Usuario>> Actualizar(Usuario usuario)
         {
-            using var conexion = new SqlConnection(_connectionString);
+            using var conexion = new SqlConnection(InfoSQL.Conexion);
             await conexion.OpenAsync();
             using var transaccion = conexion.BeginTransaction();
 
@@ -99,7 +117,20 @@ namespace AdmIn.Data.Repositorios
                         Activo = @Activo,
                         FechaModificacion = GETDATE(),
                         UsuarioModificadorID = @UsuarioModificadorID
-                    OUTPUT INSERTED.*
+                    OUTPUT INSERTED.UsuarioID as Id,
+                           INSERTED.Nombre,
+                           INSERTED.Email,
+                           INSERTED.Password,
+                           INSERTED.Pais,
+                           INSERTED.Telefono,
+                           INSERTED.PersonaID,
+                           INSERTED.EmpresaID,
+                           INSERTED.MonedaID,
+                           INSERTED.Activo,
+                           INSERTED.FechaCreacion,
+                           INSERTED.FechaModificacion,
+                           INSERTED.UsuarioCreadorID,
+                           INSERTED.UsuarioModificadorID
                     WHERE UsuarioID = @UsuarioID;";
 
                 var usuarioActualizado = await conexion.QuerySingleOrDefaultAsync<Usuario>(sqlActualizarUsuario, new
@@ -133,6 +164,14 @@ namespace AdmIn.Data.Repositorios
                     }
                 }
 
+                // Obtener los roles del usuario actualizado para devolverlo completo
+                var sqlRoles = @"SELECT r.RolID as Id, r.Nombre FROM Rol r
+                                 INNER JOIN UsuarioRol ur ON ur.RolID = r.RolID
+                                 WHERE ur.UsuarioID = @UsuarioID;";
+                
+                var roles = await conexion.QueryAsync<Rol>(sqlRoles, new { UsuarioID = usuario.Id }, transaccion);
+                usuarioActualizado.Roles = roles.ToList();
+
                 transaccion.Commit();
 
                 return new DTO<Usuario>
@@ -155,7 +194,7 @@ namespace AdmIn.Data.Repositorios
 
         public async Task<DTO<bool>> Eliminar(Usuario usuario)
         {
-            using var conexion = new SqlConnection(_connectionString);
+            using var conexion = new SqlConnection(InfoSQL.Conexion);
             await conexion.OpenAsync();
             using var transaccion = conexion.BeginTransaction();
 
@@ -191,17 +230,66 @@ namespace AdmIn.Data.Repositorios
 
         public async Task<DTO<Usuario>> Obtener_por_id(Usuario usuario)
         {
-            using var conexion = new SqlConnection(_connectionString);
+            using var conexion = new SqlConnection(InfoSQL.Conexion);
             await conexion.OpenAsync();
 
-            var sqlUsuario = @"SELECT * FROM Usuario WHERE UsuarioID = @UsuarioID;";
-            var sqlRoles = @"SELECT r.RolID, r.Nombre FROM Rol r
+            var sqlUsuario = @"SELECT 
+                                u.UsuarioID as Id,
+                                u.Nombre,
+                                u.Email,
+                                u.Password,
+                                u.Pais,
+                                u.Telefono,
+                                u.PersonaID,
+                                u.EmpresaID,
+                                u.MonedaID,
+                                u.Activo,
+                                u.FechaCreacion,
+                                u.FechaModificacion,
+                                u.UsuarioCreadorID,
+                                u.UsuarioModificadorID,
+                                m.MonedaID as Moneda_Id,
+                                m.Codigo as Moneda_Codigo,
+                                m.Nombre as Moneda_Nombre
+                              FROM Usuario u
+                              LEFT JOIN Moneda m ON u.MonedaID = m.MonedaID
+                              WHERE u.UsuarioID = @UsuarioID;";
+            var sqlRoles = @"SELECT r.RolID as Id, r.Nombre FROM Rol r
                              INNER JOIN UsuarioRol ur ON ur.RolID = r.RolID
                              WHERE ur.UsuarioID = @UsuarioID;";
 
-            var usuarioEncontrado = await conexion.QuerySingleOrDefaultAsync<Usuario>(sqlUsuario, new { UsuarioID = usuario.Id });
-            if (usuarioEncontrado == null)
+            var usuarioData = await conexion.QuerySingleOrDefaultAsync(sqlUsuario, new { UsuarioID = usuario.Id });
+            if (usuarioData == null)
                 return new DTO<Usuario> { Correcto = false, Mensaje = "Usuario no encontrado" };
+
+            var usuarioEncontrado = new Usuario
+            {
+                Id = usuarioData.Id,
+                Nombre = usuarioData.Nombre,
+                Email = usuarioData.Email,
+                Password = usuarioData.Password,
+                Pais = usuarioData.Pais,
+                Telefono = usuarioData.Telefono,
+                PersonaId = usuarioData.PersonaID,
+                EmpresaId = usuarioData.EmpresaID,
+                MonedaId = usuarioData.MonedaID,
+                Activo = usuarioData.Activo,
+                FechaCreacion = usuarioData.FechaCreacion,
+                FechaModificacion = usuarioData.FechaModificacion,
+                UsuarioCreador = usuarioData.UsuarioCreadorID,
+                UsuarioModificador = usuarioData.UsuarioModificadorID
+            };
+
+            // Mapear la moneda si existe
+            if (usuarioData.Moneda_Id != null)
+            {
+                usuarioEncontrado.Moneda = new Moneda
+                {
+                    Id = usuarioData.Moneda_Id,
+                    Codigo = usuarioData.Moneda_Codigo,
+                    Nombre = usuarioData.Moneda_Nombre
+                };
+            }
 
             var roles = await conexion.QueryAsync<Rol>(sqlRoles, new { UsuarioID = usuario.Id });
             usuarioEncontrado.Roles = roles.ToList();
@@ -216,11 +304,26 @@ namespace AdmIn.Data.Repositorios
 
         public async Task<DTO<Usuario>> Obtener_por_email(string email)
         {
-            using var conexion = new SqlConnection(_connectionString);
+            using var conexion = new SqlConnection(InfoSQL.Conexion);
             await conexion.OpenAsync();
 
-            var sqlUsuario = @"SELECT * FROM Usuario WHERE Email = @Email;";
-            var sqlRoles = @"SELECT r.RolID, r.Nombre FROM Rol r
+            var sqlUsuario = @"SELECT 
+                                UsuarioID as Id,
+                                Nombre,
+                                Email,
+                                Password,
+                                Pais,
+                                Telefono,
+                                PersonaID,
+                                EmpresaID,
+                                MonedaID,
+                                Activo,
+                                FechaCreacion,
+                                FechaModificacion,
+                                UsuarioCreadorID,
+                                UsuarioModificadorID
+                              FROM Usuario WHERE Email = @Email;";
+            var sqlRoles = @"SELECT r.RolID as Id, r.Nombre FROM Rol r
                              INNER JOIN UsuarioRol ur ON ur.RolID = r.RolID
                              WHERE ur.UsuarioID = @UsuarioID;";
 
@@ -241,22 +344,77 @@ namespace AdmIn.Data.Repositorios
 
         public async Task<DTO<IEnumerable<Usuario>>> Obtener_todos()
         {
-            using var conexion = new SqlConnection(_connectionString);
+            using var conexion = new SqlConnection(InfoSQL.Conexion);
             await conexion.OpenAsync();
 
-            var sqlUsuarios = @"SELECT * FROM Usuario;";
-            var sqlRoles = @"SELECT * FROM UsuarioRol;";
+            var sqlUsuarios = @"SELECT 
+                                 u.UsuarioID as Id,
+                                 u.Nombre,
+                                 u.Email,
+                                 u.Password,
+                                 u.Pais,
+                                 u.Telefono,
+                                 u.PersonaID,
+                                 u.EmpresaID,
+                                 u.MonedaID,
+                                 u.Activo,
+                                 u.FechaCreacion,
+                                 u.FechaModificacion,
+                                 u.UsuarioCreadorID,
+                                 u.UsuarioModificadorID,
+                                 m.MonedaID as Moneda_Id,
+                                 m.Codigo as Moneda_Codigo,
+                                 m.Nombre as Moneda_Nombre
+                               FROM Usuario u
+                               LEFT JOIN Moneda m ON u.MonedaID = m.MonedaID;";
+            var sqlTodosRoles = @"SELECT ur.UsuarioID, r.RolID as Id, r.Nombre 
+                                  FROM UsuarioRol ur
+                                  INNER JOIN Rol r ON ur.RolID = r.RolID;";
 
-            var usuarios = (await conexion.QueryAsync<Usuario>(sqlUsuarios)).ToList();
-            var usuarioRoles = (await conexion.QueryAsync<UsuarioRol>(sqlRoles)).ToList();
+            var usuariosData = (await conexion.QueryAsync(sqlUsuarios)).ToList();
+            var usuarioRoles = (await conexion.QueryAsync<dynamic>(sqlTodosRoles)).ToList();
 
-            // Asociar roles a cada usuario
-            foreach (var usuario in usuarios)
+            var usuarios = new List<Usuario>();
+
+            foreach (var userData in usuariosData)
             {
-                var rolesIds = usuarioRoles.Where(ur => ur.UsuarioID == usuario.Id).Select(ur => ur.RolID).ToList();
+                var usuario = new Usuario
+                {
+                    Id = userData.Id,
+                    Nombre = userData.Nombre,
+                    Email = userData.Email,
+                    Password = userData.Password,
+                    Pais = userData.Pais,
+                    Telefono = userData.Telefono,
+                    PersonaId = userData.PersonaID,
+                    EmpresaId = userData.EmpresaID,
+                    MonedaId = userData.MonedaID,
+                    Activo = userData.Activo,
+                    FechaCreacion = userData.FechaCreacion,
+                    FechaModificacion = userData.FechaModificacion,
+                    UsuarioCreador = userData.UsuarioCreadorID,
+                    UsuarioModificador = userData.UsuarioModificadorID
+                };
 
-                // Opcional: Podrías obtener los nombres si querés, pero acá sólo seteo Id para cada rol
-                usuario.Roles = rolesIds.Select(id => new Rol { Id = id }).ToList();
+                // Mapear la moneda si existe
+                if (userData.Moneda_Id != null)
+                {
+                    usuario.Moneda = new Moneda
+                    {
+                        Id = userData.Moneda_Id,
+                        Codigo = userData.Moneda_Codigo,
+                        Nombre = userData.Moneda_Nombre
+                    };
+                }
+
+                // Asociar roles al usuario
+                var rolesDelUsuario = usuarioRoles
+                    .Where(ur => ur.UsuarioID == usuario.Id)
+                    .Select(ur => new Rol { Id = ur.Id, Nombre = ur.Nombre })
+                    .ToList();
+
+                usuario.Roles = rolesDelUsuario;
+                usuarios.Add(usuario);
             }
 
             return new DTO<IEnumerable<Usuario>>
@@ -269,18 +427,35 @@ namespace AdmIn.Data.Repositorios
 
         public async Task<DTO<Items_pagina<Usuario>>> Obtener_paginado(Filtros_paginado filtros)
         {
-            using var conexion = new SqlConnection(_connectionString);
+            using var conexion = new SqlConnection(InfoSQL.Conexion);
             await conexion.OpenAsync();
 
             var sql = @"SELECT 
                             COUNT(*) OVER() AS TotalItems,
-                            UsuarioID, Nombre, Email, Pais, Telefono, PersonaID, EmpresaID, MonedaID, Activo, FechaCreacion, FechaModificacion, UsuarioCreadorID, UsuarioModificadorID
-                        FROM Usuario
+                            u.UsuarioID as Id,
+                            u.Nombre,
+                            u.Email,
+                            u.Password,
+                            u.Pais,
+                            u.Telefono,
+                            u.PersonaID,
+                            u.EmpresaID,
+                            u.MonedaID,
+                            u.Activo,
+                            u.FechaCreacion,
+                            u.FechaModificacion,
+                            u.UsuarioCreadorID,
+                            u.UsuarioModificadorID,
+                            m.MonedaID as Moneda_Id,
+                            m.Codigo as Moneda_Codigo,
+                            m.Nombre as Moneda_Nombre
+                        FROM Usuario u
+                        LEFT JOIN Moneda m ON u.MonedaID = m.MonedaID
                         WHERE 
-                            (@FiltroBusqueda IS NULL OR Nombre LIKE '%' + @FiltroBusqueda + '%' OR Email LIKE '%' + @FiltroBusqueda + '%')
+                            (@FiltroBusqueda IS NULL OR u.Nombre LIKE '%' + @FiltroBusqueda + '%' OR u.Email LIKE '%' + @FiltroBusqueda + '%')
                         ORDER BY
-                            CASE WHEN @OrdenarPor = 'Nombre' THEN Nombre END,
-                            CASE WHEN @OrdenarPor = 'Email' THEN Email END
+                            CASE WHEN @OrdenarPor = 'Nombre' THEN u.Nombre END,
+                            CASE WHEN @OrdenarPor = 'Email' THEN u.Email END
                         OFFSET @Skip ROWS FETCH NEXT @Top ROWS ONLY;";
 
             var lista = await conexion.QueryAsync<dynamic>(sql, new
@@ -298,11 +473,12 @@ namespace AdmIn.Data.Repositorios
             {
                 totalItems = row.TotalItems;
 
-                usuarios.Add(new Usuario
+                var usuario = new Usuario
                 {
-                    Id = row.UsuarioID,
+                    Id = row.Id,
                     Nombre = row.Nombre,
                     Email = row.Email,
+                    Password = row.Password,
                     Pais = row.Pais,
                     Telefono = row.Telefono,
                     PersonaId = row.PersonaID,
@@ -313,7 +489,43 @@ namespace AdmIn.Data.Repositorios
                     FechaModificacion = row.FechaModificacion,
                     UsuarioCreador = row.UsuarioCreadorID,
                     UsuarioModificador = row.UsuarioModificadorID
-                });
+                };
+
+                // Mapear la moneda si existe
+                if (row.Moneda_Id != null)
+                {
+                    usuario.Moneda = new Moneda
+                    {
+                        Id = row.Moneda_Id,
+                        Codigo = row.Moneda_Codigo,
+                        Nombre = row.Moneda_Nombre
+                    };
+                }
+
+                usuarios.Add(usuario);
+            }
+
+            // Obtener roles para todos los usuarios paginados
+            if (usuarios.Any())
+            {
+                var usuarioIds = usuarios.Select(u => u.Id).ToList();
+                var sqlRoles = @"SELECT ur.UsuarioID, r.RolID as Id, r.Nombre 
+                                 FROM UsuarioRol ur
+                                 INNER JOIN Rol r ON ur.RolID = r.RolID
+                                 WHERE ur.UsuarioID IN @UsuarioIds;";
+
+                var rolesData = await conexion.QueryAsync<dynamic>(sqlRoles, new { UsuarioIds = usuarioIds });
+
+                // Asociar roles a cada usuario
+                foreach (var usuario in usuarios)
+                {
+                    var rolesDelUsuario = rolesData
+                        .Where(r => r.UsuarioID == usuario.Id)
+                        .Select(r => new Rol { Id = r.Id, Nombre = r.Nombre })
+                        .ToList();
+
+                    usuario.Roles = rolesDelUsuario;
+                }
             }
 
             return new DTO<Items_pagina<Usuario>>
