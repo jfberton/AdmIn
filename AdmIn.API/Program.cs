@@ -51,6 +51,14 @@ builder.Services.AddScoped<IRolRepository, RolRepository>();
 builder.Services.AddScoped<IServ_Moneda, Serv_Moneda>();
 builder.Services.AddScoped<IMonedaRepository, MonedaRepository>();
 
+// Register Inmueble services
+builder.Services.AddScoped<IServ_Inmueble, Serv_Inmueble>();
+builder.Services.AddScoped<IInmuebleRepository, InmuebleRepository>();
+
+// Register Caracteristica services
+builder.Services.AddScoped<IServ_Caracteristica, Serv_Caracteristica>();
+builder.Services.AddScoped<ICaracteristicaRepository, CaracteristicaRepository>();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.

@@ -1,0 +1,87 @@
+@page "/caracteristicas/detalle/{id}"
+
+@inherits BaseComponent
+
+@using AdmIn.Common.Entidades
+@using AdmIn.Common
+@using AdmIn.UI.Services
+@using Microsoft.AspNetCore.Components.Authorization
+
+@inject IServ_Caracteristica serv_caracteristica;
+
+<RadzenCard class="rz-mx-2 rz-mb-4">
+    <RadzenRow>
+        <RadzenColumn>
+            <RadzenFieldset Text="Información de la característica">
+                <RadzenRow class="rz-mb-2">
+                    <RadzenColumn Size="12" SizeMD="6">
+                        <RadzenLabel Text="Nombre:" />
+                        <RadzenText TextStyle="TextStyle.Body1" class="rz-display-block">
+                            <strong>@caracteristica.Nombre</strong>
+                        </RadzenText>
+                    </RadzenColumn>
+                    <RadzenColumn Size="12" SizeMD="6">
+                        <RadzenLabel Text="Tipo:" />
+                        <RadzenText TextStyle="TextStyle.Body1" class="rz-display-block">
+                            <strong>@caracteristica.Tipo</strong>
+                        </RadzenText>
+                    </RadzenColumn>
+                </RadzenRow>
+
+                @if (!string.IsNullOrEmpty(caracteristica.Descripcion))
+                {
+                    <RadzenRow class="rz-mb-2">
+                        <RadzenColumn Size="12">
+                            <RadzenLabel Text="Descripción:" />
+                            <RadzenText TextStyle="TextStyle.Body1" class="rz-display-block">
+                                @caracteristica.Descripcion
+                            </RadzenText>
+                        </RadzenColumn>
+                    </RadzenRow>
+                }
+            </RadzenFieldset>
+        </RadzenColumn>
+    </RadzenRow>
+</RadzenCard>
+
+<RadzenRow class="rz-mx-2 rz-mb-8" JustifyContent="JustifyContent.End">
+    <RadzenColumn>
+        <AuthorizeView Roles="admin_usuario">
+            <Authorized>
+                <MiRadzenButton ButtonStyle="ButtonStyle.Primary" Text="Modificar" Icon="edit" OnClick="@(() => IrA($"/caracteristicas/modificar/{caracteristica.Id}"))" />
+            </Authorized>
+        </AuthorizeView>
+        <MiRadzenButton ButtonStyle="ButtonStyle.Secondary" Text="Volver" OnClick="@OnCancel" />
+    </RadzenColumn>
+</RadzenRow>
+
+@code {
+    Caracteristica caracteristica = new Caracteristica();
+
+    [Parameter]
+    public string id { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+
+        EstablecerTituloPagina("Características", "Ver Detalles");
+
+        int id_caracteristica;
+
+        if (int.TryParse(id, out id_caracteristica))
+        {
+            var rta_caracteristica = await serv_caracteristica.Obtener_por_id(id_caracteristica);
+            if (rta_caracteristica.Correcto)
+            {
+                caracteristica = rta_caracteristica.Datos;
+                StateHasChanged();
+            }
+        }
+    }
+
+    async Task OnCancel()
+    {
+        base.IrA("/caracteristicas");
+    }
+}

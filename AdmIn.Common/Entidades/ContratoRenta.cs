@@ -30,6 +30,7 @@ namespace AdmIn.Common.Entidades
         public Inmueble? Inmueble { get; set; }
         public PolizaSeguro? PolizaRentaSegura { get; set; }
         public Moneda? Moneda { get; set; }
+        public List<PagoRenta> Pagos { get; set; }
 
         #endregion
 

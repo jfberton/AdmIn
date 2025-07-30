@@ -96,7 +96,8 @@
     <RadzenSidebar @bind-Expanded="@sidebar1Expanded">
         <RadzenPanelMenu>
             <MenuItem Text="Usuarios" Icon="person_outline" Path="/usuarios" Roles="admin_usuario" OnMenuItemClick="@OnMenuItemClick" />
-            <MenuItem Text="Inmuebles" Icon="apartment" Path="/m/inmuebles" Roles="admin_propiedad" OnMenuItemClick="@OnMenuItemClick" />
+            <MenuItem Text="Características" Icon="category" Path="/caracteristicas" Roles="admin_usuario" OnMenuItemClick="@OnMenuItemClick" />
+            <MenuItem Text="Inmuebles" Icon="apartment" Path="/inmuebles" Roles="admin_propiedad" OnMenuItemClick="@OnMenuItemClick" />
             <MenuItem Text="Reparaciones" Icon="build" Path="/m/reparaciones" Roles="add_reparacion, admin_reparacion" OnMenuItemClick="@OnMenuItemClick" />
 
             @if (DeviceService.IsMobileDevice())

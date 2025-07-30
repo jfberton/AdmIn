@@ -10,7 +10,6 @@ namespace AdmIn.Common.Entidades
     public class Usuario
     {
         #region Propiedades
-        [Column("UsuarioID")]
         public int Id { get; set; }
         public string Nombre { get; set; }
         public string Email { get; set; }

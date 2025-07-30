@@ -1,0 +1,122 @@
+﻿@using AdmIn.Common.Entidades
+@using Radzen.Blazor
+
+<RadzenCard class="modern-property-card" @onclick="@(() => VerDetalle(Inmueble.Id))">
+    <Header>
+        <div class="property-image-container">
+            @if (Inmueble.ImagenPrincipal != null)
+            {
+                <img src="@Inmueble.ImagenPrincipal.Url" 
+                     class="property-image" 
+                     alt="Inmueble @Inmueble.Id" />
+                <div class="image-overlay">
+                    <div class="overlay-gradient"></div>
+                    <div class="property-status-overlay">
+                        <RadzenBadge Text="@Inmueble.Estado"
+                                     BadgeStyle="@GetBadgeColor(Inmueble.Estado)"
+                                     class="status-badge-overlay" />
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="property-image-placeholder">
+                    <div class="placeholder-content">
+                        <RadzenIcon Icon="home" class="placeholder-icon" />
+                        <span class="placeholder-text">Sin imagen disponible</span>
+                    </div>
+                </div>
+            }
+            
+            <!-- Indicador de precio destacado -->
+            <div class="price-tag">
+                <span class="price-amount">@Inmueble.Valor.ToString("C")</span>
+            </div>
+        </div>
+    </Header>
+    
+    <Content>
+        <div class="property-content">
+            <!-- Header de la propiedad -->
+            <div class="property-header">
+                <h3 class="property-title">
+                    <RadzenIcon Icon="business" class="title-icon" />
+                    Propiedad #@Inmueble.Id.ToString()
+                </h3>
+                <div class="property-id-badge">ID: @Inmueble.Id</div>
+            </div>
+            
+            <!-- Descripción principal -->
+            <div class="property-description">
+                <p class="description-main">@Inmueble.Descripcion</p>
+            </div>
+            
+            <!-- Información de ubicación -->
+            <div class="property-location">
+                <RadzenIcon Icon="location_on" class="location-icon" />
+                <span class="location-text">@Inmueble.Direccion.ToString()</span>
+            </div>
+            
+            <!-- Estado de la propiedad -->
+            <div class="property-status-section">
+                <div class="status-indicator-wrapper">
+                    <span class="status-dot @GetStatusDotClass(Inmueble.Estado)"></span>
+                    <RadzenBadge Text="@Inmueble.Estado"
+                                 BadgeStyle="@GetBadgeColor(Inmueble.Estado)"
+                                 class="status-badge" />
+                </div>
+            </div>
+            
+            <!-- Footer con acciones -->
+            <div class="property-footer">
+                <div class="property-meta">
+                    <span class="view-details-hint">
+                        <RadzenIcon Icon="visibility" class="hint-icon" />
+                        Ver detalles
+                    </span>
+                </div>
+                <div class="property-price-footer">
+                    <span class="price-label">Precio</span>
+                    <span class="price-value">@Inmueble.Valor.ToString("C")</span>
+                </div>
+            </div>
+        </div>
+    </Content>
+</RadzenCard>
+
+@code {
+    [Parameter]
+    public Inmueble Inmueble { get; set; }
+
+    [Parameter]
+    public EventCallback<int> OnVerDetalle { get; set; }
+
+    private async Task VerDetalle(int inmuebleId)
+    {
+        await OnVerDetalle.InvokeAsync(inmuebleId);
+    }
+
+    private BadgeStyle GetBadgeColor(string estado)
+    {
+        return estado switch
+        {
+            "Disponible" => BadgeStyle.Success,
+            "Ocupado" => BadgeStyle.Dark,
+            "Reservado" => BadgeStyle.Info,
+            "En reparación" => BadgeStyle.Warning,
+            _ => BadgeStyle.Light
+        };
+    }
+    
+    private string GetStatusDotClass(string estado)
+    {
+        return estado switch
+        {
+            "Disponible" => "status-available",
+            "Ocupado" => "status-occupied",
+            "Reservado" => "status-reserved",
+            "En reparación" => "status-maintenance",
+            _ => "status-default"
+        };
+    }
+}

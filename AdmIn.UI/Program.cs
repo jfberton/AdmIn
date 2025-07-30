@@ -28,6 +28,8 @@ builder.Services.AddScoped<IServ_Auth, Serv_Auth>();
 builder.Services.AddScoped<IServ_Usuario, Serv_Usuario>();
 builder.Services.AddScoped<IServ_Rol, Serv_Rol>();
 builder.Services.AddScoped<IServ_Moneda, Serv_Moneda>();
+builder.Services.AddScoped<IServ_Inmueble, Serv_Inmueble>();
+builder.Services.AddScoped<IServ_Caracteristica, Serv_Caracteristica>();
 
 //Servicio de mock
 // builder.Services.AddScoped<IServ_Mock, MockData>(); // Removed

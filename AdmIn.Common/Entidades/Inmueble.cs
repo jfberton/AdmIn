@@ -22,6 +22,7 @@ namespace AdmIn.Common.Entidades
         public decimal RentaMensual { get; set; }
         public int? AdministradorId { get; set; }
         public string Descripcion { get; set; } = string.Empty;
+        public Guid? ImagenPrincipalId { get; set; }
         public int MonedaId { get; set; }
         public bool Activo { get; set; }
         public DateTime FechaCreacion { get; set; } = DateTime.Now;
@@ -29,5 +30,17 @@ namespace AdmIn.Common.Entidades
         public int? UsuarioCreadorId { get; set; }
         public int? UsuarioModificadorId { get; set; }
 
+        #region Propiedades de navegación
+        public Usuario? UsuarioCreador { get; set; }
+        public Usuario? UsuarioModificador { get; set; }
+        public Usuario? Administrador { get; set; }
+        public Moneda? Moneda { get; set; }
+        public Imagen? ImagenPrincipal { get; set; }
+
+        public List<Imagen> Imagenes { get; set; } = new List<Imagen>();
+        public List<CaracteristicaInmueble> Caracteristicas { get; set; } = new List<CaracteristicaInmueble>();
+        public List<ContratoRenta> Contratos { get; set; } = new List<ContratoRenta>();
+
+        #endregion
     }
 }

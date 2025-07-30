@@ -1,0 +1,105 @@
+@page "/caracteristicas/nuevo"
+
+@inherits BaseComponent
+
+@using AdmIn.Common.Entidades
+@using AdmIn.Common
+@using AdmIn.UI.Services
+@using System.Text.RegularExpressions
+@using System.ComponentModel.DataAnnotations
+
+@inject IServ_Caracteristica serv_caracteristica;
+
+<RadzenTemplateForm TItem="Caracteristica" Data="@caracteristica" Submit="@OnSubmit" @ref="form">
+    <RadzenRow class="rz-mx-2 rz-mb-4">
+        <RadzenColumn>
+            <RadzenFieldset Text="Información de la característica">
+                <RadzenRow class="rz-mb-2">
+                    <RadzenColumn Size="12" SizeMD="6">
+                        <RadzenLabel Text="Nombre*" />
+                        <RadzenTextBox @bind-Value="caracteristica.Nombre" MaxLength="100" class="w-100" />
+                        <RadzenRequiredValidator Component="caracteristica.Nombre" Text="El nombre es requerido" />
+                    </RadzenColumn>
+                    <RadzenColumn Size="12" SizeMD="6">
+                        <RadzenLabel Text="Tipo*" />
+                        <RadzenTextBox @bind-Value="caracteristica.Tipo" MaxLength="50" class="w-100" />
+                        <RadzenRequiredValidator Component="caracteristica.Tipo" Text="El tipo es requerido" />
+                    </RadzenColumn>
+                </RadzenRow>
+
+                <RadzenRow class="rz-mb-2">
+                    <RadzenColumn Size="12">
+                        <RadzenLabel Text="Descripción" />
+                        <RadzenTextArea @bind-Value="caracteristica.Descripcion" MaxLength="500" class="w-100" Rows="3" />
+                    </RadzenColumn>
+                </RadzenRow>
+            </RadzenFieldset>
+        </RadzenColumn>
+    </RadzenRow>
+
+    <RadzenRow class="rz-mx-2 rz-mb-8" JustifyContent="JustifyContent.End">
+        <RadzenColumn>
+            <MiRadzenButton ButtonStyle="ButtonStyle.Primary" Text="Guardar" OnClick="@OnSubmit" />
+            <MiRadzenButton ButtonStyle="ButtonStyle.Secondary" Text="Cancelar" OnClick="@OnCancel" />
+        </RadzenColumn>
+    </RadzenRow>
+</RadzenTemplateForm>
+
+@code {
+    RadzenTemplateForm<Caracteristica> form;
+    Caracteristica caracteristica = new Caracteristica();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        base.EstablecerTituloPagina("Características", "Nueva");
+    }
+
+    #region Validaciones
+
+    public bool Is_valid()
+    {
+        form.EditContext.Validate();
+        return form.IsValid;
+    }
+
+    bool Validar_nombre(string nombre)
+    {
+        return !string.IsNullOrEmpty(nombre);
+    }
+
+    bool Validar_tipo(string tipo)
+    {
+        return !string.IsNullOrEmpty(tipo);
+    }
+
+    #endregion
+
+    async Task OnSubmit()
+    {
+        if (Is_valid())
+        {
+            try
+            {
+                DTO<Caracteristica> caracteristica_respuesta = await serv_caracteristica.Crear(caracteristica);
+                if (caracteristica_respuesta != null && caracteristica_respuesta.Correcto)
+                {
+                    base.MostrarNotificacion(NotificationSeverity.Success, "Alta correcta", "Se ha agregado una nueva característica al sistema", "/caracteristicas");
+                }
+                else
+                {
+                    base.MostrarNotificacion(NotificationSeverity.Error, "Error!", $"Error al agregar la característica: {caracteristica_respuesta.Mensaje}");
+                }
+            }
+            catch (Exception ex)
+            {
+                base.MostrarNotificacion(NotificationSeverity.Error, "Error!", $"Error al agregar la característica: {ex.Message}");
+            }
+        }
+    }
+
+    async Task OnCancel()
+    {
+        base.IrA("/caracteristicas");
+    }
+}

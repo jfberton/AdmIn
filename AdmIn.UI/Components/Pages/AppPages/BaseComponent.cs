@@ -15,6 +15,9 @@ public abstract class BaseComponent : ComponentBase
     public required NotificationService NotificationService { get; set; }
 
     [Inject]
+    public required DialogService DialogService { get; set; }
+
+    [Inject]
     public required PageTitleService PageTitleService { get; set; }
 
     [Inject]
@@ -71,6 +74,66 @@ public abstract class BaseComponent : ComponentBase
                 await LogHelper.Info($"Redirigiendo a {redirectUrl} después de mostrar notificación.");
                 NavigationManager.NavigateTo(redirectUrl, true);
             });
+        }
+    }
+
+    /// <summary>
+    /// Muestra un diálogo de confirmación y retorna la respuesta del usuario
+    /// </summary>
+    /// <param name="mensaje">El mensaje a mostrar en el diálogo</param>
+    /// <param name="titulo">El título del diálogo (opcional)</param>
+    /// <param name="textoConfirmar">Texto del botón de confirmación (por defecto "Sí")</param>
+    /// <param name="textoCancelar">Texto del botón de cancelación (por defecto "No")</param>
+    /// <returns>True si el usuario confirma, False si cancela</returns>
+    public async Task<bool> MostrarConfirmacion(string mensaje, string titulo = "Confirmación", string textoConfirmar = "Sí", string textoCancelar = "No")
+    {
+        try
+        {
+            await LogHelper.Debug($"Mostrando diálogo de confirmación: {titulo}");
+            
+            var result = await DialogService.Confirm(
+                message: mensaje,
+                title: titulo,
+                new ConfirmOptions()
+                {
+                    OkButtonText = textoConfirmar,
+                    CancelButtonText = textoCancelar,
+                    AutoFocusFirstElement = true
+                });
+
+            await LogHelper.Debug($"Resultado del diálogo de confirmación: {result}");
+            return result ?? false;
+        }
+        catch (Exception ex)
+        {
+            await LogHelper.Error($"Error al mostrar diálogo de confirmación: {ex.Message}");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Muestra un diálogo de alerta/información
+    /// </summary>
+    /// <param name="mensaje">El mensaje a mostrar</param>
+    /// <param name="titulo">El título del diálogo (opcional)</param>
+    /// <param name="textoBoton">Texto del botón (por defecto "Aceptar")</param>
+    public async Task MostrarAlerta(string mensaje, string titulo = "Información", string textoBoton = "Aceptar")
+    {
+        try
+        {
+            await LogHelper.Debug($"Mostrando diálogo de alerta: {titulo}");
+            
+            await DialogService.Alert(
+                message: mensaje,
+                title: titulo,
+                new AlertOptions()
+                {
+                    OkButtonText = textoBoton
+                });
+        }
+        catch (Exception ex)
+        {
+            await LogHelper.Error($"Error al mostrar diálogo de alerta: {ex.Message}");
         }
     }
 

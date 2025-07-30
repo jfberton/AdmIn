@@ -12,6 +12,11 @@ namespace AdmIn.Common.Entidades
         public int InmuebleID { get; set; }
         public int CaracteristicaID { get; set; }
         public string Valor { get; set; } = string.Empty;
-       
+
+        #region Propiedades de navegación
+        public Inmueble? Inmueble { get; set; }
+        public Caracteristica? Caracteristica { get; set; }
+        #endregion
+
     }
 }
