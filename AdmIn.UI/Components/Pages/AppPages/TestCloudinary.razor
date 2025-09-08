@@ -1,0 +1,198 @@
+@page "/test-cloudinary"
+@using AdmIn.Common.Entidades
+@using AdmIn.Common
+@using AdmIn.UI.Services
+@using AdmIn.UI.Components.Shared
+
+@inject IServ_Imagen servImagen
+@inject IJSRuntime JSRuntime
+
+<RadzenStack Gap="2rem" Class="p-4">
+    <RadzenText TextStyle="TextStyle.H3" Text="Test de Cloudinary - Sistema de Imágenes" />
+    
+    <!-- Estadísticas -->
+    <RadzenCard>
+        <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.SpaceEvenly" Gap="2rem">
+            <RadzenStack AlignItems="AlignItems.Center">
+                <RadzenText TextStyle="TextStyle.H4" Text="@imagenesSubidas.Count.ToString()" />
+                <RadzenText TextStyle="TextStyle.Subtitle2" Text="Imágenes Subidas" />
+            </RadzenStack>
+            <RadzenStack AlignItems="AlignItems.Center">
+                <RadzenIcon Icon="cloud_upload" Style="font-size: 48px; color: var(--rz-success);" />
+                <RadzenText TextStyle="TextStyle.Subtitle2" Text="Cloudinary Activo" />
+            </RadzenStack>
+        </RadzenStack>
+    </RadzenCard>
+
+    <!-- Sección de subida -->
+    <RadzenCard>
+        <RadzenText TextStyle="TextStyle.H5" Text="Subir Nuevas Imágenes" />
+        
+        <ImageUploadComponent 
+            PermitirMultiples="true"
+            MostrarVistaPrevia="true"
+            OnImagenesSubidas="@OnImagenesSubidas"
+            OnError="@OnError" />
+    </RadzenCard>
+
+    <!-- Galería de imágenes para inmuebles -->
+    @if (imagenesSubidas.Any())
+    {
+        <RadzenCard>
+            <RadzenText TextStyle="TextStyle.H5" Text="Galería para Inmuebles" />
+            <ImageGalleryComponent 
+                Imagenes="@imagenesSubidas"
+                ImagenPrincipalId="@imagenPrincipalInmueble"
+                EntidadId="1"
+                TipoEntidad="inmueble"
+                OnImagenPrincipalCambiada="@OnImagenPrincipalInmuebleCambiada"
+                OnImagenEliminada="@OnImagenEliminada"
+                OnImagenActualizada="@OnImagenActualizada" />
+        </RadzenCard>
+
+        <!-- Galería de imágenes para usuarios -->
+        <RadzenCard>
+            <RadzenText TextStyle="TextStyle.H5" Text="Galería para Usuarios (Foto de Perfil)" />
+            <ImageGalleryComponent 
+                Imagenes="@imagenesSubidas"
+                ImagenPrincipalId="@imagenPerfilUsuario"
+                EntidadId="1"
+                TipoEntidad="usuario"
+                RelacionAspecto="1/1"
+                IconoPrincipal="account_circle"
+                TextoPrincipal="Perfil"
+                ColorIconoPrincipal="#2196f3"
+                PermitirEstablecerPrincipal="true"
+                OnImagenPrincipalCambiada="@OnImagenPerfilUsuarioCambiada"
+                OnImagenEliminada="@OnImagenEliminada"
+                OnImagenActualizada="@OnImagenActualizada" />
+        </RadzenCard>
+
+        <!-- Log de actividades -->
+        <RadzenCard>
+            <RadzenText TextStyle="TextStyle.H5" Text="Log de Actividades" />
+            <RadzenDataList Data="@logActividades.Take(10)" WrapItems="false">
+                <Template Context="actividad">
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem">
+                        <RadzenIcon Icon="@actividad.Icono" Style="@($"color: {actividad.Color};")" />
+                        <RadzenStack Gap="0.25rem">
+                            <RadzenText TextStyle="TextStyle.Body1" Text="@actividad.Mensaje" />
+                            <RadzenText TextStyle="TextStyle.Caption" Text="@actividad.Fecha.ToString("HH:mm:ss")" />
+                        </RadzenStack>
+                    </RadzenStack>
+                </Template>
+            </RadzenDataList>
+        </RadzenCard>
+    }
+</RadzenStack>
+
+@code {
+    private List<Imagen> imagenesSubidas = new();
+    private List<LogActividad> logActividades = new();
+    private Guid? imagenPrincipalInmueble;
+    private Guid? imagenPerfilUsuario;
+
+    protected override async Task OnInitializedAsync()
+    {
+        AgregarLog("Sistema iniciado", "info", "#2196f3");
+        
+        // Cargar imágenes existentes si las hay
+        try
+        {
+            var resultado = await servImagen.ObtenerTodas();
+            if (resultado.Correcto)
+            {
+                imagenesSubidas = resultado.Datos.Take(20).ToList(); // Límite para demo
+                AgregarLog($"Cargadas {imagenesSubidas.Count} imágenes existentes", "folder", "#ff9800");
+            }
+        }
+        catch (Exception ex)
+        {
+            AgregarLog($"Error cargando imágenes: {ex.Message}", "error", "#f44336");
+        }
+    }
+
+    private async Task OnImagenesSubidas(List<Imagen> nuevasImagenes)
+    {
+        imagenesSubidas.AddRange(nuevasImagenes);
+        
+        foreach (var imagen in nuevasImagenes)
+        {
+            AgregarLog($"Imagen subida a Cloudinary: {imagen.Nombre}", "cloud_upload", "#4caf50");
+        }
+        
+        StateHasChanged();
+    }
+
+    private async Task OnError(string error)
+    {
+        AgregarLog($"Error: {error}", "error", "#f44336");
+        await JSRuntime.InvokeVoidAsync("alert", $"Error: {error}");
+    }
+
+    private async Task OnImagenPrincipalInmuebleCambiada(Imagen imagen)
+    {
+        imagenPrincipalInmueble = imagen.Id;
+        AgregarLog($"Imagen principal de inmueble: {imagen.Nombre}", "home", "#ff9800");
+        StateHasChanged();
+    }
+
+    private async Task OnImagenPerfilUsuarioCambiada(Imagen imagen)
+    {
+        imagenPerfilUsuario = imagen.Id;
+        AgregarLog($"Foto de perfil establecida: {imagen.Nombre}", "account_circle", "#2196f3");
+        StateHasChanged();
+    }
+
+    private async Task OnImagenEliminada(Imagen imagen)
+    {
+        imagenesSubidas.Remove(imagen);
+        
+        // Resetear referencias si la imagen eliminada era principal
+        if (imagenPrincipalInmueble == imagen.Id)
+            imagenPrincipalInmueble = null;
+        if (imagenPerfilUsuario == imagen.Id)
+            imagenPerfilUsuario = null;
+            
+        AgregarLog($"Imagen eliminada: {imagen.Nombre}", "delete", "#f44336");
+        StateHasChanged();
+    }
+
+    private async Task OnImagenActualizada(Imagen imagen)
+    {
+        var indice = imagenesSubidas.FindIndex(i => i.Id == imagen.Id);
+        if (indice >= 0)
+        {
+            imagenesSubidas[indice] = imagen;
+        }
+        
+        AgregarLog($"Imagen actualizada: {imagen.Nombre}", "edit", "#ff9800");
+        StateHasChanged();
+    }
+
+    private void AgregarLog(string mensaje, string icono, string color)
+    {
+        logActividades.Insert(0, new LogActividad
+        {
+            Mensaje = mensaje,
+            Icono = icono,
+            Color = color,
+            Fecha = DateTime.Now
+        });
+        
+        // Mantener solo los últimos 50 logs
+        if (logActividades.Count > 50)
+        {
+            logActividades = logActividades.Take(50).ToList();
+        }
+    }
+
+    // Clase para el log de actividades
+    public class LogActividad
+    {
+        public string Mensaje { get; set; } = "";
+        public string Icono { get; set; } = "";
+        public string Color { get; set; } = "";
+        public DateTime Fecha { get; set; }
+    }
+}

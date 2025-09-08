@@ -277,16 +277,19 @@ namespace AdmIn.Data.Repositorios
 
         public async Task<DTO<IEnumerable<string>>> Obtener_tipos()
         {
-            using var conexion = new SqlConnection(InfoSQL.Conexion);
-            await conexion.OpenAsync();
-
-            var sql = @"SELECT DISTINCT Tipo FROM Caracteristica WHERE Tipo IS NOT NULL AND Tipo != '' ORDER BY Tipo;";
-            var tipos = await conexion.QueryAsync<string>(sql);
+            // Devolver los tipos hardcodeados según la restricción de la base de datos
+            // Estos son los únicos tipos válidos permitidos por el CHECK constraint
+            var tiposHardcodeados = new List<string>
+            {
+                "texto",
+                "numerico",
+                "booleano"
+            };
 
             return new DTO<IEnumerable<string>>
             {
                 Correcto = true,
-                Datos = tipos,
+                Datos = tiposHardcodeados,
                 Mensaje = "Tipos obtenidos correctamente"
             };
         }

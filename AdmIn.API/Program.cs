@@ -4,6 +4,7 @@ using AdmIn.Data.Repositorios;
 using AdmIn.Common.Repositorios;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using Microsoft.AspNetCore.StaticFiles;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -59,6 +60,14 @@ builder.Services.AddScoped<IInmuebleRepository, InmuebleRepository>();
 builder.Services.AddScoped<IServ_Caracteristica, Serv_Caracteristica>();
 builder.Services.AddScoped<ICaracteristicaRepository, CaracteristicaRepository>();
 
+// Servicios de imágenes
+builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
+builder.Services.AddScoped<IServ_ImagenUpload, Serv_ImagenUpload>();
+builder.Services.AddScoped<IImagenRepository, ImagenRepository>();
+
+// Static Files and File Content Type Provider
+builder.Services.AddSingleton<IContentTypeProvider, FileExtensionContentTypeProvider>();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -74,6 +83,9 @@ else
 {
     InfoSQL.Conexion = builder.Configuration.GetConnectionString("ProdCS");
 }
+
+// Enable static files serving
+app.UseStaticFiles();
 
 app.UseHttpsRedirection();
 

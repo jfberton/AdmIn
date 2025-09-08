@@ -66,6 +66,8 @@ namespace AdmIn.API.Controllers
                             Nombre = respuesta.Datos.Nombre,
                             Email = respuesta.Datos.Email,
                             Roles = respuesta.Datos.Roles,
+                            ImagenPerfilId = respuesta.Datos.ImagenPerfilId,
+                            ImagenPerfil = respuesta.Datos.ImagenPerfil,
                             Token = tokenString
                         }
                     };

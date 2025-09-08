@@ -14,9 +14,6 @@ namespace AdmIn.Common.Entidades
         public DateTime FechaCreacion { get; set; } = DateTime.Now;
         public string Url { get; set; } = string.Empty;
         public string UrlThumb { get; set; } = string.Empty;
-        public string Tipo { get; set; } = string.Empty;
-
-
 
     }
 }

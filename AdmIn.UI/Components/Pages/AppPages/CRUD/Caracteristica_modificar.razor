@@ -17,13 +17,15 @@
                 <RadzenRow class="rz-mb-2">
                     <RadzenColumn Size="12" SizeMD="6">
                         <RadzenLabel Text="Nombre*" />
-                        <RadzenTextBox @bind-Value="caracteristica.Nombre" MaxLength="100" class="w-100" />
-                        <RadzenRequiredValidator Component="caracteristica.Nombre" Text="El nombre es requerido" />
+                        <RadzenTextBox @bind-Value="caracteristica.Nombre" MaxLength="100" class="w-100" Name="componente_nombre" />
+                        <RadzenRequiredValidator Component="componente_nombre" Text="El nombre es requerido" />
                     </RadzenColumn>
                     <RadzenColumn Size="12" SizeMD="6">
                         <RadzenLabel Text="Tipo*" />
-                        <RadzenTextBox @bind-Value="caracteristica.Tipo" MaxLength="50" class="w-100" />
-                        <RadzenRequiredValidator Component="caracteristica.Tipo" Text="El tipo es requerido" />
+                        <RadzenDropDown @bind-Value="caracteristica.Tipo" Data="@tiposDisponibles" 
+                                       class="w-100" Name="componente_tipo" AllowClear="false" 
+                                       Placeholder="Seleccione un tipo..." />
+                        <RadzenRequiredValidator Component="componente_tipo" Text="El tipo es requerido" />
                     </RadzenColumn>
                 </RadzenRow>
 
@@ -52,13 +54,42 @@
     [Parameter]
     public string id { get; set; }
 
+    // Lista de tipos disponibles - se carga siempre desde el servicio
+    private List<string> tiposDisponibles = new();
+
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
         EstablecerTituloPagina("Características", "Modificar");
 
-        int id_caracteristica;
+        // Cargar tipos desde el servicio (ahora siempre devuelve los tipos hardcodeados)
+        await CargarTipos();
 
+        // Cargar la característica a modificar
+        await CargarCaracteristica();
+    }
+
+    private async Task CargarTipos()
+    {
+        try
+        {
+            var respuestaTipos = await serv_caracteristica.Obtener_tipos();
+            if (respuestaTipos.Correcto && respuestaTipos.Datos != null)
+            {
+                tiposDisponibles = respuestaTipos.Datos.ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            base.MostrarNotificacion(NotificationSeverity.Warning, "Advertencia", $"No se pudieron cargar los tipos: {ex.Message}");
+            // Como fallback, usar los tipos estándar
+            tiposDisponibles = new List<string> { "texto", "numerico", "booleano" };
+        }
+    }
+
+    private async Task CargarCaracteristica()
+    {
+        int id_caracteristica;
         if (int.TryParse(id, out id_caracteristica))
         {
             var rta_caracteristica = await serv_caracteristica.Obtener_por_id(id_caracteristica);

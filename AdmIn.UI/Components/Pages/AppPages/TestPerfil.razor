@@ -1,0 +1,121 @@
+@page "/test-perfil"
+@using AdmIn.Common.Entidades
+@using AdmIn.Common
+@using AdmIn.UI.Services
+@using Microsoft.AspNetCore.Components.Authorization
+
+@inject IServ_Usuario serv_usuario
+@inject AuthenticationStateProvider authStateProvider
+@inject NotificationService notificationService
+
+<PageTitle>Test de Perfil</PageTitle>
+
+<RadzenStack Gap="2rem" Class="p-4">
+    <RadzenText TextStyle="TextStyle.H3" Text="Test de Sistema de Perfil" />
+    
+    @if (usuarioActual != null)
+    {
+        <RadzenCard>
+            <RadzenText TextStyle="TextStyle.H5" Text="Datos del Usuario Actual" />
+            
+            <RadzenStack Gap="1rem">
+                <div>
+                    <strong>ID:</strong> @usuarioActual.Id
+                </div>
+                <div>
+                    <strong>Nombre:</strong> @usuarioActual.Nombre
+                </div>
+                <div>
+                    <strong>Email:</strong> @usuarioActual.Email
+                </div>
+                <div>
+                    <strong>ImagenPerfilId:</strong> @(usuarioActual.ImagenPerfilId?.ToString() ?? "Sin imagen")
+                </div>
+                <div>
+                    <strong>ImagenPerfil URL:</strong> @(usuarioActual.ImagenPerfil?.Url ?? "Sin imagen")
+                </div>
+                <div>
+                    <strong>ImagenPerfil UrlThumb:</strong> @(usuarioActual.ImagenPerfil?.UrlThumb ?? "Sin imagen")
+                </div>
+                <div>
+                    <strong>Método ObtenerUrlImagenPerfil():</strong> @(usuarioActual.ObtenerUrlImagenPerfil() ?? "null")
+                </div>
+            </RadzenStack>
+        </RadzenCard>
+        
+        <RadzenCard>
+            <RadzenText TextStyle="TextStyle.H5" Text="Componente ProfilePhoto" />
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="2rem">
+                <div>
+                    <RadzenText TextStyle="TextStyle.Body2" Text="Tamaño 32px:" />
+                    <ProfilePhotoComponent Usuario="@usuarioActual" Tamaño="32" />
+                </div>
+                <div>
+                    <RadzenText TextStyle="TextStyle.Body2" Text="Tamaño 64px:" />
+                    <ProfilePhotoComponent Usuario="@usuarioActual" Tamaño="64" />
+                </div>
+                <div>
+                    <RadzenText TextStyle="TextStyle.Body2" Text="Tamaño 120px:" />
+                    <ProfilePhotoComponent Usuario="@usuarioActual" Tamaño="120" />
+                </div>
+            </RadzenStack>
+        </RadzenCard>
+    }
+    else
+    {
+        <RadzenCard>
+            <RadzenText TextStyle="TextStyle.H5" Text="Cargando usuario..." />
+        </RadzenCard>
+    }
+    
+    <RadzenCard>
+        <RadzenStack Orientation="Orientation.Horizontal" Gap="1rem">
+            <RadzenButton ButtonStyle="ButtonStyle.Primary" 
+                         Text="Recargar Datos" 
+                         Click="@CargarUsuarioActual" />
+            <RadzenButton ButtonStyle="ButtonStyle.Secondary" 
+                         Text="Ir a Mi Perfil" 
+                         Click="@(() => navManager.NavigateTo("/mi-perfil"))" />
+        </RadzenStack>
+    </RadzenCard>
+</RadzenStack>
+
+@code {
+    private Usuario? usuarioActual;
+    
+    [Inject] NavigationManager navManager { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarUsuarioActual();
+    }
+
+    private async Task CargarUsuarioActual()
+    {
+        try
+        {
+            var authState = await authStateProvider.GetAuthenticationStateAsync();
+            var userEmail = authState.User.Identity?.Name;
+            
+            if (!string.IsNullOrEmpty(userEmail))
+            {
+                var resultado = await serv_usuario.Obtener_usuario_por_email(userEmail);
+                if (resultado.Correcto)
+                {
+                    usuarioActual = resultado.Datos;
+                    StateHasChanged();
+                    
+                    notificationService.Notify(NotificationSeverity.Success, "Éxito", "Usuario cargado correctamente");
+                }
+                else
+                {
+                    notificationService.Notify(NotificationSeverity.Error, "Error", resultado.Mensaje);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            notificationService.Notify(NotificationSeverity.Error, "Error", $"Error al cargar perfil: {ex.Message}");
+        }
+    }
+}

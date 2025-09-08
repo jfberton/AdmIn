@@ -25,7 +25,7 @@ namespace AdmIn.Data.Repositorios
             try
             {
                 var sqlUsuario = @"INSERT INTO Usuario 
-                    (Nombre, Email, Password, Pais, Telefono, PersonaID, EmpresaID, MonedaID, Activo, FechaCreacion, FechaModificacion, UsuarioCreadorID)
+                    (Nombre, Email, Password, Pais, Telefono, PersonaID, EmpresaID, MonedaID, ImagenPerfilId, Activo, FechaCreacion, FechaModificacion, UsuarioCreadorID)
                     OUTPUT INSERTED.UsuarioID as Id,
                            INSERTED.Nombre,
                            INSERTED.Email,
@@ -35,12 +35,13 @@ namespace AdmIn.Data.Repositorios
                            INSERTED.PersonaID,
                            INSERTED.EmpresaID,
                            INSERTED.MonedaID,
+                           INSERTED.ImagenPerfilId,
                            INSERTED.Activo,
                            INSERTED.FechaCreacion,
                            INSERTED.FechaModificacion,
                            INSERTED.UsuarioCreadorID,
                            INSERTED.UsuarioModificadorID
-                    VALUES (@Nombre, @Email, @Password, @Pais, @Telefono, @PersonaID, @EmpresaID, @MonedaID, @Activo, GETDATE(), GETDATE(), @UsuarioCreadorID);";
+                    VALUES (@Nombre, @Email, @Password, @Pais, @Telefono, @PersonaID, @EmpresaID, @MonedaID, @ImagenPerfilId, @Activo, GETDATE(), GETDATE(), @UsuarioCreadorID);";
 
                 var usuarioCreado = await conexion.QuerySingleOrDefaultAsync<Usuario>(sqlUsuario, new
                 {
@@ -52,6 +53,7 @@ namespace AdmIn.Data.Repositorios
                     PersonaID = (object?)usuario.PersonaId ?? DBNull.Value,
                     EmpresaID = (object?)usuario.EmpresaId ?? DBNull.Value,
                     usuario.MonedaId,
+                    ImagenPerfilId = (object?)usuario.ImagenPerfilId ?? DBNull.Value,
                     usuario.Activo,
                     UsuarioCreadorID = (object?)usuario.UsuarioCreador ?? DBNull.Value
                 }, transaccion);
@@ -109,11 +111,13 @@ namespace AdmIn.Data.Repositorios
                 var sqlActualizarUsuario = @"UPDATE Usuario
                     SET Nombre = @Nombre,
                         Email = @Email,
+                        Password = @Password,
                         Pais = @Pais,
                         Telefono = @Telefono,
                         PersonaID = @PersonaID,
                         EmpresaID = @EmpresaID,
                         MonedaID = @MonedaID,
+                        ImagenPerfilId = @ImagenPerfilId,
                         Activo = @Activo,
                         FechaModificacion = GETDATE(),
                         UsuarioModificadorID = @UsuarioModificadorID
@@ -126,6 +130,7 @@ namespace AdmIn.Data.Repositorios
                            INSERTED.PersonaID,
                            INSERTED.EmpresaID,
                            INSERTED.MonedaID,
+                           INSERTED.ImagenPerfilId,
                            INSERTED.Activo,
                            INSERTED.FechaCreacion,
                            INSERTED.FechaModificacion,
@@ -138,11 +143,13 @@ namespace AdmIn.Data.Repositorios
                     UsuarioID = usuario.Id,
                     usuario.Nombre,
                     usuario.Email,
+                    usuario.Password,
                     Pais = (object?)usuario.Pais ?? DBNull.Value,
                     Telefono = (object?)usuario.Telefono ?? DBNull.Value,
                     PersonaID = (object?)usuario.PersonaId ?? DBNull.Value,
                     EmpresaID = (object?)usuario.EmpresaId ?? DBNull.Value,
                     usuario.MonedaId,
+                    ImagenPerfilId = (object?)usuario.ImagenPerfilId ?? DBNull.Value,
                     usuario.Activo,
                     UsuarioModificadorID = (object?)usuario.UsuarioModificador ?? DBNull.Value
                 }, transaccion);
@@ -243,6 +250,7 @@ namespace AdmIn.Data.Repositorios
                                 u.PersonaID,
                                 u.EmpresaID,
                                 u.MonedaID,
+                                u.ImagenPerfilId,
                                 u.Activo,
                                 u.FechaCreacion,
                                 u.FechaModificacion,
@@ -250,9 +258,16 @@ namespace AdmIn.Data.Repositorios
                                 u.UsuarioModificadorID,
                                 m.MonedaID as Moneda_Id,
                                 m.Codigo as Moneda_Codigo,
-                                m.Nombre as Moneda_Nombre
+                                m.Nombre as Moneda_Nombre,
+                                img.Id as ImagenPerfil_Id,
+                                img.Nombre as ImagenPerfil_Nombre,
+                                img.Descripcion as ImagenPerfil_Descripcion,
+                                img.Url as ImagenPerfil_Url,
+                                img.UrlThumb as ImagenPerfil_UrlThumb,
+                                img.FechaCreacion as ImagenPerfil_FechaCreacion
                               FROM Usuario u
                               LEFT JOIN Moneda m ON u.MonedaID = m.MonedaID
+                              LEFT JOIN Imagen img ON u.ImagenPerfilId = img.Id
                               WHERE u.UsuarioID = @UsuarioID;";
             var sqlRoles = @"SELECT r.RolID as Id, r.Nombre FROM Rol r
                              INNER JOIN UsuarioRol ur ON ur.RolID = r.RolID
@@ -273,6 +288,7 @@ namespace AdmIn.Data.Repositorios
                 PersonaId = usuarioData.PersonaID,
                 EmpresaId = usuarioData.EmpresaID,
                 MonedaId = usuarioData.MonedaID,
+                ImagenPerfilId = usuarioData.ImagenPerfilId,
                 Activo = usuarioData.Activo,
                 FechaCreacion = usuarioData.FechaCreacion,
                 FechaModificacion = usuarioData.FechaModificacion,
@@ -288,6 +304,20 @@ namespace AdmIn.Data.Repositorios
                     Id = usuarioData.Moneda_Id,
                     Codigo = usuarioData.Moneda_Codigo,
                     Nombre = usuarioData.Moneda_Nombre
+                };
+            }
+
+            // Mapear la imagen de perfil si existe
+            if (usuarioData.ImagenPerfil_Id != null)
+            {
+                usuarioEncontrado.ImagenPerfil = new Imagen
+                {
+                    Id = usuarioData.ImagenPerfil_Id,
+                    Nombre = usuarioData.ImagenPerfil_Nombre,
+                    Descripcion = usuarioData.ImagenPerfil_Descripcion,
+                    Url = usuarioData.ImagenPerfil_Url,
+                    UrlThumb = usuarioData.ImagenPerfil_UrlThumb,
+                    FechaCreacion = usuarioData.ImagenPerfil_FechaCreacion
                 };
             }
 
@@ -308,28 +338,85 @@ namespace AdmIn.Data.Repositorios
             await conexion.OpenAsync();
 
             var sqlUsuario = @"SELECT 
-                                UsuarioID as Id,
-                                Nombre,
-                                Email,
-                                Password,
-                                Pais,
-                                Telefono,
-                                PersonaID,
-                                EmpresaID,
-                                MonedaID,
-                                Activo,
-                                FechaCreacion,
-                                FechaModificacion,
-                                UsuarioCreadorID,
-                                UsuarioModificadorID
-                              FROM Usuario WHERE Email = @Email;";
+                                u.UsuarioID as Id,
+                                u.Nombre,
+                                u.Email,
+                                u.Password,
+                                u.Pais,
+                                u.Telefono,
+                                u.PersonaID,
+                                u.EmpresaID,
+                                u.MonedaID,
+                                u.ImagenPerfilId,
+                                u.Activo,
+                                u.FechaCreacion,
+                                u.FechaModificacion,
+                                u.UsuarioCreadorID,
+                                u.UsuarioModificadorID,
+                                m.MonedaID as Moneda_Id,
+                                m.Codigo as Moneda_Codigo,
+                                m.Nombre as Moneda_Nombre,
+                                img.Id as ImagenPerfil_Id,
+                                img.Nombre as ImagenPerfil_Nombre,
+                                img.Descripcion as ImagenPerfil_Descripcion,
+                                img.Url as ImagenPerfil_Url,
+                                img.UrlThumb as ImagenPerfil_UrlThumb,
+                                img.FechaCreacion as ImagenPerfil_FechaCreacion
+                              FROM Usuario u
+                              LEFT JOIN Moneda m ON u.MonedaID = m.MonedaID
+                              LEFT JOIN Imagen img ON u.ImagenPerfilId = img.Id
+                              WHERE u.Email = @Email;";
             var sqlRoles = @"SELECT r.RolID as Id, r.Nombre FROM Rol r
                              INNER JOIN UsuarioRol ur ON ur.RolID = r.RolID
                              WHERE ur.UsuarioID = @UsuarioID;";
 
-            var usuarioEncontrado = await conexion.QuerySingleOrDefaultAsync<Usuario>(sqlUsuario, new { Email = email });
-            if (usuarioEncontrado == null)
+            var usuarioData = await conexion.QuerySingleOrDefaultAsync(sqlUsuario, new { Email = email });
+            if (usuarioData == null)
                 return new DTO<Usuario> { Correcto = false, Mensaje = "Usuario no encontrado" };
+
+            var usuarioEncontrado = new Usuario
+            {
+                Id = usuarioData.Id,
+                Nombre = usuarioData.Nombre,
+                Email = usuarioData.Email,
+                Password = usuarioData.Password,
+                Pais = usuarioData.Pais,
+                Telefono = usuarioData.Telefono,
+                PersonaId = usuarioData.PersonaID,
+                EmpresaId = usuarioData.EmpresaID,
+                MonedaId = usuarioData.MonedaID,
+                ImagenPerfilId = usuarioData.ImagenPerfilId,
+                Activo = usuarioData.Activo,
+                FechaCreacion = usuarioData.FechaCreacion,
+                FechaModificacion = usuarioData.FechaModificacion,
+                UsuarioCreador = usuarioData.UsuarioCreadorID,
+                UsuarioModificador = usuarioData.UsuarioModificadorID
+            };
+
+            // Mapear la moneda si existe
+            if (usuarioData.Moneda_Id != null)
+            {
+                usuarioEncontrado.Moneda = new Moneda
+                {
+                    Id = usuarioData.Moneda_Id,
+                    Codigo = usuarioData.Moneda_Codigo,
+                    Nombre = usuarioData.Moneda_Nombre
+                };
+            }
+
+            // Mapear la imagen de perfil si existe
+            if (usuarioData.ImagenPerfil_Id != null)
+            {
+                usuarioEncontrado.ImagenPerfil = new Imagen
+                {
+                    Id = usuarioData.ImagenPerfil_Id,
+                    Nombre = usuarioData.ImagenPerfil_Nombre,
+                    Descripcion = usuarioData.ImagenPerfil_Descripcion,
+                    Url = usuarioData.ImagenPerfil_Url,
+                    UrlThumb = usuarioData.ImagenPerfil_UrlThumb,
+                    FechaCreacion = usuarioData.ImagenPerfil_FechaCreacion
+                };
+            }
 
             var roles = await conexion.QueryAsync<Rol>(sqlRoles, new { UsuarioID = usuarioEncontrado.Id });
             usuarioEncontrado.Roles = roles.ToList();

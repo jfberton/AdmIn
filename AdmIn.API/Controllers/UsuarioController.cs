@@ -111,7 +111,7 @@ namespace AdmIn.API.Controllers
         }
 
         [HttpPost("modificar_password")]
-        [Authorize(Roles = "CRUD, admin_usuario")]
+        [Authorize(Roles = "admin_usuario")]
         public async Task<DTO<bool>> Cambiar_password(CambioClaveModel datos)
         {
             return await _servicio.Modificar_contraseña(datos);

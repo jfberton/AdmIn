@@ -158,5 +158,14 @@
         {
             base.IrA("/home");
         }
+        else if (origin == "perfil")
+        {
+            base.IrA("/mi-perfil");
+        }
+        else
+        {
+            // Por defecto, ir al home
+            base.IrA("/home");
+        }
     }
 }

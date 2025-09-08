@@ -25,8 +25,8 @@ namespace AdmIn.Data.Repositorios
             try
             {
                 var sqlInmueble = @"INSERT INTO Inmueble 
-                    (Nombre, Direccion, Pais, Estado, Ciudad, CodigoPostal, Latitud, Longitud, 
-                     Valor, ConstruccuionM2, RentaMensual, AdministradorId, Descripcion, 
+                    (Nombre, Direccion, Pais, Estado, Ciudad, CP, Latitud, Longitud, 
+                     Valor, ConstruccionM2, RentaMensual, AdministradorId, Descripcion, 
                      ImagenPrincipalId, MonedaId, Activo, FechaCreacion, FechaModificacion, 
                      UsuarioCreadorId, UsuarioModificadorId)
                     OUTPUT INSERTED.InmuebleID as Id,
@@ -35,11 +35,11 @@ namespace AdmIn.Data.Repositorios
                            INSERTED.Pais,
                            INSERTED.Estado,
                            INSERTED.Ciudad,
-                           INSERTED.CodigoPostal,
+                           INSERTED.CP as CodigoPostal,
                            INSERTED.Latitud,
                            INSERTED.Longitud,
                            INSERTED.Valor,
-                           INSERTED.ConstruccuionM2,
+                           INSERTED.ConstruccionM2,
                            INSERTED.RentaMensual,
                            INSERTED.AdministradorId,
                            INSERTED.Descripcion,
@@ -51,7 +51,7 @@ namespace AdmIn.Data.Repositorios
                            INSERTED.UsuarioCreadorId,
                            INSERTED.UsuarioModificadorId
                     VALUES (@Nombre, @Direccion, @Pais, @Estado, @Ciudad, @CodigoPostal, 
-                           @Latitud, @Longitud, @Valor, @ConstruccuionM2, @RentaMensual, 
+                           @Latitud, @Longitud, @Valor, @ConstruccionM2, @RentaMensual, 
                            @AdministradorId, @Descripcion, @ImagenPrincipalId, @MonedaId, 
                            @Activo, GETDATE(), GETDATE(), @UsuarioCreadorId, @UsuarioModificadorId);";
 
@@ -62,11 +62,11 @@ namespace AdmIn.Data.Repositorios
                     inmueble.Pais,
                     inmueble.Estado,
                     inmueble.Ciudad,
-                    inmueble.CodigoPostal,
+                    CodigoPostal = inmueble.CodigoPostal,
                     inmueble.Latitud,
                     inmueble.Longitud,
                     inmueble.Valor,
-                    inmueble.ConstruccuionM2,
+                    ConstruccionM2 = inmueble.ConstruccionM2,
                     inmueble.RentaMensual,
                     AdministradorId = (object?)inmueble.AdministradorId ?? DBNull.Value,
                     inmueble.Descripcion,
@@ -114,11 +114,11 @@ namespace AdmIn.Data.Repositorios
                         Pais = @Pais,
                         Estado = @Estado,
                         Ciudad = @Ciudad,
-                        CodigoPostal = @CodigoPostal,
+                        CP = @CodigoPostal,
                         Latitud = @Latitud,
                         Longitud = @Longitud,
                         Valor = @Valor,
-                        ConstruccuionM2 = @ConstruccuionM2,
+                        ConstruccionM2 = @ConstruccionM2,
                         RentaMensual = @RentaMensual,
                         AdministradorId = @AdministradorId,
                         Descripcion = @Descripcion,
@@ -133,11 +133,11 @@ namespace AdmIn.Data.Repositorios
                            INSERTED.Pais,
                            INSERTED.Estado,
                            INSERTED.Ciudad,
-                           INSERTED.CodigoPostal,
+                           INSERTED.CP as CodigoPostal,
                            INSERTED.Latitud,
                            INSERTED.Longitud,
                            INSERTED.Valor,
-                           INSERTED.ConstruccuionM2,
+                           INSERTED.ConstruccionM2,
                            INSERTED.RentaMensual,
                            INSERTED.AdministradorId,
                            INSERTED.Descripcion,
@@ -158,11 +158,11 @@ namespace AdmIn.Data.Repositorios
                     inmueble.Pais,
                     inmueble.Estado,
                     inmueble.Ciudad,
-                    inmueble.CodigoPostal,
+                    CodigoPostal = inmueble.CodigoPostal,
                     inmueble.Latitud,
                     inmueble.Longitud,
                     inmueble.Valor,
-                    inmueble.ConstruccuionM2,
+                    ConstruccionM2 = inmueble.ConstruccionM2,
                     inmueble.RentaMensual,
                     AdministradorId = (object?)inmueble.AdministradorId ?? DBNull.Value,
                     inmueble.Descripcion,
@@ -253,11 +253,11 @@ namespace AdmIn.Data.Repositorios
                                 i.Pais,
                                 i.Estado,
                                 i.Ciudad,
-                                i.CodigoPostal,
+                                i.CP as CodigoPostal,
                                 i.Latitud,
                                 i.Longitud,
                                 i.Valor,
-                                i.ConstruccuionM2,
+                                i.ConstruccionM2,
                                 i.RentaMensual,
                                 i.AdministradorId,
                                 i.Descripcion,
@@ -276,12 +276,19 @@ namespace AdmIn.Data.Repositorios
                                 um.UsuarioID as UsuarioModificador_Id,
                                 um.Nombre as UsuarioModificador_Nombre,
                                 adm.UsuarioID as Administrador_Id,
-                                adm.Nombre as Administrador_Nombre
+                                adm.Nombre as Administrador_Nombre,
+                                img.Id as ImagenPrincipal_Id,
+                                img.Nombre as ImagenPrincipal_Nombre,
+                                img.Descripcion as ImagenPrincipal_Descripcion,
+                                img.Url as ImagenPrincipal_Url,
+                                img.UrlThumb as ImagenPrincipal_UrlThumb,
+                                img.FechaCreacion as ImagenPrincipal_FechaCreacion
                               FROM Inmueble i
                               LEFT JOIN Moneda m ON i.MonedaId = m.MonedaID
                               LEFT JOIN Usuario uc ON i.UsuarioCreadorId = uc.UsuarioID
                               LEFT JOIN Usuario um ON i.UsuarioModificadorId = um.UsuarioID
                               LEFT JOIN Usuario adm ON i.AdministradorId = adm.UsuarioID
+                              LEFT JOIN Imagen img ON i.ImagenPrincipalId = img.Id
                               WHERE i.InmuebleID = @InmuebleID;";
 
             var sqlCaracteristicas = @"SELECT 
@@ -313,7 +320,7 @@ namespace AdmIn.Data.Repositorios
                 Latitud = inmuebleData.Latitud,
                 Longitud = inmuebleData.Longitud,
                 Valor = inmuebleData.Valor,
-                ConstruccuionM2 = inmuebleData.ConstruccuionM2,
+                ConstruccionM2 = inmuebleData.ConstruccionM2,
                 RentaMensual = inmuebleData.RentaMensual,
                 AdministradorId = inmuebleData.AdministradorId,
                 Descripcion = inmuebleData.Descripcion,
@@ -364,6 +371,19 @@ namespace AdmIn.Data.Repositorios
                 };
             }
 
+            if (inmuebleData.ImagenPrincipal_Id != null)
+            {
+                inmuebleEncontrado.ImagenPrincipal = new Imagen
+                {
+                    Id = inmuebleData.ImagenPrincipal_Id,
+                    Nombre = inmuebleData.ImagenPrincipal_Nombre,
+                    Descripcion = inmuebleData.ImagenPrincipal_Descripcion,
+                    Url = inmuebleData.ImagenPrincipal_Url,
+                    UrlThumb = inmuebleData.ImagenPrincipal_UrlThumb,
+                    FechaCreacion = inmuebleData.ImagenPrincipal_FechaCreacion
+                };
+            }
+
             // Cargar características del inmueble
             var caracteristicasData = await conexion.QueryAsync(sqlCaracteristicas, new { InmuebleID = inmueble.Id });
             foreach (var caracteristicaData in caracteristicasData)
@@ -411,11 +431,11 @@ namespace AdmIn.Data.Repositorios
                                  i.Pais,
                                  i.Estado,
                                  i.Ciudad,
-                                 i.CodigoPostal,
+                                 i.CP as CodigoPostal,
                                  i.Latitud,
                                  i.Longitud,
                                  i.Valor,
-                                 i.ConstruccuionM2,
+                                 i.ConstruccionM2,
                                  i.RentaMensual,
                                  i.AdministradorId,
                                  i.Descripcion,
@@ -428,9 +448,14 @@ namespace AdmIn.Data.Repositorios
                                  i.UsuarioModificadorId,
                                  m.MonedaID as Moneda_Id,
                                  m.Codigo as Moneda_Codigo,
-                                 m.Nombre as Moneda_Nombre
+                                 m.Nombre as Moneda_Nombre,
+                                 img.Id as ImagenPrincipal_Id,
+                                 img.Nombre as ImagenPrincipal_Nombre,
+                                 img.Url as ImagenPrincipal_Url,
+                                 img.UrlThumb as ImagenPrincipal_UrlThumb
                                FROM Inmueble i
-                               LEFT JOIN Moneda m ON i.MonedaId = m.MonedaID;";
+                               LEFT JOIN Moneda m ON i.MonedaId = m.MonedaID
+                               LEFT JOIN Imagen img ON i.ImagenPrincipalId = img.Id;";
 
             var inmueblesData = (await conexion.QueryAsync(sqlInmuebles)).ToList();
             var inmuebles = new List<Inmueble>();
@@ -449,7 +474,7 @@ namespace AdmIn.Data.Repositorios
                     Latitud = inmuebleData.Latitud,
                     Longitud = inmuebleData.Longitud,
                     Valor = inmuebleData.Valor,
-                    ConstruccuionM2 = inmuebleData.ConstruccuionM2,
+                    ConstruccionM2 = inmuebleData.ConstruccionM2,
                     RentaMensual = inmuebleData.RentaMensual,
                     AdministradorId = inmuebleData.AdministradorId,
                     Descripcion = inmuebleData.Descripcion,
@@ -470,6 +495,18 @@ namespace AdmIn.Data.Repositorios
                         Id = inmuebleData.Moneda_Id,
                         Codigo = inmuebleData.Moneda_Codigo,
                         Nombre = inmuebleData.Moneda_Nombre
+                    };
+                }
+
+                // Mapear la imagen principal si existe
+                if (inmuebleData.ImagenPrincipal_Id != null)
+                {
+                    inmueble.ImagenPrincipal = new Imagen
+                    {
+                        Id = inmuebleData.ImagenPrincipal_Id,
+                        Nombre = inmuebleData.ImagenPrincipal_Nombre,
+                        Url = inmuebleData.ImagenPrincipal_Url,
+                        UrlThumb = inmuebleData.ImagenPrincipal_UrlThumb
                     };
                 }
 
@@ -497,11 +534,11 @@ namespace AdmIn.Data.Repositorios
                             i.Pais,
                             i.Estado,
                             i.Ciudad,
-                            i.CodigoPostal,
+                            i.CP as CodigoPostal,
                             i.Latitud,
                             i.Longitud,
                             i.Valor,
-                            i.ConstruccuionM2,
+                            i.ConstruccionM2,
                             i.RentaMensual,
                             i.AdministradorId,
                             i.Descripcion,
@@ -514,9 +551,14 @@ namespace AdmIn.Data.Repositorios
                             i.UsuarioModificadorId,
                             m.MonedaID as Moneda_Id,
                             m.Codigo as Moneda_Codigo,
-                            m.Nombre as Moneda_Nombre
+                            m.Nombre as Moneda_Nombre,
+                            img.Id as ImagenPrincipal_Id,
+                            img.Nombre as ImagenPrincipal_Nombre,
+                            img.Url as ImagenPrincipal_Url,
+                            img.UrlThumb as ImagenPrincipal_UrlThumb
                         FROM Inmueble i
                         LEFT JOIN Moneda m ON i.MonedaId = m.MonedaID
+                        LEFT JOIN Imagen img ON i.ImagenPrincipalId = img.Id
                         WHERE 
                             (@FiltroBusqueda IS NULL OR i.Nombre LIKE '%' + @FiltroBusqueda + '%' 
                              OR i.Direccion LIKE '%' + @FiltroBusqueda + '%' 
@@ -556,7 +598,7 @@ namespace AdmIn.Data.Repositorios
                     Latitud = row.Latitud,
                     Longitud = row.Longitud,
                     Valor = row.Valor,
-                    ConstruccuionM2 = row.ConstruccuionM2,
+                    ConstruccionM2 = row.ConstruccionM2,
                     RentaMensual = row.RentaMensual,
                     AdministradorId = row.AdministradorId,
                     Descripcion = row.Descripcion,
@@ -577,6 +619,18 @@ namespace AdmIn.Data.Repositorios
                         Id = row.Moneda_Id,
                         Codigo = row.Moneda_Codigo,
                         Nombre = row.Moneda_Nombre
+                    };
+                }
+
+                // Mapear la imagen principal si existe
+                if (row.ImagenPrincipal_Id != null)
+                {
+                    inmueble.ImagenPrincipal = new Imagen
+                    {
+                        Id = row.ImagenPrincipal_Id,
+                        Nombre = row.ImagenPrincipal_Nombre,
+                        Url = row.ImagenPrincipal_Url,
+                        UrlThumb = row.ImagenPrincipal_UrlThumb
                     };
                 }
 

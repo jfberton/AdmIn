@@ -8,6 +8,14 @@ namespace AdmIn.Business.Servicios
     {
         private readonly ICaracteristicaRepository _caracteristicaRepo;
 
+        // Tipos válidos según la restricción de la base de datos
+        private readonly HashSet<string> _tiposValidos = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "texto",
+            "numerico",
+            "booleano"
+        };
+
         public Serv_Caracteristica(ICaracteristicaRepository caracteristicaRepository)
         {
             _caracteristicaRepo = caracteristicaRepository;
@@ -31,6 +39,16 @@ namespace AdmIn.Business.Servicios
                 {
                     Correcto = false,
                     Mensaje = "El tipo de la característica es requerido."
+                };
+            }
+
+            // Validar que el tipo sea uno de los valores permitidos
+            if (!_tiposValidos.Contains(caracteristica.Tipo))
+            {
+                return new DTO<Caracteristica>
+                {
+                    Correcto = false,
+                    Mensaje = $"El tipo '{caracteristica.Tipo}' no es válido. Los tipos permitidos son: {string.Join(", ", _tiposValidos)}."
                 };
             }
 
@@ -65,6 +83,16 @@ namespace AdmIn.Business.Servicios
                 {
                     Correcto = false,
                     Mensaje = "El tipo de la característica es requerido."
+                };
+            }
+
+            // Validar que el tipo sea uno de los valores permitidos
+            if (!_tiposValidos.Contains(caracteristica.Tipo))
+            {
+                return new DTO<Caracteristica>
+                {
+                    Correcto = false,
+                    Mensaje = $"El tipo '{caracteristica.Tipo}' no es válido. Los tipos permitidos son: {string.Join(", ", _tiposValidos)}."
                 };
             }
 

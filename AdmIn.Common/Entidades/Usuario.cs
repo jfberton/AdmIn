@@ -25,6 +25,9 @@ namespace AdmIn.Common.Entidades
         public int? UsuarioCreador { get; set; }
         public int? UsuarioModificador { get; set; }
 
+        // Nuevo campo para imagen de perfil
+        public Guid? ImagenPerfilId { get; set; }
+
         public string? Token { get; set; }
 
         #endregion
@@ -35,6 +38,9 @@ namespace AdmIn.Common.Entidades
         public Persona? Persona { get; set; }
         public Empresa? Empresa { get; set; }
         public Moneda? Moneda { get; set; }
+        
+        // Nueva propiedad de navegación para la imagen de perfil
+        public Imagen? ImagenPerfil { get; set; }
 
         #endregion
 
@@ -58,6 +64,21 @@ namespace AdmIn.Common.Entidades
 
                 return string.Join(", ", rolesUnicos);
             }
+        }
+
+        // Método auxiliar para obtener la URL de la imagen de perfil
+        public string ObtenerUrlImagenPerfil(string baseUrl = "")
+        {
+            if (ImagenPerfil?.UrlThumb != null)
+            {
+                if (ImagenPerfil.UrlThumb.StartsWith("http"))
+                    return ImagenPerfil.UrlThumb;
+                
+                return $"{baseUrl.TrimEnd('/')}{ImagenPerfil.UrlThumb}";
+            }
+            
+            // Retornar null para mostrar placeholder en lugar de imagen por defecto
+            return null;
         }
 
         #endregion

@@ -88,7 +88,7 @@ namespace AdmIn.UI.Services
             return default;
         }
 
-        private async Task<string> ObtenerToken()
+        protected async Task<string> ObtenerToken()
         {
             var token = await _tokenService.GetTokenAsync();
 

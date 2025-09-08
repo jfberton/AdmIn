@@ -1,0 +1,64 @@
+@using AdmIn.Common.Entidades
+@using AdmIn.Common
+@using AdmIn.UI.Services
+
+@inject IServ_Imagen serv_imagen
+@inject NotificationService notificationService
+@inject IJSRuntime JSRuntime
+
+<RadzenStack Gap="1rem">
+    <RadzenText TextStyle="TextStyle.Body1" Text="Selecciona una nueva imagen para tu perfil:" />
+    
+    <ImageUploadComponent 
+        PermitirMultiples="false"
+        MostrarVistaPrevia="true"
+        MostrarBotones="true"
+        OnImagenesSubidas="@OnImagenPerfilSubida"
+        OnError="@OnErrorSubida" />
+        
+    <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" JustifyContent="JustifyContent.End">
+        <RadzenButton ButtonStyle="ButtonStyle.Secondary" 
+                     Text="Cancelar" 
+                     Click="@(() => dialogService.Close(false))" />
+    </RadzenStack>
+</RadzenStack>
+
+@code {
+    [Parameter] public Usuario Usuario { get; set; }
+    [Inject] DialogService dialogService { get; set; }
+
+    private async Task OnImagenPerfilSubida(List<Imagen> imagenes)
+    {
+        if (imagenes.Any() && Usuario != null)
+        {
+            try
+            {
+                var imagen = imagenes.First();
+                var resultado = await serv_imagen.EstablecerImagenPerfil(imagen.Id, Usuario.Id);
+                
+                if (resultado.Correcto)
+                {
+                    notificationService.Notify(NotificationSeverity.Success, "Éxito", "Foto de perfil actualizada correctamente");
+                    
+                    // Forzar recarga de la página para actualizar el menú
+                    await JSRuntime.InvokeVoidAsync("location.reload");
+                    
+                    dialogService.Close(true); // Cerrar y indicar que se cambió la foto
+                }
+                else
+                {
+                    notificationService.Notify(NotificationSeverity.Error, "Error", resultado.Mensaje);
+                }
+            }
+            catch (Exception ex)
+            {
+                notificationService.Notify(NotificationSeverity.Error, "Error", $"Error al establecer imagen de perfil: {ex.Message}");
+            }
+        }
+    }
+
+    private async Task OnErrorSubida(string error)
+    {
+        notificationService.Notify(NotificationSeverity.Error, "Error", error);
+    }
+}

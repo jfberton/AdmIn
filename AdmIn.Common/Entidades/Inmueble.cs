@@ -18,7 +18,7 @@ namespace AdmIn.Common.Entidades
         public decimal Latitud { get; set; }
         public decimal Longitud { get; set; }
         public decimal Valor { get; set; }
-        public decimal ConstruccuionM2 { get; set; }
+        public decimal ConstruccionM2 { get; set; }
         public decimal RentaMensual { get; set; }
         public int? AdministradorId { get; set; }
         public string Descripcion { get; set; } = string.Empty;

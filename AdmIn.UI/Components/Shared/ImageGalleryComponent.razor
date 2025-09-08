@@ -1,0 +1,510 @@
+@using AdmIn.Common.Entidades
+@using AdmIn.Common
+@using AdmIn.UI.Services
+
+@inject IServ_Imagen servImagen
+@inject IJSRuntime JSRuntime
+
+<div class="image-gallery">
+    @if (Imagenes?.Any() == true)
+    {
+        <div class="gallery-grid">
+            @foreach (var imagen in Imagenes)
+            {
+                <div class="image-card @(imagen.Id == ImagenPrincipalId ? "principal" : "")">
+                    <div class="image-container">
+                        <img src="@ObtenerUrlCompleta(imagen.UrlThumb)" 
+                             alt="@imagen.Nombre" 
+                             class="gallery-image"
+                             @onclick="@(() => MostrarImagenCompleta(imagen))" />
+                        
+                        @if (imagen.Id == ImagenPrincipalId)
+                        {
+                            <div class="principal-badge">
+                                <RadzenIcon Icon="@IconoPrincipal" Style="@($"color: {ColorIconoPrincipal};")" />
+                                <small>@TextoPrincipal</small>
+                            </div>
+                        }
+                        
+                        @if (MostrarAcciones)
+                        {
+                            <div class="image-actions">
+                                @if (PermitirEstablecerPrincipal && imagen.Id != ImagenPrincipalId && EntidadId.HasValue)
+                                {
+                                    <RadzenButton ButtonStyle="ButtonStyle.Warning" Size="ButtonSize.ExtraSmall"
+                                                 Icon="@IconoPrincipal" Click="@(() => EstablecerComoPrincipal(imagen))"
+                                                 Title="@($"Establecer como {TextoPrincipal.ToLower()}")" />
+                                }
+                                
+                                @if (PermitirEditar)
+                                {
+                                    <RadzenButton ButtonStyle="ButtonStyle.Info" Size="ButtonSize.ExtraSmall"
+                                                 Icon="edit" Click="@(() => EditarImagen(imagen))"
+                                                 Title="Editar información" />
+                                }
+                                
+                                @if (PermitirEliminar)
+                                {
+                                    <RadzenButton ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.ExtraSmall"
+                                                 Icon="delete" Click="@(() => EliminarImagen(imagen))"
+                                                 Title="Eliminar imagen" />
+                                }
+
+                                @if (AccionesPersonalizadas != null)
+                                {
+                                    @foreach (var accion in AccionesPersonalizadas)
+                                    {
+                                        <RadzenButton ButtonStyle="@accion.Estilo" Size="ButtonSize.ExtraSmall"
+                                                     Icon="@accion.Icono" Click="@(() => accion.Accion(imagen))"
+                                                     Title="@accion.Titulo" />
+                                    }
+                                }
+                            </div>
+                        }
+                    </div>
+                    
+                    <div class="image-info">
+                        <h6 class="image-title">@imagen.Nombre</h6>
+                        @if (!string.IsNullOrEmpty(imagen.Descripcion))
+                        {
+                            <small class="image-description">@imagen.Descripcion</small>
+                        }
+                        <small class="image-date">@imagen.FechaCreacion.ToString("dd/MM/yyyy")</small>
+                        
+                        @if (MostrarInformacionAdicional != null)
+                        {
+                            <div class="image-extra-info">
+                                @MostrarInformacionAdicional(imagen)
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="no-images">
+            <RadzenIcon Icon="photo_library" Style="font-size: 64px; color: #d1d5db;" />
+            <p>@MensajeSinImagenes</p>
+            @if (MostrarMensajeUpload)
+            {
+                <small>@MensajeUpload</small>
+            }
+        </div>
+    }
+</div>
+
+<!-- Modal para editar información -->
+@if (imagenEditando != null)
+{
+    <RadzenTemplateForm TItem="Imagen" Data="@imagenEditando" Submit="@GuardarEdicion">
+        <RadzenStack Gap="1rem">
+            <RadzenFormField Text="Nombre" Variant="Variant.Outlined">
+                <RadzenTextBox @bind-Value="@imagenEditando.Nombre" MaxLength="255" />
+            </RadzenFormField>
+            
+            <RadzenFormField Text="Descripción" Variant="Variant.Outlined">
+                <RadzenTextArea @bind-Value="@imagenEditando.Descripcion" MaxLength="1000" Rows="3" />
+            </RadzenFormField>
+            
+            @if (CamposAdicionales != null)
+            {
+                @CamposAdicionales(imagenEditando)
+            }
+            
+            <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" JustifyContent="JustifyContent.End">
+                <RadzenButton ButtonStyle="ButtonStyle.Success" Text="Guardar" ButtonType="ButtonType.Submit" />
+                <RadzenButton ButtonStyle="ButtonStyle.Secondary" Text="Cancelar" Click="@CancelarEdicion" />
+            </RadzenStack>
+        </RadzenStack>
+    </RadzenTemplateForm>
+}
+
+<style>
+    .image-gallery {
+        width: 100%;
+    }
+
+    .gallery-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(@(TamañoMinimo)px, 1fr));
+        gap: 1rem;
+        padding: 1rem 0;
+    }
+
+    .image-card {
+        border: 2px solid #e5e7eb;
+        border-radius: 12px;
+        overflow: hidden;
+        background: white;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        transition: all 0.3s ease;
+    }
+
+    .image-card:hover {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        transform: translateY(-2px);
+    }
+
+    .image-card.principal {
+        border-color: @ColorBordePrincipal;
+        box-shadow: 0 4px 12px @ColorSombraPrincipal;
+    }
+
+    .image-container {
+        position: relative;
+        aspect-ratio: @RelacionAspecto;
+        overflow: hidden;
+    }
+
+    .gallery-image {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        cursor: pointer;
+        transition: transform 0.3s ease;
+    }
+
+    .gallery-image:hover {
+        transform: scale(1.05);
+    }
+
+    .principal-badge {
+        position: absolute;
+        top: 8px;
+        left: 8px;
+        background: rgba(0,0,0,0.8);
+        color: white;
+        padding: 4px 8px;
+        border-radius: 16px;
+        font-size: 0.75rem;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .image-actions {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
+    .image-card:hover .image-actions {
+        opacity: 1;
+    }
+
+    .image-info {
+        padding: 0.75rem;
+    }
+
+    .image-title {
+        margin: 0 0 0.25rem 0;
+        font-weight: 600;
+        color: #374151;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .image-description {
+        display: block;
+        color: #6b7280;
+        margin-bottom: 0.25rem;
+        line-height: 1.3;
+    }
+
+    .image-date {
+        color: #9ca3af;
+        font-size: 0.75rem;
+    }
+
+    .image-extra-info {
+        margin-top: 0.5rem;
+        padding-top: 0.5rem;
+        border-top: 1px solid #e5e7eb;
+    }
+
+    .no-images {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: #6b7280;
+    }
+
+    .no-images p {
+        margin: 1rem 0 0.5rem 0;
+        font-size: 1.1rem;
+    }
+
+    @@media (max-width: 768px) {
+        .gallery-grid {
+            grid-template-columns: repeat(auto-fill, minmax(@(TamañoMinimoMovil)px, 1fr));
+            gap: 0.75rem;
+        }
+        
+        .image-actions {
+            opacity: 1; /* Siempre visible en móvil */
+        }
+    }
+</style>
+
+@code {
+    // Parámetros principales
+    [Parameter] public List<Imagen> Imagenes { get; set; } = new();
+    [Parameter] public Guid? ImagenPrincipalId { get; set; }
+    
+    // Contexto genérico
+    [Parameter] public int? EntidadId { get; set; }
+    [Parameter] public string TipoEntidad { get; set; } = "entidad";
+    [Parameter] public string BaseUrl { get; set; } = "";
+
+    // Configuración de UI
+    [Parameter] public bool MostrarAcciones { get; set; } = true;
+    [Parameter] public bool MostrarMensajeUpload { get; set; } = true;
+    [Parameter] public int TamañoMinimo { get; set; } = 200;
+    [Parameter] public int TamañoMinimoMovil { get; set; } = 150;
+    [Parameter] public string RelacionAspecto { get; set; } = "4/3";
+
+    // Configuración de imagen principal
+    [Parameter] public bool PermitirEstablecerPrincipal { get; set; } = true;
+    [Parameter] public string IconoPrincipal { get; set; } = "star";
+    [Parameter] public string ColorIconoPrincipal { get; set; } = "gold";
+    [Parameter] public string TextoPrincipal { get; set; } = "Principal";
+    [Parameter] public string ColorBordePrincipal { get; set; } = "#fbbf24";
+    [Parameter] public string ColorSombraPrincipal { get; set; } = "rgba(251, 191, 36, 0.3)";
+
+    // Permisos de acciones
+    [Parameter] public bool PermitirEditar { get; set; } = true;
+    [Parameter] public bool PermitirEliminar { get; set; } = true;
+
+    // Mensajes personalizables
+    [Parameter] public string MensajeSinImagenes { get; set; } = "No hay imágenes disponibles";
+    [Parameter] public string MensajeUpload { get; set; } = "Sube algunas imágenes para comenzar";
+
+    // Eventos
+    [Parameter] public EventCallback<Imagen> OnImagenEliminada { get; set; }
+    [Parameter] public EventCallback<Imagen> OnImagenActualizada { get; set; }
+    [Parameter] public EventCallback<Imagen> OnImagenPrincipalCambiada { get; set; }
+
+    // Configuración avanzada
+    [Parameter] public List<AccionPersonalizada>? AccionesPersonalizadas { get; set; }
+    [Parameter] public RenderFragment<Imagen>? MostrarInformacionAdicional { get; set; }
+    [Parameter] public RenderFragment<Imagen>? CamposAdicionales { get; set; }
+
+    // Compatibilidad hacia atrás (deprecated)
+    [Parameter, Obsolete("Use EntidadId instead")]
+    public int? InmuebleId 
+    { 
+        get => EntidadId; 
+        set => EntidadId = value; 
+    }
+
+    private Imagen? imagenEditando;
+
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+        
+        // Establecer BaseUrl por defecto si no se proporciona
+        if (string.IsNullOrEmpty(BaseUrl))
+        {
+            BaseUrl = "https://localhost:7001"; // Ajustar según tu configuración
+        }
+
+        // Configurar mensajes según el tipo de entidad
+        if (MensajeSinImagenes == "No hay imágenes disponibles")
+        {
+            MensajeSinImagenes = TipoEntidad switch
+            {
+                "inmueble" => "Este inmueble no tiene imágenes",
+                "usuario" => "No has subido una foto de perfil",
+                "reparacion" => "No hay imágenes de esta reparación",
+                "trabajo" => "No hay imágenes de este trabajo",
+                _ => "No hay imágenes disponibles"
+            };
+        }
+
+        if (MensajeUpload == "Sube algunas imágenes para comenzar")
+        {
+            MensajeUpload = TipoEntidad switch
+            {
+                "inmueble" => "Agrega fotos del inmueble",
+                "usuario" => "Sube tu foto de perfil",
+                "reparacion" => "Documenta la reparación con fotos",
+                "trabajo" => "Agrega imágenes del trabajo realizado",
+                _ => "Sube algunas imágenes para comenzar"
+            };
+        }
+    }
+
+    private string ObtenerUrlCompleta(string urlRelativa)
+    {
+        if (string.IsNullOrEmpty(urlRelativa))
+            return "/images/placeholder.jpg"; // Imagen por defecto
+            
+        // Si es una URL de Cloudinary (ya es completa)
+        if (urlRelativa.StartsWith("http"))
+            return urlRelativa;
+            
+        // Si es una URL local, agregar BaseUrl
+        return $"{BaseUrl.TrimEnd('/')}{urlRelativa}";
+    }
+
+    private async Task MostrarImagenCompleta(Imagen imagen)
+    {
+        var urlCompleta = ObtenerUrlCompleta(imagen.Url);
+        
+        // Mostrar en modal usando JavaScript
+        await JSRuntime.InvokeVoidAsync("showImageModal", imagen.Nombre, urlCompleta);
+    }
+
+    private async Task EstablecerComoPrincipal(Imagen imagen)
+    {
+        if (!EntidadId.HasValue) return;
+
+        try
+        {
+            // Esta lógica se puede expandir para diferentes tipos de entidad
+            DTO<bool> resultado = TipoEntidad switch
+            {
+                "inmueble" => await servImagen.EstablecerComoPrincipal(imagen.Id, EntidadId.Value),
+                "usuario" => await servImagen.EstablecerImagenPerfil(imagen.Id, EntidadId.Value),
+                // Para otros tipos, implementar métodos específicos
+                _ => new DTO<bool> { Correcto = false, Mensaje = $"Funcionalidad no implementada para {TipoEntidad}" }
+            };
+            
+            if (resultado.Correcto)
+            {
+                await OnImagenPrincipalCambiada.InvokeAsync(imagen);
+            }
+            else
+            {
+                // Mostrar error
+                await JSRuntime.InvokeVoidAsync("alert", $"Error: {resultado.Mensaje}");
+            }
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("alert", $"Error al establecer imagen principal: {ex.Message}");
+        }
+    }
+
+    private void EditarImagen(Imagen imagen)
+    {
+        imagenEditando = new Imagen
+        {
+            Id = imagen.Id,
+            Nombre = imagen.Nombre,
+            Descripcion = imagen.Descripcion,
+            Url = imagen.Url,
+            UrlThumb = imagen.UrlThumb,
+            FechaCreacion = imagen.FechaCreacion
+        };
+        StateHasChanged();
+    }
+
+    private async Task GuardarEdicion(Imagen imagen)
+    {
+        if (imagenEditando == null) return;
+
+        try
+        {
+            var resultado = await servImagen.Actualizar(imagenEditando);
+            
+            if (resultado.Correcto)
+            {
+                await OnImagenActualizada.InvokeAsync(resultado.Datos);
+                CancelarEdicion();
+            }
+            else
+            {
+                await JSRuntime.InvokeVoidAsync("alert", $"Error: {resultado.Mensaje}");
+            }
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("alert", $"Error al actualizar imagen: {ex.Message}");
+        }
+    }
+
+    private void CancelarEdicion()
+    {
+        imagenEditando = null;
+        StateHasChanged();
+    }
+
+    private async Task EliminarImagen(Imagen imagen)
+    {
+        var confirmacion = await JSRuntime.InvokeAsync<bool>("confirm", 
+            $"¿Estás seguro de que quieres eliminar la imagen '{imagen.Nombre}'?");
+            
+        if (!confirmacion) return;
+
+        try
+        {
+            var resultado = await servImagen.Eliminar(imagen.Id);
+            
+            if (resultado.Correcto)
+            {
+                await OnImagenEliminada.InvokeAsync(imagen);
+            }
+            else
+            {
+                await JSRuntime.InvokeVoidAsync("alert", $"Error: {resultado.Mensaje}");
+            }
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("alert", $"Error al eliminar imagen: {ex.Message}");
+        }
+    }
+
+    // Clase para acciones personalizadas
+    public class AccionPersonalizada
+    {
+        public string Titulo { get; set; } = "";
+        public string Icono { get; set; } = "";
+        public ButtonStyle Estilo { get; set; } = ButtonStyle.Secondary;
+        public Action<Imagen> Accion { get; set; } = _ => { };
+    }
+}
+
+<script>
+    window.showImageModal = (title, imageUrl) => {
+        // Crear modal simple para mostrar imagen completa
+        const modal = document.createElement('div');
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            cursor: pointer;
+        `;
+        
+        const img = document.createElement('img');
+        img.src = imageUrl;
+        img.alt = title;
+        img.style.cssText = `
+            max-width: 90%;
+            max-height: 90%;
+            object-fit: contain;
+            border-radius: 8px;
+        `;
+        
+        modal.appendChild(img);
+        modal.onclick = () => document.body.removeChild(modal);
+        
+        document.body.appendChild(modal);
+    };
+</script>
