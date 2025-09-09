@@ -1,0 +1,91 @@
+@using AdmIn.Common.Entidades
+@using AdmIn.Common
+@using AdmIn.UI.Services
+
+@inject IServ_Imagen serv_imagen
+@inject NotificationService notificationService
+
+<RadzenStack Gap="1.5rem">
+    <RadzenAlert AlertStyle="AlertStyle.Info" ShowIcon="true">
+        <RadzenStack Gap="0.5rem">
+            <RadzenText TextStyle="TextStyle.Body1" Text="@($"Agregando imágenes a: {NombreInmueble}")" />
+            <RadzenText TextStyle="TextStyle.Body2" Text="Puedes subir múltiples imágenes a la vez. La primera imagen se establecerá como principal automáticamente si no hay ninguna." />
+        </RadzenStack>
+    </RadzenAlert>
+    
+    <ImageUploadComponent 
+        PermitirMultiples="true"
+        MostrarVistaPrevia="true"
+        MostrarBotones="true"
+        OnImagenesSubidas="@OnImagenesSubidas"
+        OnError="@OnErrorSubida" />
+
+    @if (imagenesSubidas.Any())
+    {
+        <RadzenFieldset Text="Imágenes Subidas">
+            <RadzenStack Gap="1rem">
+                @foreach (var imagen in imagenesSubidas)
+                {
+                    <RadzenCard>
+                        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem">
+                            <RadzenImage Path="@imagen.UrlThumb" 
+                                        Style="width: 80px; height: 80px; object-fit: cover; border-radius: 8px;" 
+                                        Alt="@imagen.Nombre" />
+                            <RadzenStack Gap="0.5rem" Style="flex: 1;">
+                                <RadzenText TextStyle="TextStyle.Body1" Text="@imagen.Nombre" />
+                                <RadzenText TextStyle="TextStyle.Body2" Text="@imagen.Descripcion" Style="color: #6b7280;" />
+                            </RadzenStack>
+                            <RadzenBadge BadgeStyle="BadgeStyle.Success" Text="Subida" />
+                        </RadzenStack>
+                    </RadzenCard>
+                }
+            </RadzenStack>
+        </RadzenFieldset>
+    }
+        
+    <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" JustifyContent="JustifyContent.End">
+        <RadzenButton ButtonStyle="ButtonStyle.Success" 
+                     Text="@(imagenesSubidas.Any() ? "Finalizar" : "Cerrar")" 
+                     Click="@CerrarDialog" />
+    </RadzenStack>
+</RadzenStack>
+
+@code {
+    [Parameter] public int InmuebleId { get; set; }
+    [Parameter] public string NombreInmueble { get; set; } = "";
+    [Inject] DialogService dialogService { get; set; } = default!;
+
+    private List<Imagen> imagenesSubidas = new();
+
+    private async Task OnImagenesSubidas(List<Imagen> imagenes)
+    {
+        try
+        {
+            foreach (var imagen in imagenes)
+            {
+                // Asociar imagen al inmueble
+                // En una implementación real, esto se haría en el backend automáticamente
+                // o através de un endpoint específico
+                imagenesSubidas.Add(imagen);
+                
+                notificationService.Notify(NotificationSeverity.Success, "Imagen subida", $"'{imagen.Nombre}' se subió correctamente");
+            }
+            
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            notificationService.Notify(NotificationSeverity.Error, "Error", $"Error al procesar imágenes: {ex.Message}");
+        }
+    }
+
+    private async Task OnErrorSubida(string error)
+    {
+        notificationService.Notify(NotificationSeverity.Error, "Error", error);
+    }
+
+    private void CerrarDialog()
+    {
+        dialogService.Close(imagenesSubidas.Any());
+    }
+}

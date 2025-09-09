@@ -7,12 +7,16 @@ namespace AdmIn.UI.Services
     {
         Task<IEnumerable<string>> ObtenerEstadosInmueble();
         Task<string?> ObtenerEstadoInmueblePorId(int id);
-        Task AgregarCaracteristica(int inmuebleId, CaracteristicaInmueble caracteristica);
-        Task ActualizarCaracteristica(int inmuebleId, CaracteristicaInmueble caracteristica);
-        Task EliminarCaracteristica(int inmuebleId, int caracteristicaId);
+        
+        // Métodos de características
+        Task<DTO<IEnumerable<CaracteristicaInmueble>>> ObtenerCaracteristicas(int inmuebleId);
+        Task<DTO<CaracteristicaInmueble>> AgregarCaracteristica(int inmuebleId, CaracteristicaInmueble caracteristica);
+        Task<DTO<CaracteristicaInmueble>> ActualizarCaracteristica(CaracteristicaInmueble caracteristica);
+        Task<DTO<bool>> EliminarCaracteristica(int caracteristicaId);
+        
+        // Métodos de imágenes (opcional para futuro)
         Task AgregarImagen(int inmuebleId, Imagen imagen);
         Task EliminarImagen(int inmuebleId, Guid imagenId);
         Task EstablecerImagenPrincipal(int inmuebleId, Guid imagenId);
-        Task<DTO<IEnumerable<CaracteristicaInmueble>>> ObtenerCaracteristicas(int inmuebleId);
     }
 }

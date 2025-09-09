@@ -1,0 +1,336 @@
+@page "/inmuebles/{id:int}"
+@inherits BaseComponent
+
+@using AdmIn.Common.Entidades
+@using AdmIn.Common
+@using AdmIn.UI.Services
+
+@inject IServ_Inmueble serv_inmueble
+
+<PageTitle>@(inmueble?.Nombre ?? "Inmueble")</PageTitle>
+
+@if (inmueble != null)
+{
+    <RadzenStack Gap="2rem" Class="p-4">
+        <!-- Header -->
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem">
+            <RadzenButton ButtonStyle="ButtonStyle.Light" 
+                         Icon="arrow_back" 
+                         Click="@(() => IrA("/inmuebles"))"
+                         Size="ButtonSize.Medium" />
+            <RadzenText TextStyle="TextStyle.H4" Text="@inmueble.Nombre" />
+            <RadzenBadge BadgeStyle="@(inmueble.Activo ? BadgeStyle.Success : BadgeStyle.Danger)" 
+                        Text="@(inmueble.Activo ? "Activo" : "Inactivo")" />
+        </RadzenStack>
+
+        <!-- Breadcrumb -->
+        <RadzenBreadCrumb>
+            <RadzenBreadCrumbItem Path="/inmuebles" Text="Inmuebles" Icon="apartment" />
+            <RadzenBreadCrumbItem Text="@inmueble.Nombre" Icon="home" />
+        </RadzenBreadCrumb>
+
+        <!-- Acciones -->
+        <RadzenStack Orientation="Orientation.Horizontal" Gap="1rem" Wrap="FlexWrap.Wrap">
+            <RadzenButton ButtonStyle="ButtonStyle.Primary" 
+                         Icon="edit" 
+                         Text="Editar" 
+                         Click="@(() => IrA($"/inmuebles/editar/{inmueble.Id}"))" />
+            <RadzenButton ButtonStyle="ButtonStyle.Secondary" 
+                         Icon="photo_library" 
+                         Text="Gestionar Imágenes" 
+                         Click="@(() => MostrarAlerta("Próximamente: Gestión de imágenes"))" />
+            <RadzenButton ButtonStyle="ButtonStyle.Info" 
+                         Icon="category" 
+                         Text="Ver Características" 
+                         Click="@(() => MostrarAlerta("Próximamente: Gestión de características"))" />
+        </RadzenStack>
+
+        <!-- Información Principal -->
+        <RadzenRow Gap="2rem">
+            <RadzenColumn Size="12" SizeMD="8">
+                <RadzenCard>
+                    <RadzenStack Gap="1.5rem">
+                        <RadzenText TextStyle="TextStyle.H6" Text="Información General" />
+                        
+                        <RadzenRow Gap="1rem">
+                            <RadzenColumn Size="12" SizeMD="6">
+                                <div class="info-item">
+                                    <RadzenText TextStyle="TextStyle.Caption" Text="DIRECCIÓN" />
+                                    <RadzenText TextStyle="TextStyle.Body1" Text="@inmueble.Direccion" />
+                                </div>
+                            </RadzenColumn>
+                            <RadzenColumn Size="12" SizeMD="6">
+                                <div class="info-item">
+                                    <RadzenText TextStyle="TextStyle.Caption" Text="UBICACIÓN" />
+                                    <RadzenText TextStyle="TextStyle.Body1" Text="@($"{inmueble.Ciudad}, {inmueble.Estado}, {inmueble.Pais}")" />
+                                </div>
+                            </RadzenColumn>
+                        </RadzenRow>
+
+                        @if (!string.IsNullOrWhiteSpace(inmueble.Descripcion))
+                        {
+                            <div class="info-item">
+                                <RadzenText TextStyle="TextStyle.Caption" Text="DESCRIPCIÓN" />
+                                <RadzenText TextStyle="TextStyle.Body1" Text="@inmueble.Descripcion" />
+                            </div>
+                        }
+                    </RadzenStack>
+                </RadzenCard>
+            </RadzenColumn>
+
+            <RadzenColumn Size="12" SizeMD="4">
+                <RadzenCard>
+                    <RadzenStack Gap="1.5rem">
+                        <RadzenText TextStyle="TextStyle.H6" Text="Información Económica" />
+                        
+                        <div class="info-item">
+                            <RadzenText TextStyle="TextStyle.Caption" Text="VALOR" />
+                            <RadzenText TextStyle="TextStyle.H5" Text="@inmueble.Valor.ToString("C")" />
+                        </div>
+
+                        @if (inmueble.RentaMensual > 0)
+                        {
+                            <div class="info-item">
+                                <RadzenText TextStyle="TextStyle.Caption" Text="RENTA MENSUAL" />
+                                <RadzenText TextStyle="TextStyle.Body1" Text="@inmueble.RentaMensual.ToString("C")" />
+                            </div>
+                        }
+
+                        @if (inmueble.ConstruccionM2 > 0)
+                        {
+                            <div class="info-item">
+                                <RadzenText TextStyle="TextStyle.Caption" Text="CONSTRUCCIÓN" />
+                                <RadzenText TextStyle="TextStyle.Body1" Text="@($"{inmueble.ConstruccionM2:N2} m²")" />
+                            </div>
+                        }
+
+                        @if (inmueble.Moneda != null)
+                        {
+                            <div class="info-item">
+                                <RadzenText TextStyle="TextStyle.Caption" Text="MONEDA" />
+                                <RadzenText TextStyle="TextStyle.Body1" Text="@inmueble.Moneda.Nombre" />
+                            </div>
+                        }
+                    </RadzenStack>
+                </RadzenCard>
+            </RadzenColumn>
+        </RadzenRow>
+
+        <!-- Información Adicional -->
+        @if (inmueble.Administrador != null || inmueble.Latitud != 0 || inmueble.Longitud != 0)
+        {
+            <RadzenCard>
+                <RadzenStack Gap="1.5rem">
+                    <RadzenText TextStyle="TextStyle.H6" Text="Información Adicional" />
+                    
+                    <RadzenRow Gap="1rem">
+                        @if (inmueble.Administrador != null)
+                        {
+                            <RadzenColumn Size="12" SizeMD="6">
+                                <div class="info-item">
+                                    <RadzenText TextStyle="TextStyle.Caption" Text="ADMINISTRADOR" />
+                                    <RadzenText TextStyle="TextStyle.Body1" Text="@inmueble.Administrador.Nombre" />
+                                </div>
+                            </RadzenColumn>
+                        }
+
+                        @if (inmueble.Latitud != 0 && inmueble.Longitud != 0)
+                        {
+                            <RadzenColumn Size="12" SizeMD="6">
+                                <div class="info-item">
+                                    <RadzenText TextStyle="TextStyle.Caption" Text="COORDENADAS" />
+                                    <RadzenText TextStyle="TextStyle.Body1" Text="@($"{inmueble.Latitud:F6}, {inmueble.Longitud:F6}")" />
+                                </div>
+                            </RadzenColumn>
+                        }
+                    </RadzenRow>
+                </RadzenStack>
+            </RadzenCard>
+        }
+
+        <!-- Metadatos -->
+        <RadzenCard>
+            <RadzenStack Gap="1.5rem">
+                <RadzenText TextStyle="TextStyle.H6" Text="Información del Sistema" />
+                
+                <RadzenRow Gap="1rem">
+                    <RadzenColumn Size="6" SizeMD="3">
+                        <div class="info-item">
+                            <RadzenText TextStyle="TextStyle.Caption" Text="FECHA CREACIÓN" />
+                            <RadzenText TextStyle="TextStyle.Body2" Text="@inmueble.FechaCreacion.ToString("dd/MM/yyyy")" />
+                        </div>
+                    </RadzenColumn>
+                    <RadzenColumn Size="6" SizeMD="3">
+                        <div class="info-item">
+                            <RadzenText TextStyle="TextStyle.Caption" Text="ÚLTIMA MODIFICACIÓN" />
+                            <RadzenText TextStyle="TextStyle.Body2" Text="@inmueble.FechaModificacion.ToString("dd/MM/yyyy")" />
+                        </div>
+                    </RadzenColumn>
+                    @if (inmueble.UsuarioCreador != null)
+                    {
+                        <RadzenColumn Size="6" SizeMD="3">
+                            <div class="info-item">
+                                <RadzenText TextStyle="TextStyle.Caption" Text="CREADO POR" />
+                                <RadzenText TextStyle="TextStyle.Body2" Text="@inmueble.UsuarioCreador.Nombre" />
+                            </div>
+                        </RadzenColumn>
+                    }
+                    @if (inmueble.UsuarioModificador != null)
+                    {
+                        <RadzenColumn Size="6" SizeMD="3">
+                            <div class="info-item">
+                                <RadzenText TextStyle="TextStyle.Caption" Text="MODIFICADO POR" />
+                                <RadzenText TextStyle="TextStyle.Body2" Text="@inmueble.UsuarioModificador.Nombre" />
+                            </div>
+                        </RadzenColumn>
+                    }
+                </RadzenRow>
+            </RadzenStack>
+        </RadzenCard>
+
+        <!-- Gestión de Imágenes -->
+        <RadzenCard>
+            <RadzenStack Gap="1.5rem">
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
+                    <RadzenText TextStyle="TextStyle.H6" Text="Galería de Imágenes" />
+                    <RadzenButton ButtonStyle="ButtonStyle.Primary" 
+                                 Icon="add_photo_alternate" 
+                                 Text="Próximamente: Agregar Imágenes"
+                                 Click="@(() => MostrarAlerta("Funcionalidad en desarrollo"))" />
+                </RadzenStack>
+                
+                @if (inmueble.Imagenes?.Any() == true)
+                {
+                    <RadzenAlert AlertStyle="AlertStyle.Success" ShowIcon="true">
+                        <RadzenText TextStyle="TextStyle.Body1" Text="@($"Este inmueble tiene {inmueble.Imagenes.Count} imágenes")" />
+                    </RadzenAlert>
+                }
+                else
+                {
+                    <RadzenAlert AlertStyle="AlertStyle.Info" ShowIcon="true">
+                        <RadzenStack Gap="0.5rem">
+                            <RadzenText TextStyle="TextStyle.Body1" Text="Este inmueble no tiene imágenes" />
+                            <RadzenText TextStyle="TextStyle.Body2" Text="Agrega algunas fotos para mostrar mejor la propiedad" />
+                        </RadzenStack>
+                    </RadzenAlert>
+                }
+            </RadzenStack>
+        </RadzenCard>
+
+        <!-- Gestión de Características -->
+        <RadzenCard id="caracteristicas">
+            <RadzenStack Gap="1.5rem">
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
+                    <RadzenText TextStyle="TextStyle.H6" Text="Características del Inmueble" />
+                    <RadzenButton ButtonStyle="ButtonStyle.Primary" 
+                                 Icon="add" 
+                                 Text="Próximamente: Gestionar Características"
+                                 Click="@(() => MostrarAlerta("Funcionalidad en desarrollo"))" />
+                </RadzenStack>
+                
+                @if (inmueble.Caracteristicas?.Any() == true)
+                {
+                    <RadzenAlert AlertStyle="AlertStyle.Success" ShowIcon="true">
+                        <RadzenText TextStyle="TextStyle.Body1" Text="@($"Este inmueble tiene {inmueble.Caracteristicas.Count} características")" />
+                    </RadzenAlert>
+                }
+                else
+                {
+                    <RadzenAlert AlertStyle="AlertStyle.Info" ShowIcon="true">
+                        <RadzenStack Gap="0.5rem">
+                            <RadzenText TextStyle="TextStyle.Body1" Text="Este inmueble no tiene características definidas" />
+                            <RadzenText TextStyle="TextStyle.Body2" Text="Agrega características como número de habitaciones, baños, cochera, etc." />
+                        </RadzenStack>
+                    </RadzenAlert>
+                }
+            </RadzenStack>
+        </RadzenCard>
+    </RadzenStack>
+}
+else if (cargando)
+{
+    <RadzenStack AlignItems="AlignItems.Center" JustifyContent="JustifyContent.Center" Gap="1rem" Class="p-8">
+        <RadzenProgressBarCircular ProgressBarStyle="ProgressBarStyle.Primary" Value="100" ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
+        <RadzenText TextStyle="TextStyle.Body1" Text="Cargando inmueble..." />
+    </RadzenStack>
+}
+else
+{
+    <RadzenStack AlignItems="AlignItems.Center" JustifyContent="JustifyContent.Center" Gap="1rem" Class="p-8">
+        <RadzenIcon Icon="error_outline" Style="font-size: 64px; color: var(--rz-danger);" />
+        <RadzenText TextStyle="TextStyle.H5" Text="Inmueble no encontrado" />
+        <RadzenText TextStyle="TextStyle.Body1" Text="El inmueble solicitado no existe o no tienes permisos para verlo." />
+        <RadzenButton ButtonStyle="ButtonStyle.Primary" Text="Volver a Inmuebles" Click="@(() => IrA("/inmuebles"))" />
+    </RadzenStack>
+}
+
+<style>
+    .info-item {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .info-item .rz-text:first-child {
+        color: #6b7280;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+    }
+</style>
+
+@code {
+    [Parameter] public int Id { get; set; }
+    
+    private Inmueble? inmueble;
+    private bool cargando = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        await CargarInmueble();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (inmueble?.Id != Id)
+        {
+            await CargarInmueble();
+        }
+    }
+
+    private async Task CargarInmueble()
+    {
+        try
+        {
+            cargando = true;
+            await LogHelper.Info($"Cargando inmueble con ID: {Id}");
+
+            var resultado = await serv_inmueble.Obtener_por_id(Id);
+            
+            if (resultado.Correcto && resultado.Datos != null)
+            {
+                inmueble = resultado.Datos;
+                EstablecerTituloPagina("Inmuebles", inmueble.Nombre);
+                await LogHelper.Info($"Inmueble cargado exitosamente: {inmueble.Nombre}");
+            }
+            else
+            {
+                await LogHelper.Warn($"No se pudo cargar el inmueble con ID: {Id}. Mensaje: {resultado.Mensaje}");
+                EstablecerTituloPagina("Inmuebles", "No encontrado");
+            }
+        }
+        catch (Exception ex)
+        {
+            await LogHelper.Error($"Error al cargar inmueble: {ex.Message}");
+            MostrarNotificacion(
+                NotificationSeverity.Error,
+                "Error",
+                "No se pudo cargar la información del inmueble"
+            );
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+}

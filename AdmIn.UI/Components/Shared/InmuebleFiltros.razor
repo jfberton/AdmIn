@@ -1,0 +1,151 @@
+@using AdmIn.Common.Entidades
+@using AdmIn.Common
+@using AdmIn.UI.Services
+
+@inject IServ_Moneda serv_moneda
+
+<RadzenCard>
+    <RadzenStack Gap="1rem">
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
+            <RadzenText TextStyle="TextStyle.H6" Text="Filtros de Búsqueda" />
+            <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem">
+                <RadzenButton ButtonStyle="ButtonStyle.Primary" 
+                             Icon="search" 
+                             Text="Buscar" 
+                             Click="@AplicarFiltros" />
+                <RadzenButton ButtonStyle="ButtonStyle.Secondary" 
+                             Icon="clear" 
+                             Text="Limpiar" 
+                             Click="@LimpiarFiltros" />
+            </RadzenStack>
+        </RadzenStack>
+
+        <RadzenRow Gap="1rem">
+            <!-- Búsqueda por texto -->
+            <RadzenColumn Size="12" SizeMD="6">
+                <RadzenFormField Text="Búsqueda general" Variant="Variant.Outlined">
+                    <RadzenTextBox @bind-Value="@TextoBusqueda" 
+                                  Placeholder="Nombre, dirección, descripción..." />
+                </RadzenFormField>
+            </RadzenColumn>
+
+            <!-- Estado -->
+            <RadzenColumn Size="12" SizeMD="6">
+                <RadzenFormField Text="Estado" Variant="Variant.Outlined">
+                    <RadzenDropDown @bind-Value="@SoloActivos" 
+                                   Data="@estadosInmueble" 
+                                   TextProperty="Text" 
+                                   ValueProperty="Value"
+                                   Placeholder="Todos los estados"
+                                   AllowClear="true" />
+                </RadzenFormField>
+            </RadzenColumn>
+        </RadzenRow>
+
+        <RadzenRow Gap="1rem">
+            <!-- Ubicación -->
+            <RadzenColumn Size="12" SizeMD="4">
+                <RadzenFormField Text="País" Variant="Variant.Outlined">
+                    <RadzenTextBox @bind-Value="@Pais" Placeholder="País" />
+                </RadzenFormField>
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeMD="4">
+                <RadzenFormField Text="Estado/Provincia" Variant="Variant.Outlined">
+                    <RadzenTextBox @bind-Value="@Estado" Placeholder="Estado" />
+                </RadzenFormField>
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeMD="4">
+                <RadzenFormField Text="Ciudad" Variant="Variant.Outlined">
+                    <RadzenTextBox @bind-Value="@Ciudad" Placeholder="Ciudad" />
+                </RadzenFormField>
+            </RadzenColumn>
+        </RadzenRow>
+
+        <RadzenRow Gap="1rem">
+            <!-- Precios -->
+            <RadzenColumn Size="12" SizeMD="6">
+                <RadzenFormField Text="Precio mínimo" Variant="Variant.Outlined">
+                    <RadzenNumeric @bind-Value="@PrecioMinimo" 
+                                  Format="C0" 
+                                  Min="0" 
+                                  Placeholder="0" />
+                </RadzenFormField>
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeMD="6">
+                <RadzenFormField Text="Precio máximo" Variant="Variant.Outlined">
+                    <RadzenNumeric @bind-Value="@PrecioMaximo" 
+                                  Format="C0" 
+                                  Min="0" 
+                                  Placeholder="Sin límite" />
+                </RadzenFormField>
+            </RadzenColumn>
+        </RadzenRow>
+    </RadzenStack>
+</RadzenCard>
+
+@code {
+    [Parameter] public EventCallback<FiltrosInmueble> OnFiltrosChanged { get; set; }
+
+    // Propiedades de filtro
+    public string? TextoBusqueda { get; set; }
+    public string? Pais { get; set; }
+    public string? Estado { get; set; }
+    public string? Ciudad { get; set; }
+    public decimal? PrecioMinimo { get; set; }
+    public decimal? PrecioMaximo { get; set; }
+    public bool? SoloActivos { get; set; }
+    
+    private List<DropDownItem> estadosInmueble = new()
+    {
+        new() { Text = "Solo Activos", Value = true },
+        new() { Text = "Solo Inactivos", Value = false }
+    };
+
+    private async Task AplicarFiltros()
+    {
+        var filtros = new FiltrosInmueble
+        {
+            TextoBusqueda = TextoBusqueda,
+            Pais = Pais,
+            Estado = Estado,
+            Ciudad = Ciudad,
+            PrecioMinimo = PrecioMinimo,
+            PrecioMaximo = PrecioMaximo,
+            SoloActivos = SoloActivos
+        };
+
+        await OnFiltrosChanged.InvokeAsync(filtros);
+    }
+
+    private async Task LimpiarFiltros()
+    {
+        TextoBusqueda = null;
+        Pais = null;
+        Estado = null;
+        Ciudad = null;
+        PrecioMinimo = null;
+        PrecioMaximo = null;
+        SoloActivos = null;
+
+        var filtros = new FiltrosInmueble();
+        await OnFiltrosChanged.InvokeAsync(filtros);
+        StateHasChanged();
+    }
+
+    public class FiltrosInmueble
+    {
+        public string? TextoBusqueda { get; set; }
+        public string? Pais { get; set; }
+        public string? Estado { get; set; }
+        public string? Ciudad { get; set; }
+        public decimal? PrecioMinimo { get; set; }
+        public decimal? PrecioMaximo { get; set; }
+        public bool? SoloActivos { get; set; }
+    }
+
+    public class DropDownItem
+    {
+        public string Text { get; set; } = "";
+        public object Value { get; set; } = new();
+    }
+}

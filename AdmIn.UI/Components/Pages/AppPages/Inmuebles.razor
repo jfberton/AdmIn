@@ -11,7 +11,7 @@
 
 <div class="inmueble-admin-page">
     <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="var(--spacing-md)" class="action-bar rz-mb-4" Wrap="FlexWrap.Wrap">
-        <RadzenButton Text="Agregar Inmueble" Icon="add_home" Click="@(() => IrA("/agregar-inmueble"))" />
+        <RadzenButton Text="Agregar Inmueble" Icon="add_home" Click="@(() => IrA("/inmuebles/nuevo"))" />
 
         <div class="filter-tabs-container">
             <button class="filter-tab @GetFilterTabClass(null)" @onclick="() => FiltrarInmuebles(null)">Todos</button>
@@ -84,7 +84,7 @@
 
     private void VerDetalleInmueble(int inmuebleId)
     {
-        IrA($"/inmueble/{inmuebleId}");
+        IrA($"/inmuebles/{inmuebleId}");
     }
 
     // Nuevo método para la clase de las pestañas

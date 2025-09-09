@@ -1,0 +1,260 @@
+@page "/inmuebles/editar/{id:int}"
+@inherits BaseComponent
+
+@using AdmIn.Common.Entidades
+@using AdmIn.Common
+@using AdmIn.UI.Services
+@using Microsoft.AspNetCore.Components.Authorization
+
+@inject IServ_Inmueble serv_inmueble
+@inject AuthenticationStateProvider authStateProvider
+
+<PageTitle>Editar Inmueble</PageTitle>
+
+@if (inmueble != null)
+{
+    <RadzenStack Gap="2rem" Class="p-4">
+        <!-- Header -->
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem">
+            <RadzenButton ButtonStyle="ButtonStyle.Light" 
+                         Icon="arrow_back" 
+                         Click="@Cancelar"
+                         Size="ButtonSize.Medium" />
+            <RadzenText TextStyle="TextStyle.H4" Text="@($"Editar: {inmueble.Nombre}")" />
+        </RadzenStack>
+
+        <!-- Breadcrumb -->
+        <RadzenBreadCrumb>
+            <RadzenBreadCrumbItem Path="/inmuebles" Text="Inmuebles" Icon="apartment" />
+            <RadzenBreadCrumbItem Path="@($"/inmuebles/{inmueble.Id}")" Text="@inmueble.Nombre" Icon="home" />
+            <RadzenBreadCrumbItem Text="Editar" Icon="edit" />
+        </RadzenBreadCrumb>
+
+        <!-- Formulario Principal -->
+        <RadzenCard Class="form-container">
+            <InmuebleFormComponent Model="@inmueble"
+                                  IsEditMode="true"
+                                  OnValidSubmit="@ActualizarInmueble"
+                                  OnCancel="@Cancelar" />
+        </RadzenCard>
+
+        <!-- Información de Auditoría -->
+        <RadzenCard Class="info-card">
+            <RadzenStack Gap="1rem">
+                <RadzenText TextStyle="TextStyle.H6" Text="Información de Auditoría" />
+                <RadzenRow Gap="1rem">
+                    <RadzenColumn Size="6" SizeMD="3">
+                        <div class="audit-info">
+                            <RadzenText TextStyle="TextStyle.Caption" Text="CREADO EL" />
+                            <RadzenText TextStyle="TextStyle.Body2" Text="@inmueble.FechaCreacion.ToString("dd/MM/yyyy HH:mm")" />
+                        </div>
+                    </RadzenColumn>
+                    <RadzenColumn Size="6" SizeMD="3">
+                        <div class="audit-info">
+                            <RadzenText TextStyle="TextStyle.Caption" Text="MODIFICADO EL" />
+                            <RadzenText TextStyle="TextStyle.Body2" Text="@inmueble.FechaModificacion.ToString("dd/MM/yyyy HH:mm")" />
+                        </div>
+                    </RadzenColumn>
+                    @if (inmueble.UsuarioCreador != null)
+                    {
+                        <RadzenColumn Size="6" SizeMD="3">
+                            <div class="audit-info">
+                                <RadzenText TextStyle="TextStyle.Caption" Text="CREADO POR" />
+                                <RadzenText TextStyle="TextStyle.Body2" Text="@inmueble.UsuarioCreador.Nombre" />
+                            </div>
+                        </RadzenColumn>
+                    }
+                    @if (inmueble.UsuarioModificador != null)
+                    {
+                        <RadzenColumn Size="6" SizeMD="3">
+                            <div class="audit-info">
+                                <RadzenText TextStyle="TextStyle.Caption" Text="MODIFICADO POR" />
+                                <RadzenText TextStyle="TextStyle.Body2" Text="@inmueble.UsuarioModificador.Nombre" />
+                            </div>
+                        </RadzenColumn>
+                    }
+                </RadzenRow>
+            </RadzenStack>
+        </RadzenCard>
+    </RadzenStack>
+}
+else if (cargando)
+{
+    <RadzenStack AlignItems="AlignItems.Center" JustifyContent="JustifyContent.Center" Gap="1rem" Class="p-8">
+        <RadzenProgressBarCircular ProgressBarStyle="ProgressBarStyle.Primary" Value="100" ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
+        <RadzenText TextStyle="TextStyle.Body1" Text="Cargando inmueble..." />
+    </RadzenStack>
+}
+else
+{
+    <RadzenStack AlignItems="AlignItems.Center" JustifyContent="JustifyContent.Center" Gap="1rem" Class="p-8">
+        <RadzenIcon Icon="error_outline" Style="font-size: 64px; color: var(--rz-danger);" />
+        <RadzenText TextStyle="TextStyle.H5" Text="Inmueble no encontrado" />
+        <RadzenText TextStyle="TextStyle.Body1" Text="El inmueble solicitado no existe o no tienes permisos para editarlo." />
+        <RadzenButton ButtonStyle="ButtonStyle.Primary" Text="Volver a Inmuebles" Click="@(() => IrA("/inmuebles"))" />
+    </RadzenStack>
+}
+
+<style>
+    .form-container {
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+    
+    .info-card {
+        max-width: 1200px;
+        margin: 0 auto;
+        background: #f8fafc;
+    }
+    
+    .audit-info {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .audit-info .rz-text:first-child {
+        color: #6b7280;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+    }
+</style>
+
+@code {
+    [Parameter] public int Id { get; set; }
+    
+    private Inmueble? inmueble;
+    private bool cargando = true;
+    private int? usuarioActualId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        
+        await ObtenerUsuarioActual();
+        await CargarInmueble();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (inmueble?.Id != Id)
+        {
+            await CargarInmueble();
+        }
+    }
+
+    private async Task ObtenerUsuarioActual()
+    {
+        try
+        {
+            var authState = await authStateProvider.GetAuthenticationStateAsync();
+            var userIdClaim = authState.User.FindFirst("Id");
+            
+            if (userIdClaim != null && int.TryParse(userIdClaim.Value, out int userId))
+            {
+                usuarioActualId = userId;
+            }
+        }
+        catch (Exception ex)
+        {
+            await LogHelper.Error($"Error obteniendo usuario actual: {ex.Message}");
+        }
+    }
+
+    private async Task CargarInmueble()
+    {
+        try
+        {
+            cargando = true;
+            await LogHelper.Info($"Cargando inmueble para edición con ID: {Id}");
+
+            var resultado = await serv_inmueble.Obtener_por_id(Id);
+            
+            if (resultado.Correcto && resultado.Datos != null)
+            {
+                inmueble = resultado.Datos;
+                EstablecerTituloPagina("Inmuebles", $"Editar: {inmueble.Nombre}");
+                await LogHelper.Info($"Inmueble cargado para edición: {inmueble.Nombre}");
+            }
+            else
+            {
+                await LogHelper.Warn($"No se pudo cargar el inmueble para edición con ID: {Id}. Mensaje: {resultado.Mensaje}");
+                EstablecerTituloPagina("Inmuebles", "No encontrado");
+            }
+        }
+        catch (Exception ex)
+        {
+            await LogHelper.Error($"Error al cargar inmueble para edición: {ex.Message}");
+            MostrarNotificacion(
+                NotificationSeverity.Error,
+                "Error",
+                "No se pudo cargar la información del inmueble para editar"
+            );
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+
+    private async Task ActualizarInmueble(Inmueble inmuebleActualizado)
+    {
+        try
+        {
+            await LogHelper.Info($"Iniciando actualización de inmueble ID: {inmuebleActualizado.Id}");
+
+            // Mantener información de auditoría
+            inmuebleActualizado.FechaModificacion = DateTime.Now;
+            inmuebleActualizado.UsuarioModificadorId = usuarioActualId;
+
+            var resultado = await serv_inmueble.Actualizar(inmuebleActualizado);
+            
+            if (resultado.Correcto && resultado.Datos != null)
+            {
+                await LogHelper.Info($"Inmueble actualizado exitosamente: {resultado.Datos.Nombre}");
+                
+                MostrarNotificacion(
+                    NotificationSeverity.Success, 
+                    "¡Inmueble Actualizado!", 
+                    $"El inmueble '{inmuebleActualizado.Nombre}' ha sido actualizado exitosamente.",
+                    $"/inmuebles/{resultado.Datos.Id}"
+                );
+            }
+            else
+            {
+                await LogHelper.Warn($"Error al actualizar inmueble: {resultado.Mensaje}");
+                MostrarNotificacion(
+                    NotificationSeverity.Error, 
+                    "Error al Actualizar", 
+                    resultado.Mensaje ?? "Error desconocido al actualizar el inmueble"
+                );
+            }
+        }
+        catch (Exception ex)
+        {
+            await LogHelper.Error($"Excepción al actualizar inmueble: {ex.Message}");
+            MostrarNotificacion(
+                NotificationSeverity.Error, 
+                "Error Inesperado", 
+                $"Ocurrió un error inesperado: {ex.Message}"
+            );
+        }
+    }
+
+    private async Task Cancelar()
+    {
+        await LogHelper.Info("Usuario canceló la edición de inmueble");
+        
+        var confirmar = await MostrarConfirmacion(
+            "¿Estás seguro de que quieres cancelar? Se perderán todos los cambios no guardados.",
+            "Confirmar Cancelación",
+            "Sí, cancelar",
+            "No, continuar"
+        );
+
+        if (confirmar)
+        {
+            IrA($"/inmuebles/{Id}");
+        }
+    }
+}

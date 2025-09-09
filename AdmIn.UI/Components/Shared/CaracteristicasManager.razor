@@ -1,0 +1,187 @@
+@using AdmIn.Common.Entidades
+@using AdmIn.Common
+@using AdmIn.UI.Services
+
+@inject IServ_Inmueble serv_inmueble
+@inject IServ_Caracteristica serv_caracteristica
+@inject NotificationService notificationService
+@inject DialogService dialogService
+
+<RadzenStack Gap="1.5rem">
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
+        <RadzenText TextStyle="TextStyle.H6" Text="Características del Inmueble" />
+        <RadzenButton ButtonStyle="ButtonStyle.Primary" 
+                     Icon="add" 
+                     Text="Agregar Característica"
+                     Click="@MostrarDialogoAgregarCaracteristica" />
+    </RadzenStack>
+
+    @if (caracteristicasInmueble?.Any() == true)
+    {
+        <RadzenDataGrid Data="@caracteristicasInmueble" 
+                       TItem="CaracteristicaInmueble"
+                       AllowFiltering="true"
+                       AllowSorting="true"
+                       Class="rz-mt-4">
+            <Columns>
+                <RadzenDataGridColumn TItem="CaracteristicaInmueble" Property="Caracteristica.Nombre" Title="Característica" Width="200px">
+                    <Template Context="item">
+                        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                            <RadzenBadge BadgeStyle="@GetBadgeStyle(item.Caracteristica?.Tipo)" 
+                                        Text="@item.Caracteristica?.Tipo" />
+                            <RadzenText TextStyle="TextStyle.Body1" Text="@item.Caracteristica?.Nombre" />
+                        </RadzenStack>
+                    </Template>
+                </RadzenDataGridColumn>
+                
+                <RadzenDataGridColumn TItem="CaracteristicaInmueble" Property="Valor" Title="Valor" Width="150px">
+                    <Template Context="item">
+                        <RadzenText TextStyle="TextStyle.Body1" Text="@item.Valor" />
+                    </Template>
+                </RadzenDataGridColumn>
+                
+                <RadzenDataGridColumn TItem="CaracteristicaInmueble" Property="Caracteristica.Descripcion" Title="Descripción">
+                    <Template Context="item">
+                        <RadzenText TextStyle="TextStyle.Body2" Text="@item.Caracteristica?.Descripcion" Style="color: #6b7280;" />
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="CaracteristicaInmueble" Title="Acciones" Width="120px">
+                    <Template Context="item">
+                        <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem">
+                            <RadzenButton ButtonStyle="ButtonStyle.Warning" 
+                                         Icon="edit" 
+                                         Size="ButtonSize.ExtraSmall"
+                                         Click="@(() => EditarCaracteristica(item))"
+                                         Title="Editar" />
+                            <RadzenButton ButtonStyle="ButtonStyle.Danger" 
+                                         Icon="delete" 
+                                         Size="ButtonSize.ExtraSmall"
+                                         Click="@(() => EliminarCaracteristica(item))"
+                                         Title="Eliminar" />
+                        </RadzenStack>
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+    }
+    else
+    {
+        <RadzenAlert AlertStyle="AlertStyle.Info" ShowIcon="true">
+            <RadzenStack Gap="0.5rem">
+                <RadzenText TextStyle="TextStyle.Body1" Text="Este inmueble no tiene características definidas" />
+                <RadzenText TextStyle="TextStyle.Body2" Text="Agrega características como número de habitaciones, baños, cochera, etc." />
+            </RadzenStack>
+        </RadzenAlert>
+    }
+</RadzenStack>
+
+@code {
+    [Parameter] public int InmuebleId { get; set; }
+    [Parameter] public EventCallback OnCaracteristicaChanged { get; set; }
+
+    private IEnumerable<CaracteristicaInmueble>? caracteristicasInmueble;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarCaracteristicas();
+    }
+
+    private async Task CargarCaracteristicas()
+    {
+        try
+        {
+            var resultado = await serv_inmueble.ObtenerCaracteristicas(InmuebleId);
+            if (resultado.Correcto && resultado.Datos != null)
+            {
+                caracteristicasInmueble = resultado.Datos;
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            notificationService.Notify(NotificationSeverity.Error, "Error", $"Error al cargar características: {ex.Message}");
+        }
+    }
+
+    private async Task MostrarDialogoAgregarCaracteristica()
+    {
+        var result = await dialogService.OpenAsync<AgregarCaracteristicaDialog>("Agregar Característica",
+            new Dictionary<string, object>() { 
+                { "InmuebleId", InmuebleId }
+            },
+            new DialogOptions() { Width = "500px", Height = "400px", Resizable = true, Draggable = true });
+
+        if (result == true)
+        {
+            await CargarCaracteristicas();
+            if (OnCaracteristicaChanged.HasDelegate)
+            {
+                await OnCaracteristicaChanged.InvokeAsync();
+            }
+        }
+    }
+
+    private async Task EditarCaracteristica(CaracteristicaInmueble caracteristica)
+    {
+        var result = await dialogService.OpenAsync<EditarCaracteristicaDialog>("Editar Característica",
+            new Dictionary<string, object>() { 
+                { "Caracteristica", caracteristica }
+            },
+            new DialogOptions() { Width = "500px", Height = "300px", Resizable = true, Draggable = true });
+
+        if (result == true)
+        {
+            await CargarCaracteristicas();
+            if (OnCaracteristicaChanged.HasDelegate)
+            {
+                await OnCaracteristicaChanged.InvokeAsync();
+            }
+        }
+    }
+
+    private async Task EliminarCaracteristica(CaracteristicaInmueble caracteristica)
+    {
+        var confirmar = await dialogService.Confirm(
+            $"¿Estás seguro de que quieres eliminar la característica '{caracteristica.Caracteristica?.Nombre}' con valor '{caracteristica.Valor}'?",
+            "Confirmar Eliminación",
+            new ConfirmOptions() { OkButtonText = "Sí, eliminar", CancelButtonText = "Cancelar" });
+
+        if (confirmar == true)
+        {
+            try
+            {
+                var resultado = await serv_inmueble.EliminarCaracteristica(caracteristica.Id);
+                if (resultado.Correcto)
+                {
+                    notificationService.Notify(NotificationSeverity.Success, "Éxito", "Característica eliminada correctamente");
+                    await CargarCaracteristicas();
+                    if (OnCaracteristicaChanged.HasDelegate)
+                    {
+                        await OnCaracteristicaChanged.InvokeAsync();
+                    }
+                }
+                else
+                {
+                    notificationService.Notify(NotificationSeverity.Error, "Error", resultado.Mensaje);
+                }
+            }
+            catch (Exception ex)
+            {
+                notificationService.Notify(NotificationSeverity.Error, "Error", $"Error al eliminar característica: {ex.Message}");
+            }
+        }
+    }
+
+    private BadgeStyle GetBadgeStyle(string? tipo)
+    {
+        return tipo switch
+        {
+            "Número" => BadgeStyle.Primary,
+            "Texto" => BadgeStyle.Info,
+            "Booleano" => BadgeStyle.Success,
+            "Decimal" => BadgeStyle.Warning,
+            _ => BadgeStyle.Secondary
+        };
+    }
+}

@@ -1,0 +1,332 @@
+@using AdmIn.Common.Entidades
+
+@if (!componenteInicializado)
+{
+    <RadzenStack AlignItems="AlignItems.Center" Gap="0.5rem">
+        <RadzenProgressBarCircular ProgressBarStyle="ProgressBarStyle.Primary" 
+                                 Value="100" 
+                                 ShowValue="false" 
+                                 Mode="ProgressBarMode.Indeterminate" 
+                                 Size="ProgressBarCircularSize.Small" />
+        <RadzenText TextStyle="TextStyle.Body2" Text="Cargando ubicaciones..." />
+    </RadzenStack>
+}
+else
+{
+    <RadzenStack Gap="1rem">
+        <!-- País -->
+        <RadzenFormField Text="País" Variant="Variant.Outlined" Style="width:100%">
+            <ChildContent>
+                <RadzenDropDown @bind-Value="@SelectedPais" 
+                               Data="@Paises" 
+                               TextProperty="Text" 
+                               ValueProperty="Value"
+                               Placeholder="Seleccione un país"
+                               Change="@OnPaisChanged"
+                               AllowClear="true"
+                               Name="pais" />
+            </ChildContent>
+            <Helper>
+                @if (Required)
+                {
+                    <RadzenRequiredValidator Component="pais" Text="El país es requerido" />
+                }
+            </Helper>
+        </RadzenFormField>
+
+        <!-- Estado/Provincia -->
+        <RadzenFormField Text="Estado/Provincia" Variant="Variant.Outlined" Style="width:100%">
+            <ChildContent>
+                <RadzenDropDown @bind-Value="@SelectedEstado" 
+                               Data="@Estados" 
+                               TextProperty="Text" 
+                               ValueProperty="Value"
+                               Placeholder="Seleccione un estado"
+                               Change="@OnEstadoChanged"
+                               AllowClear="true"
+                               Disabled="@(string.IsNullOrEmpty(SelectedPais))"
+                               Name="estado" />
+            </ChildContent>
+            <Helper>
+                @if (Required)
+                {
+                    <RadzenRequiredValidator Component="estado" Text="El estado es requerido" />
+                }
+            </Helper>
+        </RadzenFormField>
+
+        <!-- Ciudad -->
+        <RadzenFormField Text="Ciudad" Variant="Variant.Outlined" Style="width:100%">
+            <ChildContent>
+                <RadzenDropDown @bind-Value="@SelectedCiudad" 
+                               Data="@Ciudades" 
+                               TextProperty="Text" 
+                               ValueProperty="Value"
+                               Placeholder="Seleccione una ciudad"
+                               Change="@OnCiudadChanged"
+                               AllowClear="true"
+                               Disabled="@(string.IsNullOrEmpty(SelectedEstado))"
+                               Name="ciudad" />
+            </ChildContent>
+            <Helper>
+                @if (Required)
+                {
+                    <RadzenRequiredValidator Component="ciudad" Text="La ciudad es requerida" />
+                }
+            </Helper>
+        </RadzenFormField>
+
+        <!-- Código Postal -->
+        <RadzenFormField Text="Código Postal" Variant="Variant.Outlined" Style="width:100%">
+            <ChildContent>
+                <RadzenTextBox @bind-Value="@SelectedCodigoPostal" 
+                              MaxLength="20" 
+                              Placeholder="Ingrese el código postal"
+                              Change="@OnCodigoPostalChanged"
+                              Name="codigoPostal" />
+            </ChildContent>
+        </RadzenFormField>
+    </RadzenStack>
+}
+
+@code {
+    [Parameter] public string? Pais { get; set; }
+    [Parameter] public EventCallback<string?> PaisChanged { get; set; }
+    
+    [Parameter] public string? Estado { get; set; }
+    [Parameter] public EventCallback<string?> EstadoChanged { get; set; }
+    
+    [Parameter] public string? Ciudad { get; set; }
+    [Parameter] public EventCallback<string?> CiudadChanged { get; set; }
+    
+    [Parameter] public string? CodigoPostal { get; set; }
+    [Parameter] public EventCallback<string?> CodigoPostalChanged { get; set; }
+    
+    [Parameter] public bool Required { get; set; } = false;
+
+    private string? SelectedPais { get; set; }
+    private string? SelectedEstado { get; set; }
+    private string? SelectedCiudad { get; set; }
+    private string? SelectedCodigoPostal { get; set; }
+    private bool componenteInicializado = false;
+
+    // Datos estáticos para países
+    private List<DropDownItem> Paises = new()
+    {
+        new() { Text = "Argentina", Value = "Argentina" },
+        new() { Text = "Brasil", Value = "Brasil" },
+        new() { Text = "Chile", Value = "Chile" },
+        new() { Text = "Colombia", Value = "Colombia" },
+        new() { Text = "México", Value = "México" },
+        new() { Text = "Perú", Value = "Perú" },
+        new() { Text = "Uruguay", Value = "Uruguay" },
+        new() { Text = "Paraguay", Value = "Paraguay" },
+        new() { Text = "Bolivia", Value = "Bolivia" },
+        new() { Text = "Ecuador", Value = "Ecuador" }
+    };
+
+    private List<DropDownItem> Estados = new();
+    private List<DropDownItem> Ciudades = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await Task.Delay(50); // Simular carga mínima
+            
+            SelectedPais = Pais;
+            SelectedEstado = Estado;
+            SelectedCiudad = Ciudad;
+            SelectedCodigoPostal = CodigoPostal;
+            
+            if (!string.IsNullOrEmpty(SelectedPais))
+            {
+                CargarEstados(SelectedPais);
+                if (!string.IsNullOrEmpty(SelectedEstado))
+                {
+                    CargarCiudades(SelectedPais, SelectedEstado);
+                }
+            }
+            
+            componenteInicializado = true;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error en UbicacionSelector: {ex.Message}");
+            componenteInicializado = true; // Permitir que continúe aunque haya error
+        }
+        
+        StateHasChanged();
+    }
+
+    private async Task OnPaisChanged(object value)
+    {
+        try
+        {
+            SelectedPais = value?.ToString();
+            SelectedEstado = null;
+            SelectedCiudad = null;
+            
+            Estados.Clear();
+            Ciudades.Clear();
+            
+            if (!string.IsNullOrEmpty(SelectedPais))
+            {
+                CargarEstados(SelectedPais);
+            }
+            
+            await PaisChanged.InvokeAsync(SelectedPais);
+            await EstadoChanged.InvokeAsync(null);
+            await CiudadChanged.InvokeAsync(null);
+            
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error en OnPaisChanged: {ex.Message}");
+        }
+    }
+
+    private async Task OnEstadoChanged(object value)
+    {
+        try
+        {
+            SelectedEstado = value?.ToString();
+            SelectedCiudad = null;
+            
+            Ciudades.Clear();
+            
+            if (!string.IsNullOrEmpty(SelectedPais) && !string.IsNullOrEmpty(SelectedEstado))
+            {
+                CargarCiudades(SelectedPais, SelectedEstado);
+            }
+            
+            await EstadoChanged.InvokeAsync(SelectedEstado);
+            await CiudadChanged.InvokeAsync(null);
+            
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error en OnEstadoChanged: {ex.Message}");
+        }
+    }
+
+    private async Task OnCiudadChanged(object value)
+    {
+        try
+        {
+            SelectedCiudad = value?.ToString();
+            await CiudadChanged.InvokeAsync(SelectedCiudad);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error en OnCiudadChanged: {ex.Message}");
+        }
+    }
+
+    private async Task OnCodigoPostalChanged(string value)
+    {
+        try
+        {
+            SelectedCodigoPostal = value;
+            await CodigoPostalChanged.InvokeAsync(SelectedCodigoPostal);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error en OnCodigoPostalChanged: {ex.Message}");
+        }
+    }
+
+    private void CargarEstados(string pais)
+    {
+        try
+        {
+            Estados = pais switch
+            {
+                "Argentina" => new List<DropDownItem>
+                {
+                    new() { Text = "Buenos Aires", Value = "Buenos Aires" },
+                    new() { Text = "Córdoba", Value = "Córdoba" },
+                    new() { Text = "Santa Fe", Value = "Santa Fe" },
+                    new() { Text = "Mendoza", Value = "Mendoza" },
+                    new() { Text = "Tucumán", Value = "Tucumán" },
+                    new() { Text = "Entre Ríos", Value = "Entre Ríos" },
+                    new() { Text = "Salta", Value = "Salta" },
+                    new() { Text = "Chaco", Value = "Chaco" },
+                    new() { Text = "Corrientes", Value = "Corrientes" },
+                    new() { Text = "Misiones", Value = "Misiones" }
+                },
+                "Brasil" => new List<DropDownItem>
+                {
+                    new() { Text = "São Paulo", Value = "São Paulo" },
+                    new() { Text = "Rio de Janeiro", Value = "Rio de Janeiro" },
+                    new() { Text = "Minas Gerais", Value = "Minas Gerais" },
+                    new() { Text = "Bahia", Value = "Bahia" },
+                    new() { Text = "Paraná", Value = "Paraná" }
+                },
+                "Chile" => new List<DropDownItem>
+                {
+                    new() { Text = "Santiago", Value = "Santiago" },
+                    new() { Text = "Valparaíso", Value = "Valparaíso" },
+                    new() { Text = "Concepción", Value = "Concepción" },
+                    new() { Text = "La Serena", Value = "La Serena" }
+                },
+                _ => new List<DropDownItem>()
+            };
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error cargando estados: {ex.Message}");
+            Estados = new List<DropDownItem>();
+        }
+    }
+
+    private void CargarCiudades(string pais, string estado)
+    {
+        try
+        {
+            if (pais == "Argentina")
+            {
+                Ciudades = estado switch
+                {
+                    "Buenos Aires" => new List<DropDownItem>
+                    {
+                        new() { Text = "La Plata", Value = "La Plata" },
+                        new() { Text = "Mar del Plata", Value = "Mar del Plata" },
+                        new() { Text = "Bahía Blanca", Value = "Bahía Blanca" },
+                        new() { Text = "Tandil", Value = "Tandil" }
+                    },
+                    "Córdoba" => new List<DropDownItem>
+                    {
+                        new() { Text = "Córdoba", Value = "Córdoba" },
+                        new() { Text = "Villa María", Value = "Villa María" },
+                        new() { Text = "Río Cuarto", Value = "Río Cuarto" }
+                    },
+                    "Santa Fe" => new List<DropDownItem>
+                    {
+                        new() { Text = "Santa Fe", Value = "Santa Fe" },
+                        new() { Text = "Rosario", Value = "Rosario" },
+                        new() { Text = "Rafaela", Value = "Rafaela" }
+                    },
+                    _ => new List<DropDownItem>()
+                };
+            }
+            else
+            {
+                Ciudades = new List<DropDownItem>();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error cargando ciudades: {ex.Message}");
+            Ciudades = new List<DropDownItem>();
+        }
+    }
+
+    public class DropDownItem
+    {
+        public string Text { get; set; } = "";
+        public string Value { get; set; } = "";
+    }
+}

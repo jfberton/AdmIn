@@ -24,38 +24,20 @@ namespace AdmIn.Data.Repositorios
 
             try
             {
-                var sqlInmueble = @"INSERT INTO Inmueble 
+                // Primero insertamos sin OUTPUT para evitar conflicto con triggers
+                var sqlInsert = @"INSERT INTO Inmueble 
                     (Nombre, Direccion, Pais, Estado, Ciudad, CP, Latitud, Longitud, 
                      Valor, ConstruccionM2, RentaMensual, AdministradorId, Descripcion, 
                      ImagenPrincipalId, MonedaId, Activo, FechaCreacion, FechaModificacion, 
                      UsuarioCreadorId, UsuarioModificadorId)
-                    OUTPUT INSERTED.InmuebleID as Id,
-                           INSERTED.Nombre,
-                           INSERTED.Direccion,
-                           INSERTED.Pais,
-                           INSERTED.Estado,
-                           INSERTED.Ciudad,
-                           INSERTED.CP as CodigoPostal,
-                           INSERTED.Latitud,
-                           INSERTED.Longitud,
-                           INSERTED.Valor,
-                           INSERTED.ConstruccionM2,
-                           INSERTED.RentaMensual,
-                           INSERTED.AdministradorId,
-                           INSERTED.Descripcion,
-                           INSERTED.ImagenPrincipalId,
-                           INSERTED.MonedaId,
-                           INSERTED.Activo,
-                           INSERTED.FechaCreacion,
-                           INSERTED.FechaModificacion,
-                           INSERTED.UsuarioCreadorId,
-                           INSERTED.UsuarioModificadorId
                     VALUES (@Nombre, @Direccion, @Pais, @Estado, @Ciudad, @CodigoPostal, 
                            @Latitud, @Longitud, @Valor, @ConstruccionM2, @RentaMensual, 
                            @AdministradorId, @Descripcion, @ImagenPrincipalId, @MonedaId, 
-                           @Activo, GETDATE(), GETDATE(), @UsuarioCreadorId, @UsuarioModificadorId);";
+                           @Activo, GETDATE(), GETDATE(), @UsuarioCreadorId, @UsuarioModificadorId);
+                           
+                    SELECT SCOPE_IDENTITY() AS NuevoId;";
 
-                var inmuebleCreado = await conexion.QuerySingleOrDefaultAsync<Inmueble>(sqlInmueble, new
+                var nuevoId = await conexion.QuerySingleAsync<int>(sqlInsert, new
                 {
                     inmueble.Nombre,
                     inmueble.Direccion,
@@ -77,8 +59,11 @@ namespace AdmIn.Data.Repositorios
                     UsuarioModificadorId = (object?)inmueble.UsuarioModificadorId ?? DBNull.Value
                 }, transaccion);
 
+                // Luego obtenemos el registro completo con todas las relaciones
+                var inmuebleCreado = await ObtenerInmuebleCompletoInterno(nuevoId, conexion, transaccion);
+
                 if (inmuebleCreado == null)
-                    throw new Exception("No se pudo crear el inmueble.");
+                    throw new Exception("No se pudo obtener el inmueble creado.");
 
                 transaccion.Commit();
 
@@ -108,7 +93,8 @@ namespace AdmIn.Data.Repositorios
 
             try
             {
-                var sqlActualizarInmueble = @"UPDATE Inmueble
+                // Primero actualizamos sin OUTPUT para evitar conflicto con triggers
+                var sqlUpdate = @"UPDATE Inmueble
                     SET Nombre = @Nombre,
                         Direccion = @Direccion,
                         Pais = @Pais,
@@ -127,30 +113,9 @@ namespace AdmIn.Data.Repositorios
                         Activo = @Activo,
                         FechaModificacion = GETDATE(),
                         UsuarioModificadorId = @UsuarioModificadorId
-                    OUTPUT INSERTED.InmuebleID as Id,
-                           INSERTED.Nombre,
-                           INSERTED.Direccion,
-                           INSERTED.Pais,
-                           INSERTED.Estado,
-                           INSERTED.Ciudad,
-                           INSERTED.CP as CodigoPostal,
-                           INSERTED.Latitud,
-                           INSERTED.Longitud,
-                           INSERTED.Valor,
-                           INSERTED.ConstruccionM2,
-                           INSERTED.RentaMensual,
-                           INSERTED.AdministradorId,
-                           INSERTED.Descripcion,
-                           INSERTED.ImagenPrincipalId,
-                           INSERTED.MonedaId,
-                           INSERTED.Activo,
-                           INSERTED.FechaCreacion,
-                           INSERTED.FechaModificacion,
-                           INSERTED.UsuarioCreadorId,
-                           INSERTED.UsuarioModificadorId
                     WHERE InmuebleID = @InmuebleID;";
 
-                var inmuebleActualizado = await conexion.QuerySingleOrDefaultAsync<Inmueble>(sqlActualizarInmueble, new
+                var filasAfectadas = await conexion.ExecuteAsync(sqlUpdate, new
                 {
                     InmuebleID = inmueble.Id,
                     inmueble.Nombre,
@@ -172,8 +137,14 @@ namespace AdmIn.Data.Repositorios
                     UsuarioModificadorId = (object?)inmueble.UsuarioModificadorId ?? DBNull.Value
                 }, transaccion);
 
+                if (filasAfectadas == 0)
+                    throw new Exception("No se encontró el inmueble para actualizar.");
+
+                // Luego obtenemos el registro actualizado con todas las relaciones
+                var inmuebleActualizado = await ObtenerInmuebleCompletoInterno(inmueble.Id, conexion, transaccion);
+
                 if (inmuebleActualizado == null)
-                    throw new Exception("No se pudo actualizar el inmueble.");
+                    throw new Exception("No se pudo obtener el inmueble actualizado.");
 
                 transaccion.Commit();
 
@@ -217,6 +188,10 @@ namespace AdmIn.Data.Repositorios
                     };
                 }
 
+                // Eliminar características asociadas
+                var sqlEliminarCaracteristicas = @"DELETE FROM CaracteristicaInmueble WHERE InmuebleID = @InmuebleID;";
+                await conexion.ExecuteAsync(sqlEliminarCaracteristicas, new { InmuebleID = inmueble.Id }, transaccion);
+
                 // Eliminar el inmueble
                 var sqlEliminarInmueble = @"DELETE FROM Inmueble WHERE InmuebleID = @InmuebleID;";
                 var filasAfectadas = await conexion.ExecuteAsync(sqlEliminarInmueble, new { InmuebleID = inmueble.Id }, transaccion);
@@ -246,6 +221,35 @@ namespace AdmIn.Data.Repositorios
             using var conexion = new SqlConnection(InfoSQL.Conexion);
             await conexion.OpenAsync();
 
+            try
+            {
+                var inmuebleCompleto = await ObtenerInmuebleCompletoInterno(inmueble.Id, conexion);
+                
+                if (inmuebleCompleto == null)
+                    return new DTO<Inmueble> { Correcto = false, Mensaje = "Inmueble no encontrado" };
+
+                return new DTO<Inmueble>
+                {
+                    Correcto = true,
+                    Datos = inmuebleCompleto,
+                    Mensaje = "Inmueble obtenido correctamente."
+                };
+            }
+            catch (Exception ex)
+            {
+                return new DTO<Inmueble>
+                {
+                    Correcto = false,
+                    Mensaje = $"Error al obtener inmueble: {ex.Message}"
+                };
+            }
+        }
+
+        /// <summary>
+        /// Método interno para obtener un inmueble completo con todas sus relaciones
+        /// </summary>
+        private async Task<Inmueble?> ObtenerInmuebleCompletoInterno(int inmuebleId, SqlConnection conexion, SqlTransaction? transaccion = null)
+        {
             var sqlInmueble = @"SELECT 
                                 i.InmuebleID as Id,
                                 i.Nombre,
@@ -268,15 +272,23 @@ namespace AdmIn.Data.Repositorios
                                 i.FechaModificacion,
                                 i.UsuarioCreadorId,
                                 i.UsuarioModificadorId,
+                                -- Datos de la moneda
                                 m.MonedaID as Moneda_Id,
                                 m.Codigo as Moneda_Codigo,
                                 m.Nombre as Moneda_Nombre,
+                                -- Datos del usuario creador
                                 uc.UsuarioID as UsuarioCreador_Id,
                                 uc.Nombre as UsuarioCreador_Nombre,
+                                uc.Email as UsuarioCreador_Email,
+                                -- Datos del usuario modificador
                                 um.UsuarioID as UsuarioModificador_Id,
                                 um.Nombre as UsuarioModificador_Nombre,
+                                um.Email as UsuarioModificador_Email,
+                                -- Datos del administrador
                                 adm.UsuarioID as Administrador_Id,
                                 adm.Nombre as Administrador_Nombre,
+                                adm.Email as Administrador_Email,
+                                -- Datos de la imagen principal
                                 img.Id as ImagenPrincipal_Id,
                                 img.Nombre as ImagenPrincipal_Nombre,
                                 img.Descripcion as ImagenPrincipal_Descripcion,
@@ -304,9 +316,24 @@ namespace AdmIn.Data.Repositorios
                                       LEFT JOIN Caracteristica c ON ci.CaracteristicaID = c.CaracteristicaID
                                       WHERE ci.InmuebleID = @InmuebleID;";
 
-            var inmuebleData = await conexion.QuerySingleOrDefaultAsync(sqlInmueble, new { InmuebleID = inmueble.Id });
+            // TODO: Descomentar cuando se cree la tabla InmuebleImagen
+            /*
+            var sqlImagenes = @"SELECT 
+                                i.Id,
+                                i.Nombre,
+                                i.Descripcion,
+                                i.Url,
+                                i.UrlThumb,
+                                i.FechaCreacion
+                              FROM Imagen i
+                              INNER JOIN InmuebleImagen ii ON i.Id = ii.ImagenId
+                              WHERE ii.InmuebleId = @InmuebleID
+                              ORDER BY ii.Orden, i.FechaCreacion;";
+            */
+
+            var inmuebleData = await conexion.QuerySingleOrDefaultAsync(sqlInmueble, new { InmuebleID = inmuebleId }, transaccion);
             if (inmuebleData == null)
-                return new DTO<Inmueble> { Correcto = false, Mensaje = "Inmueble no encontrado" };
+                return null;
 
             var inmuebleEncontrado = new Inmueble
             {
@@ -333,7 +360,7 @@ namespace AdmIn.Data.Repositorios
                 UsuarioModificadorId = inmuebleData.UsuarioModificadorId
             };
 
-            // Mapear relaciones
+            // Mapear la moneda si existe
             if (inmuebleData.Moneda_Id != null)
             {
                 inmuebleEncontrado.Moneda = new Moneda
@@ -344,33 +371,40 @@ namespace AdmIn.Data.Repositorios
                 };
             }
 
+            // Mapear el usuario creador si existe
             if (inmuebleData.UsuarioCreador_Id != null)
             {
                 inmuebleEncontrado.UsuarioCreador = new Usuario
                 {
                     Id = inmuebleData.UsuarioCreador_Id,
-                    Nombre = inmuebleData.UsuarioCreador_Nombre
+                    Nombre = inmuebleData.UsuarioCreador_Nombre,
+                    Email = inmuebleData.UsuarioCreador_Email
                 };
             }
 
+            // Mapear el usuario modificador si existe
             if (inmuebleData.UsuarioModificador_Id != null)
             {
                 inmuebleEncontrado.UsuarioModificador = new Usuario
                 {
                     Id = inmuebleData.UsuarioModificador_Id,
-                    Nombre = inmuebleData.UsuarioModificador_Nombre
+                    Nombre = inmuebleData.UsuarioModificador_Nombre,
+                    Email = inmuebleData.UsuarioModificador_Email
                 };
             }
 
+            // Mapear el administrador si existe
             if (inmuebleData.Administrador_Id != null)
             {
                 inmuebleEncontrado.Administrador = new Usuario
                 {
                     Id = inmuebleData.Administrador_Id,
-                    Nombre = inmuebleData.Administrador_Nombre
+                    Nombre = inmuebleData.Administrador_Nombre,
+                    Email = inmuebleData.Administrador_Email
                 };
             }
 
+            // Mapear la imagen principal si existe
             if (inmuebleData.ImagenPrincipal_Id != null)
             {
                 inmuebleEncontrado.ImagenPrincipal = new Imagen
@@ -385,38 +419,33 @@ namespace AdmIn.Data.Repositorios
             }
 
             // Cargar características del inmueble
-            var caracteristicasData = await conexion.QueryAsync(sqlCaracteristicas, new { InmuebleID = inmueble.Id });
-            foreach (var caracteristicaData in caracteristicasData)
+            var caracteristicasData = await conexion.QueryAsync(sqlCaracteristicas, new { InmuebleID = inmuebleId }, transaccion);
+            inmuebleEncontrado.Caracteristicas = caracteristicasData.Select(ci => new CaracteristicaInmueble
             {
-                var caracteristicaInmueble = new CaracteristicaInmueble
+                Id = ci.Id,
+                InmuebleID = ci.InmuebleID,
+                CaracteristicaID = ci.CaracteristicaID,
+                Valor = ci.Valor,
+                Caracteristica = ci.Caracteristica_Id != null ? new Caracteristica
                 {
-                    Id = caracteristicaData.Id,
-                    InmuebleID = caracteristicaData.InmuebleID,
-                    CaracteristicaID = caracteristicaData.CaracteristicaID,
-                    Valor = caracteristicaData.Valor
-                };
+                    Id = ci.Caracteristica_Id,
+                    Nombre = ci.Caracteristica_Nombre,
+                    Tipo = ci.Caracteristica_Tipo,
+                    Descripcion = ci.Caracteristica_Descripcion
+                } : null
+            }).ToList();
 
-                // Mapear la característica relacionada
-                if (caracteristicaData.Caracteristica_Id != null)
-                {
-                    caracteristicaInmueble.Caracteristica = new Caracteristica
-                    {
-                        Id = caracteristicaData.Caracteristica_Id,
-                        Nombre = caracteristicaData.Caracteristica_Nombre,
-                        Tipo = caracteristicaData.Caracteristica_Tipo,
-                        Descripcion = caracteristicaData.Caracteristica_Descripcion
-                    };
-                }
+            // TODO: Descomentar cuando se cree la tabla InmuebleImagen
+            // Cargar todas las imágenes del inmueble
+            /*
+            var imagenesData = await conexion.QueryAsync<Imagen>(sqlImagenes, new { InmuebleID = inmuebleId }, transaccion);
+            inmuebleEncontrado.Imagenes = imagenesData.ToList();
+            */
 
-                inmuebleEncontrado.Caracteristicas.Add(caracteristicaInmueble);
-            }
+            // Inicializar lista vacía por ahora
+            inmuebleEncontrado.Imagenes = new List<Imagen>();
 
-            return new DTO<Inmueble>
-            {
-                Correcto = true,
-                Datos = inmuebleEncontrado,
-                Mensaje = "Inmueble obtenido correctamente"
-            };
+            return inmuebleEncontrado;
         }
 
         public async Task<DTO<IEnumerable<Inmueble>>> Obtener_todos()
@@ -452,10 +481,16 @@ namespace AdmIn.Data.Repositorios
                                  img.Id as ImagenPrincipal_Id,
                                  img.Nombre as ImagenPrincipal_Nombre,
                                  img.Url as ImagenPrincipal_Url,
-                                 img.UrlThumb as ImagenPrincipal_UrlThumb
+                                 img.UrlThumb as ImagenPrincipal_UrlThumb,
+                                 uc.UsuarioID as UsuarioCreador_Id,
+                                 uc.Nombre as UsuarioCreador_Nombre,
+                                 um.UsuarioID as UsuarioModificador_Id,
+                                 um.Nombre as UsuarioModificador_Nombre
                                FROM Inmueble i
                                LEFT JOIN Moneda m ON i.MonedaId = m.MonedaID
-                               LEFT JOIN Imagen img ON i.ImagenPrincipalId = img.Id;";
+                               LEFT JOIN Imagen img ON i.ImagenPrincipalId = img.Id
+                               LEFT JOIN Usuario uc ON i.UsuarioCreadorId = uc.UsuarioID
+                               LEFT JOIN Usuario um ON i.UsuarioModificadorId = um.UsuarioID;";
 
             var inmueblesData = (await conexion.QueryAsync(sqlInmuebles)).ToList();
             var inmuebles = new List<Inmueble>();
@@ -510,6 +545,25 @@ namespace AdmIn.Data.Repositorios
                     };
                 }
 
+                // Mapear usuarios creador y modificador si existen
+                if (inmuebleData.UsuarioCreador_Id != null)
+                {
+                    inmueble.UsuarioCreador = new Usuario
+                    {
+                        Id = inmuebleData.UsuarioCreador_Id,
+                        Nombre = inmuebleData.UsuarioCreador_Nombre
+                    };
+                }
+
+                if (inmuebleData.UsuarioModificador_Id != null)
+                {
+                    inmueble.UsuarioModificador = new Usuario
+                    {
+                        Id = inmuebleData.UsuarioModificador_Id,
+                        Nombre = inmuebleData.UsuarioModificador_Nombre
+                    };
+                }
+
                 inmuebles.Add(inmueble);
             }
 
@@ -555,10 +609,16 @@ namespace AdmIn.Data.Repositorios
                             img.Id as ImagenPrincipal_Id,
                             img.Nombre as ImagenPrincipal_Nombre,
                             img.Url as ImagenPrincipal_Url,
-                            img.UrlThumb as ImagenPrincipal_UrlThumb
+                            img.UrlThumb as ImagenPrincipal_UrlThumb,
+                            uc.UsuarioID as UsuarioCreador_Id,
+                            uc.Nombre as UsuarioCreador_Nombre,
+                            um.UsuarioID as UsuarioModificador_Id,
+                            um.Nombre as UsuarioModificador_Nombre
                         FROM Inmueble i
                         LEFT JOIN Moneda m ON i.MonedaId = m.MonedaID
                         LEFT JOIN Imagen img ON i.ImagenPrincipalId = img.Id
+                        LEFT JOIN Usuario uc ON i.UsuarioCreadorId = uc.UsuarioID
+                        LEFT JOIN Usuario um ON i.UsuarioModificadorId = um.UsuarioID
                         WHERE 
                             (@FiltroBusqueda IS NULL OR i.Nombre LIKE '%' + @FiltroBusqueda + '%' 
                              OR i.Direccion LIKE '%' + @FiltroBusqueda + '%' 
@@ -611,7 +671,7 @@ namespace AdmIn.Data.Repositorios
                     UsuarioModificadorId = row.UsuarioModificadorId
                 };
 
-                // Mapear la moneda si existe
+                // Mapear relaciones
                 if (row.Moneda_Id != null)
                 {
                     inmueble.Moneda = new Moneda
@@ -631,6 +691,25 @@ namespace AdmIn.Data.Repositorios
                         Nombre = row.ImagenPrincipal_Nombre,
                         Url = row.ImagenPrincipal_Url,
                         UrlThumb = row.ImagenPrincipal_UrlThumb
+                    };
+                }
+
+                // Mapear usuarios creador y modificador si existen
+                if (row.UsuarioCreador_Id != null)
+                {
+                    inmueble.UsuarioCreador = new Usuario
+                    {
+                        Id = row.UsuarioCreador_Id,
+                        Nombre = row.UsuarioCreador_Nombre
+                    };
+                }
+
+                if (row.UsuarioModificador_Id != null)
+                {
+                    inmueble.UsuarioModificador = new Usuario
+                    {
+                        Id = row.UsuarioModificador_Id,
+                        Nombre = row.UsuarioModificador_Nombre
                     };
                 }
 
@@ -802,22 +881,32 @@ namespace AdmIn.Data.Repositorios
 
             try
             {
-                var sql = @"INSERT INTO CaracteristicaInmueble (InmuebleID, CaracteristicaID, Valor)
-                           OUTPUT INSERTED.CaracteristicaInmuebleID as Id,
-                                  INSERTED.InmuebleID,
-                                  INSERTED.CaracteristicaID,
-                                  INSERTED.Valor
-                           VALUES (@InmuebleID, @CaracteristicaID, @Valor);";
+                // Primero insertamos sin OUTPUT para evitar conflicto con triggers
+                var sqlInsert = @"INSERT INTO CaracteristicaInmueble (InmuebleID, CaracteristicaID, Valor)
+                                 VALUES (@InmuebleID, @CaracteristicaID, @Valor);
+                                 
+                                 SELECT SCOPE_IDENTITY() AS NuevoId;";
 
-                var caracteristicaCreada = await conexion.QuerySingleOrDefaultAsync<CaracteristicaInmueble>(sql, new
+                var nuevoId = await conexion.QuerySingleAsync<int>(sqlInsert, new
                 {
                     caracteristica.InmuebleID,
                     caracteristica.CaracteristicaID,
                     caracteristica.Valor
                 }, transaccion);
 
+                // Luego obtenemos el registro completo
+                var sqlSelect = @"SELECT 
+                    CaracteristicaInmuebleID as Id,
+                    InmuebleID,
+                    CaracteristicaID,
+                    Valor
+                FROM CaracteristicaInmueble 
+                WHERE CaracteristicaInmuebleID = @Id;";
+
+                var caracteristicaCreada = await conexion.QuerySingleOrDefaultAsync<CaracteristicaInmueble>(sqlSelect, new { Id = nuevoId }, transaccion);
+
                 if (caracteristicaCreada == null)
-                    throw new Exception("No se pudo agregar la característica al inmueble.");
+                    throw new Exception("No se pudo obtener la característica creada.");
 
                 transaccion.Commit();
 
@@ -847,22 +936,33 @@ namespace AdmIn.Data.Repositorios
 
             try
             {
-                var sql = @"UPDATE CaracteristicaInmueble
-                           SET Valor = @Valor
-                           OUTPUT INSERTED.CaracteristicaInmuebleID as Id,
-                                  INSERTED.InmuebleID,
-                                  INSERTED.CaracteristicaID,
-                                  INSERTED.Valor
-                           WHERE CaracteristicaInmuebleID = @Id;";
+                // Primero actualizamos sin OUTPUT para evitar conflicto con triggers
+                var sqlUpdate = @"UPDATE CaracteristicaInmueble
+                                 SET Valor = @Valor
+                                 WHERE CaracteristicaInmuebleID = @Id;";
 
-                var caracteristicaActualizada = await conexion.QuerySingleOrDefaultAsync<CaracteristicaInmueble>(sql, new
+                var filasAfectadas = await conexion.ExecuteAsync(sqlUpdate, new
                 {
                     caracteristica.Id,
                     caracteristica.Valor
                 }, transaccion);
 
+                if (filasAfectadas == 0)
+                    throw new Exception("No se encontró la característica para actualizar.");
+
+                // Luego obtenemos el registro actualizado
+                var sqlSelect = @"SELECT 
+                    CaracteristicaInmuebleID as Id,
+                    InmuebleID,
+                    CaracteristicaID,
+                    Valor
+                FROM CaracteristicaInmueble 
+                WHERE CaracteristicaInmuebleID = @Id;";
+
+                var caracteristicaActualizada = await conexion.QuerySingleOrDefaultAsync<CaracteristicaInmueble>(sqlSelect, new { Id = caracteristica.Id }, transaccion);
+
                 if (caracteristicaActualizada == null)
-                    throw new Exception("No se pudo actualizar la característica.");
+                    throw new Exception("No se pudo obtener la característica actualizada.");
 
                 transaccion.Commit();
 

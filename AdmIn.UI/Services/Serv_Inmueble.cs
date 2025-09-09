@@ -30,25 +30,29 @@ namespace AdmIn.UI.Services
             return response?.Datos?.Estado;
         }
 
-        public async Task AgregarCaracteristica(int inmuebleId, CaracteristicaInmueble caracteristica)
-        {
-            await EjecutarPeticion<DTO<CaracteristicaInmueble>>(HttpMethod.Post, $"{inmuebleId}/caracteristicas", caracteristica);
-        }
-
-        public async Task ActualizarCaracteristica(int inmuebleId, CaracteristicaInmueble caracteristica)
-        {
-            await EjecutarPeticion<DTO<CaracteristicaInmueble>>(HttpMethod.Put, $"caracteristicas/{caracteristica.Id}", caracteristica);
-        }
-
-        public async Task EliminarCaracteristica(int inmuebleId, int caracteristicaId)
-        {
-            await EjecutarPeticion<DTO<bool>>(HttpMethod.Delete, $"caracteristicas/{caracteristicaId}");
-        }
-
-        // Método adicional para obtener características
+        // Métodos de características
         public async Task<DTO<IEnumerable<CaracteristicaInmueble>>> ObtenerCaracteristicas(int inmuebleId)
         {
-            return await EjecutarPeticion<DTO<IEnumerable<CaracteristicaInmueble>>>(HttpMethod.Get, $"{inmuebleId}/caracteristicas");
+            return await EjecutarPeticion<DTO<IEnumerable<CaracteristicaInmueble>>>(HttpMethod.Get, $"{inmuebleId}/caracteristicas") ??
+                   new DTO<IEnumerable<CaracteristicaInmueble>> { Correcto = false, Mensaje = "Error al obtener características" };
+        }
+
+        public async Task<DTO<CaracteristicaInmueble>> AgregarCaracteristica(int inmuebleId, CaracteristicaInmueble caracteristica)
+        {
+            return await EjecutarPeticion<DTO<CaracteristicaInmueble>>(HttpMethod.Post, $"{inmuebleId}/caracteristicas", caracteristica) ??
+                   new DTO<CaracteristicaInmueble> { Correcto = false, Mensaje = "Error al agregar característica" };
+        }
+
+        public async Task<DTO<CaracteristicaInmueble>> ActualizarCaracteristica(CaracteristicaInmueble caracteristica)
+        {
+            return await EjecutarPeticion<DTO<CaracteristicaInmueble>>(HttpMethod.Put, $"caracteristicas/{caracteristica.Id}", caracteristica) ??
+                   new DTO<CaracteristicaInmueble> { Correcto = false, Mensaje = "Error al actualizar característica" };
+        }
+
+        public async Task<DTO<bool>> EliminarCaracteristica(int caracteristicaId)
+        {
+            return await EjecutarPeticion<DTO<bool>>(HttpMethod.Delete, $"caracteristicas/{caracteristicaId}") ??
+                   new DTO<bool> { Correcto = false, Mensaje = "Error al eliminar característica" };
         }
 
         public async Task AgregarImagen(int inmuebleId, Imagen imagen)
