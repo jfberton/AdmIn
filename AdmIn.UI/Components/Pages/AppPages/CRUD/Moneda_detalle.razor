@@ -43,11 +43,17 @@ else
                 <RadzenRow Gap="2rem">
                     <RadzenColumn Size="6" SizeMD="4">
                         <div class="detail-field">
+                            <RadzenText TextStyle="TextStyle.Caption" Text="ID" />
+                            <RadzenText TextStyle="TextStyle.H6" Text="@moneda.Id.ToString()" />
+                        </div>
+                    </RadzenColumn>
+                    <RadzenColumn Size="6" SizeMD="4">
+                        <div class="detail-field">
                             <RadzenText TextStyle="TextStyle.Caption" Text="CÓDIGO" />
                             <RadzenText TextStyle="TextStyle.H6" Text="@moneda.Codigo" />
                         </div>
                     </RadzenColumn>
-                    <RadzenColumn Size="6" SizeMD="8">
+                    <RadzenColumn Size="12" SizeMD="4">
                         <div class="detail-field">
                             <RadzenText TextStyle="TextStyle.Caption" Text="NOMBRE" />
                             <RadzenText TextStyle="TextStyle.H6" Text="@moneda.Nombre" />
@@ -64,14 +70,12 @@ else
                              Icon="list" 
                              Text="Volver al Listado" 
                              Click="@(() => IrA("/monedas"))" />
-                
                 <AuthorizeView Roles="admin_usuario">
                     <Authorized>
                         <RadzenButton ButtonStyle="ButtonStyle.Primary" 
                                      Icon="edit" 
-                                     Text="Editar" 
+                                     Text="Modificar" 
                                      Click="@(() => IrA($"/monedas/modificar/{moneda.Id}"))" />
-                        
                         <RadzenButton ButtonStyle="ButtonStyle.Danger" 
                                      Icon="delete" 
                                      Text="Eliminar" 
@@ -85,38 +89,44 @@ else
 
 <style>
     .detail-card {
-        max-width: 800px;
-        margin: 0 auto;
+        background: var(--rz-panel-background-color, #fff);
+        border: 1px solid var(--rz-border-color, #e0e0e0);
+        border-radius: 8px;
+        padding: 1.5rem;
     }
-    
+
     .actions-card {
-        max-width: 800px;
-        margin: 0 auto;
         background: #f8fafc;
+        border: 1px solid var(--rz-border-color, #e0e0e0);
+        border-radius: 8px;
+        padding: 1rem;
     }
-    
+
     .detail-field {
-        display: flex;
-        flex-direction: column;
-        gap: 0.25rem;
+        margin-bottom: 1rem;
     }
 
     .detail-field .rz-text:first-child {
         color: #6b7280;
         font-weight: 600;
         letter-spacing: 0.05em;
+        margin-bottom: 0.25rem;
     }
 </style>
 
 @code {
     [Parameter] public int Id { get; set; }
 
-    Moneda? moneda;
+    private Moneda? moneda;
 
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
-        
+        await CargarMoneda();
+    }
+
+    private async Task CargarMoneda()
+    {
         try
         {
             var rta = await serv_moneda.Obtener_por_id(Id);
