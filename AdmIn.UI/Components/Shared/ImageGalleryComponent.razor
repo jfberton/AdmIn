@@ -455,12 +455,40 @@
             }
             else
             {
-                await JSRuntime.InvokeVoidAsync("alert", $"Error: {resultado.Mensaje}");
+                // Mostrar un mensaje más informativo usando notificaciones de Radzen
+                var mensaje = resultado.Mensaje ?? "Error desconocido al eliminar la imagen";
+                
+                if (mensaje.Contains("imagen principal"))
+                {
+                    await JSRuntime.InvokeVoidAsync("alert", 
+                        $"No se puede eliminar esta imagen porque es la imagen principal.\n\n" +
+                        $"Para eliminarla:\n" +
+                        $"1. Establece otra imagen como principal, o\n" +
+                        $"2. Cambia la imagen principal desde la configuración del inmueble\n\n" +
+                        $"Mensaje técnico: {mensaje}");
+                }
+                else if (mensaje.Contains("REFERENCE constraint") || mensaje.Contains("conflicted"))
+                {
+                    await JSRuntime.InvokeVoidAsync("alert", 
+                        $"No se puede eliminar esta imagen porque está siendo utilizada.\n\n" +
+                        $"Para solucionarlo:\n" +
+                        $"1. Verifica si es la imagen principal del inmueble\n" +
+                        $"2. Cambia la imagen principal si es necesario\n" +
+                        $"3. Intenta eliminarla nuevamente\n\n" +
+                        $"Si el problema persiste, contacta al administrador.\n\n" +
+                        $"Mensaje técnico: {mensaje}");
+                }
+                else
+                {
+                    await JSRuntime.InvokeVoidAsync("alert", $"Error: {mensaje}");
+                }
             }
         }
         catch (Exception ex)
         {
-            await JSRuntime.InvokeVoidAsync("alert", $"Error al eliminar imagen: {ex.Message}");
+            await JSRuntime.InvokeVoidAsync("alert", 
+                $"Error inesperado al eliminar imagen:\n{ex.Message}\n\n" +
+                $"Si el problema persiste, contacta al administrador del sistema.");
         }
     }
 

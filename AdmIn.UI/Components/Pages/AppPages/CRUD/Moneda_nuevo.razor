@@ -1,0 +1,110 @@
+@page "/monedas/nuevo"
+
+@inherits BaseComponent
+
+@using AdmIn.Common.Entidades
+@using AdmIn.Common
+@using AdmIn.UI.Services
+@using System.Text.RegularExpressions
+@using System.ComponentModel.DataAnnotations
+
+@inject IServ_Moneda serv_moneda;
+
+<RadzenTemplateForm TItem="Moneda" Data="@moneda" Submit="@OnSubmit" @ref="form">
+    <RadzenRow class="rz-mx-2 rz-mb-4">
+        <RadzenColumn>
+            <RadzenFieldset Text="Información de la moneda">
+                <RadzenRow class="rz-mb-2">
+                    <RadzenColumn Size="12" SizeMD="6">
+                        <RadzenLabel Text="Código*" />
+                        <RadzenTextBox @bind-Value="moneda.Codigo" MaxLength="10" class="w-100"
+                                       Name="componente_codigo" Placeholder="Ej: USD, EUR, ARS" />
+                        <RadzenRequiredValidator Component="componente_codigo" Text="El código es requerido" />
+                        <RadzenRegexValidator Component="componente_codigo" 
+                                            Pattern="^[A-Z]{3}$" 
+                                            Text="El código debe tener exactamente 3 letras mayúsculas (Ej: USD)" />
+                    </RadzenColumn>
+                    <RadzenColumn Size="12" SizeMD="6">
+                        <RadzenLabel Text="Nombre*" />
+                        <RadzenTextBox @bind-Value="moneda.Nombre" MaxLength="100" class="w-100"
+                                       Name="componente_nombre" Placeholder="Ej: Dólar Estadounidense" />
+                        <RadzenRequiredValidator Component="componente_nombre" Text="El nombre es requerido" />
+                    </RadzenColumn>
+                </RadzenRow>
+            </RadzenFieldset>
+        </RadzenColumn>
+    </RadzenRow>
+
+    <RadzenRow class="rz-mx-2 rz-mb-8" JustifyContent="JustifyContent.End">
+        <RadzenColumn>
+            <MiRadzenButton ButtonStyle="ButtonStyle.Primary" Text="Guardar" OnClick="@OnSubmit" />
+            <MiRadzenButton ButtonStyle="ButtonStyle.Secondary" Text="Cancelar" OnClick="@OnCancel" />
+        </RadzenColumn>
+    </RadzenRow>
+</RadzenTemplateForm>
+
+@code {
+    RadzenTemplateForm<Moneda> form;
+    Moneda moneda = new Moneda();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        base.EstablecerTituloPagina("Monedas", "Nueva");
+    }
+
+    #region Validaciones
+
+    public bool Is_valid()
+    {
+        form.EditContext.Validate();
+        return form.IsValid;
+    }
+
+    bool Validar_codigo(string codigo)
+    {
+        if (string.IsNullOrEmpty(codigo))
+            return false;
+        
+        // Validar que sea exactamente 3 letras mayúsculas
+        return Regex.IsMatch(codigo, "^[A-Z]{3}$");
+    }
+
+    bool Validar_nombre(string nombre)
+    {
+        return !string.IsNullOrEmpty(nombre);
+    }
+
+    #endregion
+
+    async Task OnSubmit()
+    {
+        if (Is_valid())
+        {
+            try
+            {
+                // Convertir código a mayúsculas
+                moneda.Codigo = moneda.Codigo?.ToUpper();
+
+                DTO<Moneda> moneda_respuesta = await serv_moneda.Crear(moneda);
+                if (moneda_respuesta != null && moneda_respuesta.Correcto)
+                {
+                    base.MostrarNotificacion(NotificationSeverity.Success, "Alta correcta", "Se ha agregado una nueva moneda al sistema", "/monedas");
+                }
+                else
+                {
+                    base.MostrarNotificacion(NotificationSeverity.Error, "Error!", $"Error al agregar la moneda: {moneda_respuesta.Mensaje}");
+                }
+            }
+            catch (Exception ex)
+            {
+                base.MostrarNotificacion(NotificationSeverity.Error, "Error!", $"Error al agregar la moneda: {ex.Message}");
+            }
+        }
+    }
+
+    async Task OnCancel()
+    {
+        base.IrA("/monedas");
+    }
+}

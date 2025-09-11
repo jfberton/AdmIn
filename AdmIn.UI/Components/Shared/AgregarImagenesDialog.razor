@@ -3,89 +3,271 @@
 @using AdmIn.UI.Services
 
 @inject IServ_Imagen serv_imagen
+@inject IServ_Inmueble serv_inmueble
 @inject NotificationService notificationService
+@inject DialogService dialogService
 
 <RadzenStack Gap="1.5rem">
     <RadzenAlert AlertStyle="AlertStyle.Info" ShowIcon="true">
         <RadzenStack Gap="0.5rem">
-            <RadzenText TextStyle="TextStyle.Body1" Text="@($"Agregando imágenes a: {NombreInmueble}")" />
-            <RadzenText TextStyle="TextStyle.Body2" Text="Puedes subir múltiples imágenes a la vez. La primera imagen se establecerá como principal automáticamente si no hay ninguna." />
+            <RadzenText TextStyle="TextStyle.Body1" Text="@($"Gestión de imágenes: {NombreInmueble}")" />
+            <RadzenText TextStyle="TextStyle.Body2" Text="Puedes subir múltiples imágenes y gestionar cuál es la imagen principal del inmueble." />
         </RadzenStack>
     </RadzenAlert>
-    
-    <ImageUploadComponent 
-        PermitirMultiples="true"
-        MostrarVistaPrevia="true"
-        MostrarBotones="true"
-        OnImagenesSubidas="@OnImagenesSubidas"
-        OnError="@OnErrorSubida" />
 
-    @if (imagenesSubidas.Any())
+    <!-- Subir nuevas imágenes -->
+    <RadzenFieldset Text="Subir Nuevas Imágenes">
+        <ImageUploadComponent 
+            PermitirMultiples="true"
+            MostrarVistaPrevia="true"
+            MostrarBotones="true"
+            InmuebleId="@InmuebleId"
+            EstablecerComoPrincipal="@(!imagenesExistentes.Any())"
+            OnImagenesSubidas="@OnImagenesSubidas"
+            OnError="@OnErrorSubida" />
+
+        @if (imagenesSubidas.Any())
+        {
+            <RadzenAlert AlertStyle="AlertStyle.Success" ShowIcon="true" class="mt-3">
+                <RadzenText TextStyle="TextStyle.Body2" Text="@($"? {imagenesSubidas.Count} imagen(es) subida(s) exitosamente")" />
+            </RadzenAlert>
+        }
+    </RadzenFieldset>
+
+    <!-- Galería de imágenes existentes -->
+    <RadzenFieldset Text="Imágenes del Inmueble">
+        @if (imagenesExistentes.Any())
+        {
+            <ImageGalleryComponent 
+                Imagenes="@imagenesExistentes"
+                ImagenPrincipalId="@imagenPrincipalId"
+                EntidadId="@InmuebleId"
+                TipoEntidad="inmueble"
+                PermitirEstablecerPrincipal="true"
+                PermitirEditar="true"
+                PermitirEliminar="true"
+                MensajeSinImagenes="No hay imágenes para este inmueble"
+                MensajeUpload="Sube algunas imágenes usando el formulario de arriba"
+                OnImagenPrincipalCambiada="@OnImagenPrincipalCambiada"
+                OnImagenEliminada="@OnImagenEliminada"
+                OnImagenActualizada="@OnImagenActualizada" />
+        }
+        else
+        {
+            <RadzenAlert AlertStyle="AlertStyle.Info" ShowIcon="true">
+                <RadzenStack Gap="0.5rem">
+                    <RadzenText TextStyle="TextStyle.Body1" Text="Este inmueble no tiene imágenes" />
+                    <RadzenText TextStyle="TextStyle.Body2" Text="Usa el formulario de arriba para subir las primeras imágenes" />
+                </RadzenStack>
+            </RadzenAlert>
+        }
+    </RadzenFieldset>
+
+    <!-- Estadísticas -->
+    @if (imagenesExistentes.Any())
     {
-        <RadzenFieldset Text="Imágenes Subidas">
-            <RadzenStack Gap="1rem">
-                @foreach (var imagen in imagenesSubidas)
-                {
-                    <RadzenCard>
-                        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem">
-                            <RadzenImage Path="@imagen.UrlThumb" 
-                                        Style="width: 80px; height: 80px; object-fit: cover; border-radius: 8px;" 
-                                        Alt="@imagen.Nombre" />
-                            <RadzenStack Gap="0.5rem" Style="flex: 1;">
-                                <RadzenText TextStyle="TextStyle.Body1" Text="@imagen.Nombre" />
-                                <RadzenText TextStyle="TextStyle.Body2" Text="@imagen.Descripcion" Style="color: #6b7280;" />
-                            </RadzenStack>
-                            <RadzenBadge BadgeStyle="BadgeStyle.Success" Text="Subida" />
-                        </RadzenStack>
-                    </RadzenCard>
-                }
+        <RadzenCard>
+            <RadzenStack Orientation="Orientation.Horizontal" Gap="2rem" JustifyContent="JustifyContent.SpaceAround">
+                <div class="stat-item">
+                    <RadzenIcon Icon="photo_library" Style="font-size: 2rem; color: var(--rz-info);" />
+                    <RadzenText TextStyle="TextStyle.H6" Text="@imagenesExistentes.Count.ToString()" />
+                    <RadzenText TextStyle="TextStyle.Caption" Text="Total de imágenes" />
+                </div>
+                <div class="stat-item">
+                    <RadzenIcon Icon="star" Style="font-size: 2rem; color: var(--rz-warning);" />
+                    <RadzenText TextStyle="TextStyle.H6" Text="@(imagenPrincipalId.HasValue ? "1" : "0")" />
+                    <RadzenText TextStyle="TextStyle.Caption" Text="Imagen principal" />
+                </div>
+                <div class="stat-item">
+                    <RadzenIcon Icon="cloud_upload" Style="font-size: 2rem; color: var(--rz-success);" />
+                    <RadzenText TextStyle="TextStyle.H6" Text="@imagenesSubidas.Count.ToString()" />
+                    <RadzenText TextStyle="TextStyle.Caption" Text="Subidas en esta sesión" />
+                </div>
             </RadzenStack>
-        </RadzenFieldset>
+        </RadzenCard>
     }
         
     <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" JustifyContent="JustifyContent.End">
         <RadzenButton ButtonStyle="ButtonStyle.Success" 
-                     Text="@(imagenesSubidas.Any() ? "Finalizar" : "Cerrar")" 
+                     Text="Finalizar" 
+                     Icon="check"
                      Click="@CerrarDialog" />
     </RadzenStack>
 </RadzenStack>
 
+<style>
+    .stat-item {
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+    }
+</style>
+
 @code {
     [Parameter] public int InmuebleId { get; set; }
     [Parameter] public string NombreInmueble { get; set; } = "";
-    [Inject] DialogService dialogService { get; set; } = default!;
 
     private List<Imagen> imagenesSubidas = new();
+    private List<Imagen> imagenesExistentes = new();
+    private Guid? imagenPrincipalId;
+    private bool cargandoImagenes = true;
 
-    private async Task OnImagenesSubidas(List<Imagen> imagenes)
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarImagenesExistentes();
+    }
+
+    private async Task CargarImagenesExistentes()
     {
         try
         {
-            foreach (var imagen in imagenes)
+            cargandoImagenes = true;
+            StateHasChanged();
+            
+            Console.WriteLine($"=== CargarImagenesExistentes para InmuebleId: {InmuebleId} ===");
+            
+            // Cargar imágenes del inmueble
+            var resultado = await serv_imagen.ObtenerPorInmueble(InmuebleId);
+            
+            Console.WriteLine($"Resultado imágenes: Correcto={resultado.Correcto}, Count={resultado.Datos?.Count() ?? 0}");
+            
+            if (resultado.Correcto && resultado.Datos != null)
             {
-                // Asociar imagen al inmueble
-                // En una implementación real, esto se haría en el backend automáticamente
-                // o através de un endpoint específico
-                imagenesSubidas.Add(imagen);
+                imagenesExistentes = resultado.Datos.ToList();
+                Console.WriteLine($"Imágenes cargadas: {imagenesExistentes.Count}");
                 
-                notificationService.Notify(NotificationSeverity.Success, "Imagen subida", $"'{imagen.Nombre}' se subió correctamente");
+                foreach (var img in imagenesExistentes)
+                {
+                    Console.WriteLine($"  - ID: {img.Id}, Nombre: {img.Nombre}");
+                }
+            }
+            else
+            {
+                Console.WriteLine($"Error o sin imágenes: {resultado.Mensaje}");
+                imagenesExistentes = new List<Imagen>();
+            }
+            
+            // Cargar datos del inmueble para obtener la imagen principal
+            try
+            {
+                var inmuebleResult = await serv_inmueble.Obtener_por_id(InmuebleId);
+                if (inmuebleResult.Correcto && inmuebleResult.Datos != null)
+                {
+                    imagenPrincipalId = inmuebleResult.Datos.ImagenPrincipalId;
+                    Console.WriteLine($"Imagen principal del inmueble: {imagenPrincipalId}");
+                }
+                else
+                {
+                    Console.WriteLine($"Error al cargar inmueble: {inmuebleResult.Mensaje}");
+                    imagenPrincipalId = null;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error al obtener inmueble: {ex.Message}");
+                imagenPrincipalId = imagenesExistentes.FirstOrDefault()?.Id;
             }
             
             StateHasChanged();
         }
         catch (Exception ex)
         {
-            notificationService.Notify(NotificationSeverity.Error, "Error", $"Error al procesar imágenes: {ex.Message}");
+            Console.WriteLine($"Excepción en CargarImagenesExistentes: {ex.Message}");
+            notificationService.Notify(NotificationSeverity.Error, "Error", $"Error al cargar imágenes: {ex.Message}");
+            imagenesExistentes = new List<Imagen>();
+            imagenPrincipalId = null;
+        }
+        finally
+        {
+            cargandoImagenes = false;
+            StateHasChanged();
         }
     }
 
-    private async Task OnErrorSubida(string error)
+    private async Task OnImagenesSubidas(List<Imagen> imagenes)
     {
-        notificationService.Notify(NotificationSeverity.Error, "Error", error);
+        try
+        {
+            imagenesSubidas.AddRange(imagenes);
+            await CargarImagenesExistentes(); // Recargar para mostrar las nuevas imágenes
+            
+            notificationService.Notify(NotificationSeverity.Success, "Éxito", 
+                $"{imagenes.Count} imagen(es) subida(s) correctamente");
+                
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            notificationService.Notify(NotificationSeverity.Error, "Error", 
+                $"Error al procesar imágenes subidas: {ex.Message}");
+        }
+    }
+
+    private void OnErrorSubida(string mensajeError)
+    {
+        notificationService.Notify(NotificationSeverity.Error, "Error de Subida", mensajeError);
+    }
+
+    private async Task OnImagenPrincipalCambiada(Imagen imagen)
+    {
+        try
+        {
+            imagenPrincipalId = imagen.Id;
+            notificationService.Notify(NotificationSeverity.Success, "Imagen Principal", 
+                $"'{imagen.Nombre}' establecida como imagen principal");
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            notificationService.Notify(NotificationSeverity.Error, "Error", 
+                $"Error al establecer imagen principal: {ex.Message}");
+        }
+    }
+
+    private async Task OnImagenEliminada(Imagen imagen)
+    {
+        try
+        {
+            await CargarImagenesExistentes(); // Recargar para reflejar la eliminación
+            
+            if (imagenPrincipalId == imagen.Id)
+            {
+                imagenPrincipalId = null;
+                notificationService.Notify(NotificationSeverity.Warning, "Atención", 
+                    "La imagen principal fue eliminada. Selecciona otra imagen como principal.");
+            }
+            
+            notificationService.Notify(NotificationSeverity.Info, "Eliminada", 
+                $"Imagen '{imagen.Nombre}' eliminada correctamente");
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            notificationService.Notify(NotificationSeverity.Error, "Error", 
+                $"Error al procesar eliminación: {ex.Message}");
+        }
+    }
+
+    private async Task OnImagenActualizada(Imagen imagen)
+    {
+        try
+        {
+            await CargarImagenesExistentes(); // Recargar para mostrar los cambios
+            notificationService.Notify(NotificationSeverity.Success, "Actualizada", 
+                $"Información de imagen actualizada correctamente");
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            notificationService.Notify(NotificationSeverity.Error, "Error", 
+                $"Error al actualizar imagen: {ex.Message}");
+        }
     }
 
     private void CerrarDialog()
     {
-        dialogService.Close(imagenesSubidas.Any());
+        dialogService.Close(imagenesSubidas.Any() || imagenesExistentes.Any());
     }
 }

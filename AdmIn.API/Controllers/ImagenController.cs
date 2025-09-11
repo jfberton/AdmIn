@@ -56,9 +56,16 @@ namespace AdmIn.API.Controllers
             {
                 var resultado = await _servicioUpload.SubirImagen(archivo, descripcion);
                 
-                if (resultado.Correcto && establecerComoPrincipal)
+                if (resultado.Correcto)
                 {
-                    await _servicioUpload.EstablecerImagenPrincipal(resultado.Datos.Id, inmuebleId);
+                    // Asociar la imagen al inmueble
+                    await _imagenRepo.Asociar_a_inmueble(resultado.Datos.Id, inmuebleId);
+                    
+                    // Si se debe establecer como principal
+                    if (establecerComoPrincipal)
+                    {
+                        await _servicioUpload.EstablecerImagenPrincipal(resultado.Datos.Id, inmuebleId);
+                    }
                 }
                 
                 return resultado;
@@ -123,7 +130,19 @@ namespace AdmIn.API.Controllers
         [Authorize(Roles = "admin_usuario")]
         public async Task<DTO<IEnumerable<Imagen>>> ObtenerPorInmueble(int inmuebleId)
         {
-            return await _servicioUpload.ObtenerImagenesInmueble(inmuebleId);
+            try
+            {
+                // Llamar directamente al repositorio para evitar layers innecesarios
+                return await _imagenRepo.Obtener_por_inmueble(inmuebleId);
+            }
+            catch (Exception ex)
+            {
+                return new DTO<IEnumerable<Imagen>>
+                {
+                    Correcto = false,
+                    Mensaje = $"Error al obtener imágenes del inmueble: {ex.Message}"
+                };
+            }
         }
 
         [HttpPut("actualizar/{imagenId}")]
@@ -163,7 +182,36 @@ namespace AdmIn.API.Controllers
         [Authorize(Roles = "admin_usuario")]
         public async Task<DTO<bool>> Eliminar(Guid imagenId)
         {
-            return await _servicioUpload.EliminarImagen(imagenId);
+            try
+            {
+                // Primero intentar eliminar desde el repositorio (base de datos)
+                var resultadoDB = await _imagenRepo.Eliminar(new Imagen { Id = imagenId });
+                
+                if (resultadoDB.Correcto)
+                {
+                    // Si se eliminó correctamente de la BD, intentar eliminar del servicio de archivos
+                    try
+                    {
+                        await _servicioUpload.EliminarImagen(imagenId);
+                    }
+                    catch (Exception ex)
+                    {
+                        // Log el error pero no fallar la operación principal
+                        // La imagen ya se eliminó de la BD exitosamente
+                        Console.WriteLine($"Advertencia: Imagen eliminada de BD pero falló eliminar archivo: {ex.Message}");
+                    }
+                }
+                
+                return resultadoDB;
+            }
+            catch (Exception ex)
+            {
+                return new DTO<bool>
+                {
+                    Correcto = false,
+                    Mensaje = $"Error al eliminar imagen: {ex.Message}"
+                };
+            }
         }
     }
 }

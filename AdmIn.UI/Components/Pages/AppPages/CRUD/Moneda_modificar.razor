@@ -1,0 +1,148 @@
+@page "/monedas/modificar/{id:int}"
+
+@inherits BaseComponent
+
+@using AdmIn.Common.Entidades
+@using AdmIn.Common
+@using AdmIn.UI.Services
+@using System.Text.RegularExpressions
+@using System.ComponentModel.DataAnnotations
+
+@inject IServ_Moneda serv_moneda;
+
+@if (moneda == null)
+{
+    <RadzenProgressBarCircular ProgressBarStyle="ProgressBarStyle.Primary" 
+                              Value="100" 
+                              ShowValue="false" 
+                              Mode="ProgressBarMode.Indeterminate" />
+    <p>Cargando moneda...</p>
+}
+else
+{
+    <RadzenTemplateForm TItem="Moneda" Data="@moneda" Submit="@OnSubmit" @ref="form">
+        <RadzenRow class="rz-mx-2 rz-mb-4">
+            <RadzenColumn>
+                <RadzenFieldset Text="Información de la moneda">
+                    <RadzenRow class="rz-mb-2">
+                        <RadzenColumn Size="12" SizeMD="6">
+                            <RadzenLabel Text="Código*" />
+                            <RadzenTextBox @bind-Value="moneda.Codigo" MaxLength="10" class="w-100"
+                                           Name="componente_codigo" Placeholder="Ej: USD, EUR, ARS" />
+                            <RadzenRequiredValidator Component="componente_codigo" Text="El código es requerido" />
+                            <RadzenRegexValidator Component="componente_codigo" 
+                                                Pattern="^[A-Z]{3}$" 
+                                                Text="El código debe tener exactamente 3 letras mayúsculas (Ej: USD)" />
+                        </RadzenColumn>
+                        <RadzenColumn Size="12" SizeMD="6">
+                            <RadzenLabel Text="Nombre*" />
+                            <RadzenTextBox @bind-Value="moneda.Nombre" MaxLength="100" class="w-100"
+                                           Name="componente_nombre" Placeholder="Ej: Dólar Estadounidense" />
+                            <RadzenRequiredValidator Component="componente_nombre" Text="El nombre es requerido" />
+                        </RadzenColumn>
+                    </RadzenRow>
+                </RadzenFieldset>
+            </RadzenColumn>
+        </RadzenRow>
+
+        <RadzenRow class="rz-mx-2 rz-mb-8" JustifyContent="JustifyContent.End">
+            <RadzenColumn>
+                <MiRadzenButton ButtonStyle="ButtonStyle.Primary" Text="Actualizar" OnClick="@OnSubmit" />
+                <MiRadzenButton ButtonStyle="ButtonStyle.Secondary" Text="Cancelar" OnClick="@OnCancel" />
+            </RadzenColumn>
+        </RadzenRow>
+    </RadzenTemplateForm>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    RadzenTemplateForm<Moneda> form;
+    Moneda? moneda;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        
+        try
+        {
+            var rta = await serv_moneda.Obtener_por_id(Id);
+            if (rta.Correcto && rta.Datos != null)
+            {
+                moneda = rta.Datos;
+                base.EstablecerTituloPagina("Monedas", $"Modificar: {moneda.Nombre}");
+            }
+            else
+            {
+                base.MostrarNotificacion(NotificationSeverity.Error, "Error!", "No se pudo cargar la moneda", "/monedas");
+            }
+        }
+        catch (Exception ex)
+        {
+            base.MostrarNotificacion(NotificationSeverity.Error, "Error!", $"Error al cargar la moneda: {ex.Message}", "/monedas");
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (moneda?.Id != Id)
+        {
+            await OnInitializedAsync();
+        }
+    }
+
+    #region Validaciones
+
+    public bool Is_valid()
+    {
+        form.EditContext.Validate();
+        return form.IsValid;
+    }
+
+    bool Validar_codigo(string codigo)
+    {
+        if (string.IsNullOrEmpty(codigo))
+            return false;
+        
+        // Validar que sea exactamente 3 letras mayúsculas
+        return Regex.IsMatch(codigo, "^[A-Z]{3}$");
+    }
+
+    bool Validar_nombre(string nombre)
+    {
+        return !string.IsNullOrEmpty(nombre);
+    }
+
+    #endregion
+
+    async Task OnSubmit()
+    {
+        if (Is_valid() && moneda != null)
+        {
+            try
+            {
+                // Convertir código a mayúsculas
+                moneda.Codigo = moneda.Codigo?.ToUpper();
+
+                DTO<Moneda> moneda_respuesta = await serv_moneda.Actualizar(moneda);
+                if (moneda_respuesta != null && moneda_respuesta.Correcto)
+                {
+                    base.MostrarNotificacion(NotificationSeverity.Success, "Actualización correcta", "Se ha actualizado la moneda correctamente", "/monedas");
+                }
+                else
+                {
+                    base.MostrarNotificacion(NotificationSeverity.Error, "Error!", $"Error al actualizar la moneda: {moneda_respuesta.Mensaje}");
+                }
+            }
+            catch (Exception ex)
+            {
+                base.MostrarNotificacion(NotificationSeverity.Error, "Error!", $"Error al actualizar la moneda: {ex.Message}");
+            }
+        }
+    }
+
+    async Task OnCancel()
+    {
+        base.IrA("/monedas");
+    }
+}

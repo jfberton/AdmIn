@@ -1,0 +1,149 @@
+@using AdmIn.Common.Entidades
+@using AdmIn.Common
+@using AdmIn.UI.Services
+
+@inject IServ_Inmueble serv_inmueble
+
+<RadzenStack Gap="1.5rem">
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
+        <RadzenText TextStyle="TextStyle.H6" Text="Características del Inmueble" />
+        @if (MostrarBotonGestionar)
+        {
+            <RadzenButton ButtonStyle="ButtonStyle.Info" 
+                         Icon="settings" 
+                         Text="Gestionar"
+                         Size="ButtonSize.Small"
+                         Click="@OnGestionarClick" />
+        }
+    </RadzenStack>
+
+    @if (caracteristicasInmueble?.Any() == true)
+    {
+        <div class="caracteristicas-grid">
+            @foreach (var caracteristica in caracteristicasInmueble)
+            {
+                <div class="caracteristica-item">
+                    <div class="caracteristica-header">
+                        <RadzenText TextStyle="TextStyle.Subtitle2" 
+                                   Text="@GetCaracteristicaNombre(caracteristica)" 
+                                   class="caracteristica-nombre" />
+                    </div>
+                    
+                    <RadzenText TextStyle="TextStyle.H6" 
+                               Text="@caracteristica.Valor" 
+                               class="caracteristica-valor" />
+                    
+                    @if (!string.IsNullOrEmpty(caracteristica.Caracteristica?.Descripcion))
+                    {
+                        <RadzenText TextStyle="TextStyle.Caption" 
+                                   Text="@caracteristica.Caracteristica.Descripcion" 
+                                   class="caracteristica-descripcion" />
+                    }
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <RadzenAlert AlertStyle="AlertStyle.Info" ShowIcon="true">
+            <RadzenStack Gap="0.5rem">
+                <RadzenText TextStyle="TextStyle.Body1" Text="Este inmueble no tiene características definidas" />
+                <RadzenText TextStyle="TextStyle.Body2" Text="Las características ayudan a describir mejor la propiedad (habitaciones, baños, cochera, etc.)" />
+            </RadzenStack>
+        </RadzenAlert>
+    }
+</RadzenStack>
+
+<style>
+    .caracteristicas-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+
+    .caracteristica-item {
+        background: var(--rz-panel-background-color, #fff);
+        border: 1px solid var(--rz-border-color, #e0e0e0);
+        border-radius: 8px;
+        padding: 1rem;
+        transition: all 0.2s ease;
+    }
+
+    .caracteristica-item:hover {
+        border-color: var(--rz-primary, #007acc);
+        box-shadow: 0 2px 8px rgba(0, 122, 204, 0.1);
+    }
+
+    .caracteristica-header {
+        margin-bottom: 0.75rem;
+    }
+
+    .caracteristica-nombre {
+        font-weight: 600;
+        color: var(--rz-text-color, #333);
+    }
+
+    .caracteristica-valor {
+        color: var(--rz-primary, #007acc);
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+    }
+
+    .caracteristica-descripcion {
+        color: var(--rz-text-secondary-color, #666);
+        font-style: italic;
+    }
+</style>
+
+@code {
+    [Parameter] public int InmuebleId { get; set; }
+    [Parameter] public bool MostrarBotonGestionar { get; set; } = false;
+    [Parameter] public EventCallback OnGestionarClick { get; set; }
+
+    private IEnumerable<CaracteristicaInmueble>? caracteristicasInmueble;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarCaracteristicas();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await CargarCaracteristicas();
+    }
+
+    private async Task CargarCaracteristicas()
+    {
+        try
+        {
+            var resultado = await serv_inmueble.ObtenerCaracteristicas(InmuebleId);
+            if (resultado.Correcto && resultado.Datos != null)
+            {
+                caracteristicasInmueble = resultado.Datos;
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            // Silenciosamente falla - la página padre manejará errores principales
+            caracteristicasInmueble = new List<CaracteristicaInmueble>();
+        }
+    }
+
+    public async Task RefreshCaracteristicas()
+    {
+        await CargarCaracteristicas();
+    }
+
+    private string GetCaracteristicaNombre(CaracteristicaInmueble caracteristica)
+    {
+        if (!string.IsNullOrEmpty(caracteristica.Caracteristica?.Nombre))
+        {
+            return caracteristica.Caracteristica.Nombre;
+        }
+        
+        // Fallback si no hay nombre disponible
+        return $"Característica {caracteristica.CaracteristicaID}";
+    }
+}

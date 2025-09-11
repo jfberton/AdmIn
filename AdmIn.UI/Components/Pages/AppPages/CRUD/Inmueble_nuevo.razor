@@ -7,6 +7,8 @@
 @using Microsoft.AspNetCore.Components.Authorization
 
 @inject IServ_Inmueble serv_inmueble
+@inject IServ_InmuebleCondicion serv_condicion
+@inject IServ_Moneda serv_moneda
 @inject AuthenticationStateProvider authStateProvider
 
 <PageTitle>Nuevo Inmueble</PageTitle>
@@ -26,27 +28,6 @@
         <RadzenBreadCrumbItem Path="/inmuebles" Text="Inmuebles" Icon="apartment" />
         <RadzenBreadCrumbItem Text="Nuevo" Icon="add" />
     </RadzenBreadCrumb>
-
-    <!-- Botón para mostrar debug -->
-    <RadzenButton Text="@(mostrarDebug ? "Ocultar Debug" : "Mostrar Debug")" 
-                 ButtonStyle="ButtonStyle.Info" 
-                 Click="@(() => mostrarDebug = !mostrarDebug)" />
-
-    <!-- Debug Info -->
-    @if (mostrarDebug)
-    {
-        <RadzenCard>
-            <RadzenText TextStyle="TextStyle.H6" Text="Estado de Debug" />
-            <ul>
-                <li>Usuario actual ID: @usuarioActualId</li>
-                <li>Cargando: @cargando</li>
-                <li>Error de carga: @(string.IsNullOrEmpty(errorCarga) ? "Ninguno" : errorCarga)</li>
-                <li>Componente inicializado: @componenteInicializado</li>
-                <li>Inmueble ID: @nuevoInmueble.Id</li>
-                <li>Inmueble Activo: @nuevoInmueble.Activo</li>
-            </ul>
-        </RadzenCard>
-    }
 
     <!-- Formulario Principal -->
     @if (cargando)
@@ -144,7 +125,7 @@
                     </RadzenRow>
                 </RadzenFieldset>
 
-                <RadzenFieldset Text="Ubicación" class="mb-4">
+                <RadzenFieldset Text="Ubicación Geográfica" class="mb-4">
                     <RadzenRow class="mb-3">
                         <RadzenColumn Size="4">
                             <RadzenFormField Text="País" Variant="Variant.Outlined" Style="width:100%">
@@ -154,9 +135,9 @@
                             </RadzenFormField>
                         </RadzenColumn>
                         <RadzenColumn Size="4">
-                            <RadzenFormField Text="Estado" Variant="Variant.Outlined" Style="width:100%">
+                            <RadzenFormField Text="Estado/Provincia" Variant="Variant.Outlined" Style="width:100%">
                                 <RadzenTextBox @bind-Value="@nuevoInmueble.Estado" 
-                                              Name="estado" 
+                                              Name="estadoGeografico" 
                                               Placeholder="Ej: Buenos Aires" />
                             </RadzenFormField>
                         </RadzenColumn>
@@ -178,6 +159,60 @@
                             </RadzenFormField>
                         </RadzenColumn>
                     </RadzenRow>
+                </RadzenFieldset>
+
+                <RadzenFieldset Text="Condición y Disponibilidad" class="mb-4">
+                    <RadzenRow class="mb-3">
+                        <!-- Condición del Inmueble -->
+                        <RadzenColumn Size="6">
+                            <RadzenFormField Text="Condición del Inmueble" Variant="Variant.Outlined" Style="width:100%">
+                                <ChildContent>
+                                    <RadzenDropDown @bind-Value="@condicionSeleccionada" 
+                                                   Data="@condicionesDisponibles" 
+                                                   TextProperty="Nombre"
+                                                   ValueProperty="Id"
+                                                   Placeholder="Seleccione la condición del inmueble"
+                                                   Name="condicionInmueble"
+                                                   Change="@OnCondicionChanged" />
+                                </ChildContent>
+                                <Helper>
+                                    <RadzenRequiredValidator Component="condicionInmueble" Text="La condición del inmueble es requerida" />
+                                </Helper>
+                            </RadzenFormField>
+                        </RadzenColumn>
+
+                        <!-- Estado Activo -->
+                        <RadzenColumn Size="6">
+                            <RadzenFormField Text="Disponibilidad" Variant="Variant.Outlined" Style="width:100%">
+                                <ChildContent>
+                                    <RadzenCheckBox @bind-Value="@nuevoInmueble.Activo" Name="activo" />
+                                    <RadzenLabel Text="Inmueble Activo" Component="activo" Style="margin-left: 8px;" />
+                                </ChildContent>
+                                <Helper>
+                                    <RadzenText TextStyle="TextStyle.Caption" Style="color: #6b7280; margin-top: 4px;">
+                                        Un inmueble inactivo no aparecerá en las búsquedas
+                                    </RadzenText>
+                                </Helper>
+                            </RadzenFormField>
+                        </RadzenColumn>
+                    </RadzenRow>
+
+                    @if (condicionSeleccionada != null)
+                    {
+                        <RadzenRow class="mb-3">
+                            <RadzenColumn>
+                                <RadzenAlert AlertStyle="AlertStyle.Info" ShowIcon="true">
+                                    <RadzenText TextStyle="TextStyle.Body2">
+                                        Condición seleccionada: <strong>@condicionesDisponibles.FirstOrDefault(c => c.Id == condicionSeleccionada)?.Nombre</strong>
+                                        @if (!string.IsNullOrEmpty(condicionesDisponibles.FirstOrDefault(c => c.Id == condicionSeleccionada)?.Descripcion))
+                                        {
+                                            <br />@condicionesDisponibles.FirstOrDefault(c => c.Id == condicionSeleccionada)?.Descripcion
+                                        }
+                                    </RadzenText>
+                                </RadzenAlert>
+                            </RadzenColumn>
+                        </RadzenRow>
+                    }
                 </RadzenFieldset>
 
                 <RadzenFieldset Text="Información Económica" class="mb-4">
@@ -216,6 +251,30 @@
                     </RadzenRow>
 
                     <RadzenRow class="mb-3">
+                        <!-- Moneda -->
+                        <RadzenColumn Size="6">
+                            <RadzenFormField Text="Moneda" Variant="Variant.Outlined" Style="width:100%">
+                                <ChildContent>
+                                    @if (ListaMonedas.Any())
+                                    {
+                                        <RadzenDropDown @bind-Value="@nuevoInmueble.MonedaId" 
+                                                       Data="@ListaMonedas" 
+                                                       TextProperty="Nombre" 
+                                                       ValueProperty="Id"
+                                                       Placeholder="Seleccione una moneda"
+                                                       Name="moneda" />
+                                    }
+                                    else
+                                    {
+                                        <RadzenTextBox Value="Cargando monedas..." ReadOnly="true" />
+                                    }
+                                </ChildContent>
+                                <Helper>
+                                    <RadzenRequiredValidator Component="moneda" Text="La moneda es requerida" />
+                                </Helper>
+                            </RadzenFormField>
+                        </RadzenColumn>
+
                         <!-- Construcción M2 -->
                         <RadzenColumn Size="6">
                             <RadzenFormField Text="Construcción (m²)" Variant="Variant.Outlined" Style="width:100%">
@@ -226,16 +285,6 @@
                                                   Name="construccionM2"
                                                   Placeholder="0.00"
                                                   TValue="decimal" />
-                                </ChildContent>
-                            </RadzenFormField>
-                        </RadzenColumn>
-                        
-                        <!-- Estado Activo -->
-                        <RadzenColumn Size="6">
-                            <RadzenFormField Text="Estado" Variant="Variant.Outlined" Style="width:100%">
-                                <ChildContent>
-                                    <RadzenCheckBox @bind-Value="@nuevoInmueble.Activo" Name="activo" />
-                                    <RadzenLabel Text="Inmueble Activo" Component="activo" Style="margin-left: 8px;" />
                                 </ChildContent>
                             </RadzenFormField>
                         </RadzenColumn>
@@ -299,6 +348,12 @@
                         • Todos los campos marcados con (*) son obligatorios
                     </RadzenText>
                     <RadzenText TextStyle="TextStyle.Body2">
+                        • La condición del inmueble define su estado operativo (Disponible, Ocupado, etc.)
+                    </RadzenText>
+                    <RadzenText TextStyle="TextStyle.Body2">
+                        • El estado/provincia se refiere a la ubicación geográfica del inmueble
+                    </RadzenText>
+                    <RadzenText TextStyle="TextStyle.Body2">
                         • Las coordenadas de latitud y longitud son opcionales pero recomendadas para mapas
                     </RadzenText>
                     <RadzenText TextStyle="TextStyle.Body2">
@@ -312,13 +367,13 @@
 
 <style>
     .form-container {
-        max-width: 1200px;
-        margin: 0 auto;
+        width: 100%;
+        margin: 0;
     }
     
     .info-card {
-        max-width: 1200px;
-        margin: 0 auto;
+        width: 100%;
+        margin: 0;
         background: #f8fafc;
     }
 </style>
@@ -328,11 +383,15 @@
     private int? usuarioActualId;
     private bool cargando = true;
     private string? errorCarga = null;
-    private bool mostrarDebug = false;
     private bool componenteInicializado = false;
-    private bool componenteInformado = false;
-    private string? errorComponente = null;
     private bool guardando = false;
+
+    // Condiciones del inmueble (reemplaza el dropdown de estado)
+    private List<InmuebleCondicion> condicionesDisponibles = new();
+    private int? condicionSeleccionada = null;
+    
+    // Monedas disponibles
+    private List<Moneda> ListaMonedas = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -342,6 +401,8 @@
             EstablecerTituloPagina("Inmuebles", "Nuevo");
             
             await ObtenerUsuarioActual();
+            await CargarCondicionesDisponibles();
+            await CargarMonedas();
             InicializarInmueble();
             componenteInicializado = true;
         }
@@ -357,6 +418,75 @@
         }
     }
 
+    private async Task CargarMonedas()
+    {
+        try
+        {
+            var resultado = await serv_moneda.Obtener_todos();
+            if (resultado.Correcto && resultado.Datos != null)
+            {
+                ListaMonedas = resultado.Datos.ToList();
+            }
+            else
+            {
+                await LogHelper.Warn($"No se pudieron cargar las monedas: {resultado.Mensaje}");
+                // Crear una moneda por defecto si no hay ninguna
+                ListaMonedas = new List<Moneda>
+                {
+                    new Moneda { Id = 1, Nombre = "Peso Argentino", Codigo = "ARS" }
+                };
+            }
+        }
+        catch (Exception ex)
+        {
+            await LogHelper.Error($"Error al cargar monedas: {ex.Message}");
+            ListaMonedas = new List<Moneda>
+            {
+                new Moneda { Id = 1, Nombre = "Peso Argentino", Codigo = "ARS" }
+            };
+        }
+    }
+
+    private async Task CargarCondicionesDisponibles()
+    {
+        try
+        {
+            var resultado = await serv_condicion.Obtener_activos();
+            if (resultado.Correcto && resultado.Datos != null)
+            {
+                condicionesDisponibles = resultado.Datos.ToList();
+                
+                // Establecer la condición por defecto
+                var condicionPorDefecto = condicionesDisponibles.FirstOrDefault(c => c.Nombre == "Disponible") 
+                                       ?? condicionesDisponibles.FirstOrDefault();
+                
+                if (condicionPorDefecto != null)
+                {
+                    condicionSeleccionada = condicionPorDefecto.Id;
+                }
+            }
+            else
+            {
+                await LogHelper.Warn($"No se pudieron cargar las condiciones: {resultado.Mensaje}");
+                // Crear una condición por defecto si no hay ninguna
+                condicionesDisponibles = new List<InmuebleCondicion>
+                {
+                    new InmuebleCondicion { Id = 1, Nombre = "Disponible", Descripcion = "Condición por defecto" }
+                };
+                condicionSeleccionada = 1;
+            }
+        }
+        catch (Exception ex)
+        {
+            await LogHelper.Error($"Error al cargar condiciones: {ex.Message}");
+            condicionesDisponibles = new List<InmuebleCondicion>
+            {
+                new InmuebleCondicion { Id = 1, Nombre = "Disponible", Descripcion = "Condición por defecto" }
+            };
+            condicionSeleccionada = 1;
+        }
+    }
+
     private async Task ForzarInicializacion()
     {
         componenteInicializado = false;
@@ -369,6 +499,8 @@
         try
         {
             await ObtenerUsuarioActual();
+            await CargarCondicionesDisponibles();
+            await CargarMonedas();
             InicializarInmueble();
             componenteInicializado = true;
         }
@@ -418,11 +550,23 @@
         nuevoInmueble = new Inmueble
         {
             Activo = true,
+            CondicionId = condicionSeleccionada ?? 1, // Usar CondicionId en lugar de Estado
+            MonedaId = ListaMonedas.FirstOrDefault()?.Id ?? 1, // Establecer moneda por defecto
             FechaCreacion = DateTime.Now,
             FechaModificacion = DateTime.Now,
             UsuarioCreadorId = usuarioActualId,
             UsuarioModificadorId = usuarioActualId
         };
+    }
+
+    private void OnCondicionChanged(object value)
+    {
+        if (value != null && int.TryParse(value.ToString(), out int condicionId))
+        {
+            condicionSeleccionada = condicionId;
+            nuevoInmueble.CondicionId = condicionId;
+            StateHasChanged();
+        }
     }
 
     private async Task CrearInmueble(Inmueble inmueble)
@@ -434,18 +578,26 @@
             guardando = true;
             await LogHelper.Info("Iniciando creación de inmueble");
 
+            // Asegurar que la condición esté asignada al modelo
+            inmueble.CondicionId = condicionSeleccionada ?? 1;
+            
             // Establecer usuario creador
             inmueble.UsuarioCreadorId = usuarioActualId;
             inmueble.UsuarioModificadorId = usuarioActualId;
             inmueble.FechaCreacion = DateTime.Now;
             inmueble.FechaModificacion = DateTime.Now;
-            inmueble.MonedaId = 1; // Moneda por defecto (Peso Argentino)
+            
+            // Asegurar que la moneda esté establecida
+            if (inmueble.MonedaId <= 0)
+            {
+                inmueble.MonedaId = ListaMonedas.FirstOrDefault()?.Id ?? 1;
+            }
 
             var resultado = await serv_inmueble.Crear(inmueble);
             
             if (resultado.Correcto && resultado.Datos != null)
             {
-                await LogHelper.Info($"Inmueble creado exitosamente con ID: {resultado.Datos.Id}");
+                await LogHelper.Info($"Inmueble creado exitosamente with ID: {resultado.Datos.Id}");
                 
                 MostrarNotificacion(
                     NotificationSeverity.Success, 

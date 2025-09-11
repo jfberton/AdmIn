@@ -125,22 +125,68 @@ namespace AdmIn.Data.Repositorios
 
             try
             {
-                // Verificar si está siendo usada como imagen principal
-                var sqlVerificar = @"SELECT COUNT(*) FROM Inmueble WHERE ImagenPrincipalId = @Id;";
-                var enUso = await conexion.QuerySingleAsync<int>(sqlVerificar, new { Id = imagen.Id }, transaccion);
+                // 1. Verificar si está siendo usada como imagen principal
+                var sqlVerificarPrincipal = @"SELECT COUNT(*) FROM Inmueble WHERE ImagenPrincipalId = @Id;";
+                var enUsoPrincipal = await conexion.QuerySingleAsync<int>(sqlVerificarPrincipal, new { Id = imagen.Id }, transaccion);
 
-                if (enUso > 0)
+                if (enUsoPrincipal > 0)
                 {
                     return new DTO<bool>
                     {
                         Correcto = false,
                         Datos = false,
-                        Mensaje = "No se puede eliminar la imagen porque está siendo utilizada como imagen principal de uno o más inmuebles."
+                        Mensaje = "No se puede eliminar la imagen porque está siendo utilizada como imagen principal de uno o más inmuebles. Primero cambie la imagen principal."
                     };
                 }
 
-                var sql = @"DELETE FROM Imagen WHERE Id = @Id;";
-                var filasAfectadas = await conexion.ExecuteAsync(sql, new { Id = imagen.Id }, transaccion);
+                // 2. Verificar y eliminar referencias en tabla InmuebleImagen (si existe)
+                try
+                {
+                    var sqlVerificarTablaRelacion = @"
+                        IF EXISTS (SELECT * FROM sysobjects WHERE name='InmuebleImagen' AND xtype='U')
+                        BEGIN
+                            SELECT COUNT(*) FROM InmuebleImagen WHERE ImagenId = @Id;
+                        END
+                        ELSE
+                        BEGIN
+                            SELECT 0;
+                        END";
+                    
+                    var enUsoRelacion = await conexion.QuerySingleAsync<int>(sqlVerificarTablaRelacion, new { Id = imagen.Id }, transaccion);
+                    
+                    if (enUsoRelacion > 0)
+                    {
+                        // Eliminar las referencias en la tabla de relación
+                        var sqlEliminarRelaciones = @"DELETE FROM InmuebleImagen WHERE ImagenId = @Id;";
+                        await conexion.ExecuteAsync(sqlEliminarRelaciones, new { Id = imagen.Id }, transaccion);
+                    }
+                }
+                catch (Exception)
+                {
+                    // Si la tabla InmuebleImagen no existe, continuar
+                }
+
+                // 3. Verificar si está siendo usada como imagen de perfil de usuario
+                var sqlVerificarPerfil = @"SELECT COUNT(*) FROM Usuario WHERE ImagenPerfilId = @Id;";
+                var enUsoPerfil = await conexion.QuerySingleAsync<int>(sqlVerificarPerfil, new { Id = imagen.Id }, transaccion);
+
+                if (enUsoPerfil > 0)
+                {
+                    // Opcionalmente, podríamos limpiar las referencias de perfil
+                    // var sqlLimpiarPerfil = @"UPDATE Usuario SET ImagenPerfilId = NULL WHERE ImagenPerfilId = @Id;";
+                    // await conexion.ExecuteAsync(sqlLimpiarPerfil, new { Id = imagen.Id }, transaccion);
+                    
+                    return new DTO<bool>
+                    {
+                        Correcto = false,
+                        Datos = false,
+                        Mensaje = "No se puede eliminar la imagen porque está siendo utilizada como imagen de perfil de uno o más usuarios."
+                    };
+                }
+
+                // 4. Eliminar la imagen de la tabla principal
+                var sqlEliminarImagen = @"DELETE FROM Imagen WHERE Id = @Id;";
+                var filasAfectadas = await conexion.ExecuteAsync(sqlEliminarImagen, new { Id = imagen.Id }, transaccion);
 
                 transaccion.Commit();
 
@@ -270,35 +316,131 @@ namespace AdmIn.Data.Repositorios
             using var conexion = new SqlConnection(InfoSQL.Conexion);
             await conexion.OpenAsync();
 
-            // Nota: Este método asume que existe una tabla de relación InmuebleImagen
-            // Si no existe, se puede implementar una lógica diferente
-            var sql = @"SELECT DISTINCT img.Id, img.Nombre, img.Descripcion, img.FechaCreacion, img.Url, img.UrlThumb 
-                        FROM Imagen img
-                        WHERE img.Id IN (
-                            SELECT ImagenPrincipalId FROM Inmueble WHERE InmuebleID = @InmuebleId AND ImagenPrincipalId IS NOT NULL
-                        )
-                        ORDER BY img.FechaCreacion DESC;";
+            // Intentar obtener imágenes usando la tabla de relación InmuebleImagen
+            var sql = @"
+                SELECT DISTINCT 
+                    img.Id, 
+                    img.Nombre, 
+                    img.Descripcion, 
+                    img.FechaCreacion, 
+                    img.Url, 
+                    img.UrlThumb,
+                    CASE WHEN img.Id = (SELECT ImagenPrincipalId FROM Inmueble WHERE InmuebleID = @InmuebleId) THEN 0 ELSE 1 END AS OrdenPrincipal
+                FROM Imagen img
+                WHERE img.Id IN (
+                    -- Imagen principal del inmueble
+                    SELECT ImagenPrincipalId 
+                    FROM Inmueble 
+                    WHERE InmuebleID = @InmuebleId AND ImagenPrincipalId IS NOT NULL
+                    
+                    UNION
+                    
+                    -- Imágenes asociadas a través de la tabla InmuebleImagen (si existe)
+                    SELECT ii.ImagenId
+                    FROM InmuebleImagen ii
+                    WHERE ii.InmuebleId = @InmuebleId
+                )
+                ORDER BY OrdenPrincipal, img.FechaCreacion DESC;";
 
-            var imagenes = await conexion.QueryAsync<Imagen>(sql, new { InmuebleId = inmuebleId });
-
-            return new DTO<IEnumerable<Imagen>>
+            try
             {
-                Correcto = true,
-                Datos = imagenes,
-                Mensaje = "Imágenes del inmueble obtenidas correctamente"
-            };
+                var imagenes = await conexion.QueryAsync<Imagen>(sql, new { InmuebleId = inmuebleId });
+                
+                return new DTO<IEnumerable<Imagen>>
+                {
+                    Correcto = true,
+                    Datos = imagenes,
+                    Mensaje = "Imágenes del inmueble obtenidas correctamente"
+                };
+            }
+            catch (Exception ex)
+            {
+                // Si falla (tabla InmuebleImagen no existe), usar solo la imagen principal
+                var sqlFallback = @"
+                    SELECT img.Id, img.Nombre, img.Descripcion, img.FechaCreacion, img.Url, img.UrlThumb 
+                    FROM Imagen img
+                    INNER JOIN Inmueble i ON img.Id = i.ImagenPrincipalId
+                    WHERE i.InmuebleID = @InmuebleId;";
+
+                try
+                {
+                    var imagenes = await conexion.QueryAsync<Imagen>(sqlFallback, new { InmuebleId = inmuebleId });
+                    
+                    return new DTO<IEnumerable<Imagen>>
+                    {
+                        Correcto = true,
+                        Datos = imagenes,
+                        Mensaje = "Imagen principal del inmueble obtenida correctamente"
+                    };
+                }
+                catch (Exception ex2)
+                {
+                    // Si todo falla, devolver lista vacía
+                    return new DTO<IEnumerable<Imagen>>
+                    {
+                        Correcto = true,
+                        Datos = new List<Imagen>(),
+                        Mensaje = $"No se pudieron obtener imágenes para el inmueble. Error: {ex2.Message}"
+                    };
+                }
+            }
         }
 
         public async Task<DTO<bool>> Asociar_a_inmueble(Guid imagenId, int inmuebleId)
         {
-            // Método de ejemplo - la implementación depende de la estructura de la base de datos
-            // Si existe una tabla de relación InmuebleImagen, se insertaría aquí
-            return new DTO<bool>
+            using var conexion = new SqlConnection(InfoSQL.Conexion);
+            await conexion.OpenAsync();
+            using var transaccion = conexion.BeginTransaction();
+
+            try
             {
-                Correcto = true,
-                Datos = true,
-                Mensaje = "Funcionalidad pendiente de implementar según estructura de BD"
-            };
+                // Verificar si la tabla InmuebleImagen existe, si no, crearla
+                var sqlVerificarTabla = @"
+                    IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='InmuebleImagen' AND xtype='U')
+                    CREATE TABLE InmuebleImagen (
+                        Id INT IDENTITY(1,1) PRIMARY KEY,
+                        InmuebleId INT NOT NULL,
+                        ImagenId UNIQUEIDENTIFIER NOT NULL,
+                        FechaAsociacion DATETIME DEFAULT GETDATE(),
+                        Orden INT DEFAULT 0,
+                        FOREIGN KEY (InmuebleId) REFERENCES Inmueble(InmuebleID),
+                        FOREIGN KEY (ImagenId) REFERENCES Imagen(Id),
+                        UNIQUE(InmuebleId, ImagenId)
+                    );";
+
+                await conexion.ExecuteAsync(sqlVerificarTabla, transaction: transaccion);
+
+                // Insertar la asociación
+                var sqlInsertar = @"
+                    IF NOT EXISTS (SELECT 1 FROM InmuebleImagen WHERE InmuebleId = @InmuebleId AND ImagenId = @ImagenId)
+                    INSERT INTO InmuebleImagen (InmuebleId, ImagenId, Orden)
+                    VALUES (@InmuebleId, @ImagenId, 
+                        ISNULL((SELECT MAX(Orden) FROM InmuebleImagen WHERE InmuebleId = @InmuebleId), 0) + 1);";
+
+                var filasAfectadas = await conexion.ExecuteAsync(sqlInsertar, new
+                {
+                    InmuebleId = inmuebleId,
+                    ImagenId = imagenId
+                }, transaccion);
+
+                transaccion.Commit();
+
+                return new DTO<bool>
+                {
+                    Correcto = true,
+                    Datos = true,
+                    Mensaje = "Imagen asociada al inmueble correctamente"
+                };
+            }
+            catch (Exception ex)
+            {
+                transaccion.Rollback();
+                return new DTO<bool>
+                {
+                    Correcto = false,
+                    Mensaje = $"Error al asociar imagen al inmueble: {ex.Message}"
+                };
+            }
         }
 
         public async Task<DTO<bool>> Desasociar_de_inmueble(Guid imagenId, int inmuebleId)
@@ -334,6 +476,20 @@ namespace AdmIn.Data.Repositorios
                     };
                 }
 
+                // Verificar que el inmueble existe
+                var sqlVerificarInmueble = @"SELECT COUNT(*) FROM Inmueble WHERE InmuebleID = @InmuebleId;";
+                var existeInmueble = await conexion.QuerySingleAsync<int>(sqlVerificarInmueble, new { InmuebleId = inmuebleId }, transaccion);
+
+                if (existeInmueble == 0)
+                {
+                    return new DTO<bool>
+                    {
+                        Correcto = false,
+                        Datos = false,
+                        Mensaje = "El inmueble especificado no existe."
+                    };
+                }
+
                 // Actualizar el inmueble para establecer la imagen principal
                 var sql = @"UPDATE Inmueble 
                            SET ImagenPrincipalId = @ImagenId 
@@ -347,7 +503,7 @@ namespace AdmIn.Data.Repositorios
                 {
                     Correcto = filasAfectadas > 0,
                     Datos = filasAfectadas > 0,
-                    Mensaje = filasAfectadas > 0 ? "Imagen establecida como principal correctamente." : "No se encontró el inmueble."
+                    Mensaje = filasAfectadas > 0 ? "Imagen establecida como principal correctamente." : "No se pudo actualizar el inmueble."
                 };
             }
             catch (Exception ex)
@@ -383,6 +539,20 @@ namespace AdmIn.Data.Repositorios
                     };
                 }
 
+                // Verificar que el usuario existe
+                var sqlVerificarUsuario = @"SELECT COUNT(*) FROM Usuario WHERE UsuarioID = @UsuarioId;";
+                var existeUsuario = await conexion.QuerySingleAsync<int>(sqlVerificarUsuario, new { UsuarioId = usuarioId }, transaccion);
+
+                if (existeUsuario == 0)
+                {
+                    return new DTO<bool>
+                    {
+                        Correcto = false,
+                        Datos = false,
+                        Mensaje = "El usuario especificado no existe."
+                    };
+                }
+
                 // Actualizar el usuario para establecer la imagen de perfil
                 var sql = @"UPDATE Usuario 
                            SET ImagenPerfilId = @ImagenId 
@@ -396,7 +566,7 @@ namespace AdmIn.Data.Repositorios
                 {
                     Correcto = filasAfectadas > 0,
                     Datos = filasAfectadas > 0,
-                    Mensaje = filasAfectadas > 0 ? "Imagen de perfil establecida correctamente." : "No se encontró el usuario."
+                    Mensaje = filasAfectadas > 0 ? "Imagen de perfil establecida correctamente." : "No se pudo actualizar el usuario."
                 };
             }
             catch (Exception ex)

@@ -56,6 +56,10 @@ builder.Services.AddScoped<IMonedaRepository, MonedaRepository>();
 builder.Services.AddScoped<IServ_Inmueble, Serv_Inmueble>();
 builder.Services.AddScoped<IInmuebleRepository, InmuebleRepository>();
 
+// Register InmuebleCondicion services
+builder.Services.AddScoped<IServ_InmuebleCondicion, Serv_InmuebleCondicion>();
+builder.Services.AddScoped<IInmuebleCondicionRepository, InmuebleCondicionRepository>();
+
 // Register Caracteristica services
 builder.Services.AddScoped<IServ_Caracteristica, Serv_Caracteristica>();
 builder.Services.AddScoped<ICaracteristicaRepository, CaracteristicaRepository>();

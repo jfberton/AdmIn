@@ -28,12 +28,12 @@ namespace AdmIn.Data.Repositorios
                 var sqlInsert = @"INSERT INTO Inmueble 
                     (Nombre, Direccion, Pais, Estado, Ciudad, CP, Latitud, Longitud, 
                      Valor, ConstruccionM2, RentaMensual, AdministradorId, Descripcion, 
-                     ImagenPrincipalId, MonedaId, Activo, FechaCreacion, FechaModificacion, 
+                     ImagenPrincipalId, MonedaId, CondicionId, Activo, FechaCreacion, FechaModificacion, 
                      UsuarioCreadorId, UsuarioModificadorId)
                     VALUES (@Nombre, @Direccion, @Pais, @Estado, @Ciudad, @CodigoPostal, 
                            @Latitud, @Longitud, @Valor, @ConstruccionM2, @RentaMensual, 
                            @AdministradorId, @Descripcion, @ImagenPrincipalId, @MonedaId, 
-                           @Activo, GETDATE(), GETDATE(), @UsuarioCreadorId, @UsuarioModificadorId);
+                           @CondicionId, @Activo, GETDATE(), GETDATE(), @UsuarioCreadorId, @UsuarioModificadorId);
                            
                     SELECT SCOPE_IDENTITY() AS NuevoId;";
 
@@ -54,6 +54,7 @@ namespace AdmIn.Data.Repositorios
                     inmueble.Descripcion,
                     ImagenPrincipalId = (object?)inmueble.ImagenPrincipalId ?? DBNull.Value,
                     inmueble.MonedaId,
+                    CondicionId = inmueble.CondicionId > 0 ? inmueble.CondicionId : 1, // Default: Disponible
                     inmueble.Activo,
                     UsuarioCreadorId = (object?)inmueble.UsuarioCreadorId ?? DBNull.Value,
                     UsuarioModificadorId = (object?)inmueble.UsuarioModificadorId ?? DBNull.Value
@@ -110,6 +111,7 @@ namespace AdmIn.Data.Repositorios
                         Descripcion = @Descripcion,
                         ImagenPrincipalId = @ImagenPrincipalId,
                         MonedaId = @MonedaId,
+                        CondicionId = @CondicionId,
                         Activo = @Activo,
                         FechaModificacion = GETDATE(),
                         UsuarioModificadorId = @UsuarioModificadorId
@@ -133,6 +135,7 @@ namespace AdmIn.Data.Repositorios
                     inmueble.Descripcion,
                     ImagenPrincipalId = (object?)inmueble.ImagenPrincipalId ?? DBNull.Value,
                     inmueble.MonedaId,
+                    CondicionId = inmueble.CondicionId > 0 ? inmueble.CondicionId : 1, // Default: Disponible
                     inmueble.Activo,
                     UsuarioModificadorId = (object?)inmueble.UsuarioModificadorId ?? DBNull.Value
                 }, transaccion);
@@ -267,6 +270,7 @@ namespace AdmIn.Data.Repositorios
                                 i.Descripcion,
                                 i.ImagenPrincipalId,
                                 i.MonedaId,
+                                i.CondicionId,
                                 i.Activo,
                                 i.FechaCreacion,
                                 i.FechaModificacion,
@@ -276,6 +280,13 @@ namespace AdmIn.Data.Repositorios
                                 m.MonedaID as Moneda_Id,
                                 m.Codigo as Moneda_Codigo,
                                 m.Nombre as Moneda_Nombre,
+                                -- Datos de la condición
+                                ic.Id as Condicion_Id,
+                                ic.Nombre as Condicion_Nombre,
+                                ic.Descripcion as Condicion_Descripcion,
+                                ic.Color as Condicion_Color,
+                                ic.Activo as Condicion_Activo,
+                                ic.Orden as Condicion_Orden,
                                 -- Datos del usuario creador
                                 uc.UsuarioID as UsuarioCreador_Id,
                                 uc.Nombre as UsuarioCreador_Nombre,
@@ -297,6 +308,7 @@ namespace AdmIn.Data.Repositorios
                                 img.FechaCreacion as ImagenPrincipal_FechaCreacion
                               FROM Inmueble i
                               LEFT JOIN Moneda m ON i.MonedaId = m.MonedaID
+                              LEFT JOIN InmuebleCondicion ic ON i.CondicionId = ic.Id
                               LEFT JOIN Usuario uc ON i.UsuarioCreadorId = uc.UsuarioID
                               LEFT JOIN Usuario um ON i.UsuarioModificadorId = um.UsuarioID
                               LEFT JOIN Usuario adm ON i.AdministradorId = adm.UsuarioID
@@ -316,20 +328,40 @@ namespace AdmIn.Data.Repositorios
                                       LEFT JOIN Caracteristica c ON ci.CaracteristicaID = c.CaracteristicaID
                                       WHERE ci.InmuebleID = @InmuebleID;";
 
-            // TODO: Descomentar cuando se cree la tabla InmuebleImagen
-            /*
-            var sqlImagenes = @"SELECT 
-                                i.Id,
-                                i.Nombre,
-                                i.Descripcion,
-                                i.Url,
-                                i.UrlThumb,
-                                i.FechaCreacion
-                              FROM Imagen i
-                              INNER JOIN InmuebleImagen ii ON i.Id = ii.ImagenId
-                              WHERE ii.InmuebleId = @InmuebleID
-                              ORDER BY ii.Orden, i.FechaCreacion;";
-            */
+            // Consulta para obtener todas las imágenes del inmueble
+            var sqlImagenes = @"
+                SELECT DISTINCT 
+                    Id, Nombre, Descripcion, Url, UrlThumb, FechaCreacion
+                FROM (
+                    -- Imágenes de la tabla InmuebleImagen (si existe)
+                    SELECT 
+                        i.Id,
+                        i.Nombre,
+                        i.Descripcion,
+                        i.Url,
+                        i.UrlThumb,
+                        i.FechaCreacion,
+                        ii.Orden
+                    FROM InmuebleImagen ii
+                    INNER JOIN Imagen i ON ii.ImagenId = i.Id
+                    WHERE ii.InmuebleId = @InmuebleID
+                    
+                    UNION
+                    
+                    -- Imagen principal como parte de las imágenes del inmueble
+                    SELECT 
+                        img.Id,
+                        img.Nombre,
+                        img.Descripcion,
+                        img.Url,
+                        img.UrlThumb,
+                        img.FechaCreacion,
+                        0 as Orden -- La imagen principal tiene orden 0
+                    FROM Inmueble inm
+                    INNER JOIN Imagen img ON inm.ImagenPrincipalId = img.Id
+                    WHERE inm.InmuebleID = @InmuebleID AND inm.ImagenPrincipalId IS NOT NULL
+                ) AS TodasLasImagenes
+                ORDER BY Orden, FechaCreacion;";
 
             var inmuebleData = await conexion.QuerySingleOrDefaultAsync(sqlInmueble, new { InmuebleID = inmuebleId }, transaccion);
             if (inmuebleData == null)
@@ -353,6 +385,7 @@ namespace AdmIn.Data.Repositorios
                 Descripcion = inmuebleData.Descripcion,
                 ImagenPrincipalId = inmuebleData.ImagenPrincipalId,
                 MonedaId = inmuebleData.MonedaId,
+                CondicionId = inmuebleData.CondicionId,
                 Activo = inmuebleData.Activo,
                 FechaCreacion = inmuebleData.FechaCreacion,
                 FechaModificacion = inmuebleData.FechaModificacion,
@@ -368,6 +401,20 @@ namespace AdmIn.Data.Repositorios
                     Id = inmuebleData.Moneda_Id,
                     Codigo = inmuebleData.Moneda_Codigo,
                     Nombre = inmuebleData.Moneda_Nombre
+                };
+            }
+
+            // Mapear la condición si existe
+            if (inmuebleData.Condicion_Id != null)
+            {
+                inmuebleEncontrado.Condicion = new InmuebleCondicion
+                {
+                    Id = inmuebleData.Condicion_Id,
+                    Nombre = inmuebleData.Condicion_Nombre,
+                    Descripcion = inmuebleData.Condicion_Descripcion,
+                    Color = inmuebleData.Condicion_Color,
+                    Activo = inmuebleData.Condicion_Activo,
+                    Orden = inmuebleData.Condicion_Orden
                 };
             }
 
@@ -435,15 +482,31 @@ namespace AdmIn.Data.Repositorios
                 } : null
             }).ToList();
 
-            // TODO: Descomentar cuando se cree la tabla InmuebleImagen
             // Cargar todas las imágenes del inmueble
-            /*
-            var imagenesData = await conexion.QueryAsync<Imagen>(sqlImagenes, new { InmuebleID = inmuebleId }, transaccion);
-            inmuebleEncontrado.Imagenes = imagenesData.ToList();
-            */
-
-            // Inicializar lista vacía por ahora
-            inmuebleEncontrado.Imagenes = new List<Imagen>();
+            try
+            {
+                var imagenesData = await conexion.QueryAsync<Imagen>(sqlImagenes, new { InmuebleID = inmuebleId }, transaccion);
+                
+                // Agrupar por ID para evitar duplicados y ordenar
+                inmuebleEncontrado.Imagenes = imagenesData
+                    .GroupBy(img => img.Id)
+                    .Select(g => g.First())
+                    .OrderBy(img => img.Id == inmuebleEncontrado.ImagenPrincipalId ? 0 : 1) // Imagen principal primero
+                    .ThenBy(img => img.FechaCreacion)
+                    .ToList();
+            }
+            catch (Exception)
+            {
+                // Si la tabla InmuebleImagen no existe, cargar solo la imagen principal
+                if (inmuebleEncontrado.ImagenPrincipal != null)
+                {
+                    inmuebleEncontrado.Imagenes = new List<Imagen> { inmuebleEncontrado.ImagenPrincipal };
+                }
+                else
+                {
+                    inmuebleEncontrado.Imagenes = new List<Imagen>();
+                }
+            }
 
             return inmuebleEncontrado;
         }
@@ -470,29 +533,113 @@ namespace AdmIn.Data.Repositorios
                                  i.Descripcion,
                                  i.ImagenPrincipalId,
                                  i.MonedaId,
+                                 i.CondicionId,
                                  i.Activo,
                                  i.FechaCreacion,
                                  i.FechaModificacion,
                                  i.UsuarioCreadorId,
                                  i.UsuarioModificadorId,
+                                 -- Datos de la moneda
                                  m.MonedaID as Moneda_Id,
                                  m.Codigo as Moneda_Codigo,
                                  m.Nombre as Moneda_Nombre,
+                                 -- Datos de la condición
+                                 ic.Id as Condicion_Id,
+                                 ic.Nombre as Condicion_Nombre,
+                                 ic.Descripcion as Condicion_Descripcion,
+                                 ic.Color as Condicion_Color,
+                                 ic.Activo as Condicion_Activo,
+                                 ic.Orden as Condicion_Orden,
+                                 -- Datos de la imagen principal
                                  img.Id as ImagenPrincipal_Id,
                                  img.Nombre as ImagenPrincipal_Nombre,
                                  img.Url as ImagenPrincipal_Url,
                                  img.UrlThumb as ImagenPrincipal_UrlThumb,
+                                 -- Datos de usuarios
                                  uc.UsuarioID as UsuarioCreador_Id,
                                  uc.Nombre as UsuarioCreador_Nombre,
                                  um.UsuarioID as UsuarioModificador_Id,
                                  um.Nombre as UsuarioModificador_Nombre
                                FROM Inmueble i
                                LEFT JOIN Moneda m ON i.MonedaId = m.MonedaID
+                               LEFT JOIN InmuebleCondicion ic ON i.CondicionId = ic.Id
                                LEFT JOIN Imagen img ON i.ImagenPrincipalId = img.Id
                                LEFT JOIN Usuario uc ON i.UsuarioCreadorId = uc.UsuarioID
                                LEFT JOIN Usuario um ON i.UsuarioModificadorId = um.UsuarioID;";
 
+            // Consulta para obtener todas las imágenes asociadas a inmuebles usando la nueva lógica
+            var sqlImagenesInmuebles = @"
+                SELECT DISTINCT 
+                    -- Usar un UNION para obtener imágenes tanto de InmuebleImagen como imagen principal
+                    InmuebleId, ImagenId, Id, Nombre, Descripcion, Url, UrlThumb, FechaCreacion
+                FROM (
+                    -- Imágenes de la tabla InmuebleImagen (si existe)
+                    SELECT 
+                        ii.InmuebleId,
+                        ii.ImagenId,
+                        i.Id,
+                        i.Nombre,
+                        i.Descripcion,
+                        i.Url,
+                        i.UrlThumb,
+                        i.FechaCreacion
+                    FROM InmuebleImagen ii
+                    INNER JOIN Imagen i ON ii.ImagenId = i.Id
+                    
+                    UNION
+                    
+                    -- Imagen principal como parte de las imágenes del inmueble
+                    SELECT 
+                        inm.InmuebleID as InmuebleId,
+                        img.Id as ImagenId,
+                        img.Id,
+                        img.Nombre,
+                        img.Descripcion,
+                        img.Url,
+                        img.UrlThumb,
+                        img.FechaCreacion
+                    FROM Inmueble inm
+                    INNER JOIN Imagen img ON inm.ImagenPrincipalId = img.Id
+                    WHERE inm.ImagenPrincipalId IS NOT NULL
+                ) AS TodasLasImagenes
+                ORDER BY InmuebleId, FechaCreacion;";
+
             var inmueblesData = (await conexion.QueryAsync(sqlInmuebles)).ToList();
+            
+            // Obtener todas las imágenes de inmuebles
+            var imagenesInmueblesData = new List<dynamic>();
+            try
+            {
+                imagenesInmueblesData = (await conexion.QueryAsync(sqlImagenesInmuebles)).ToList();
+            }
+            catch (Exception)
+            {
+                // Si la tabla ImagenInmueble no existe, intentar obtener solo las imágenes principales
+                try
+                {
+                    var sqlSoloImagenesPrincipales = @"
+                        SELECT 
+                            i.InmuebleID as InmuebleId,
+                            img.Id as ImagenId,
+                            img.Id,
+                            img.Nombre,
+                            img.Descripcion,
+                            img.Url,
+                            img.UrlThumb,
+                            img.FechaCreacion
+                        FROM Inmueble i
+                        INNER JOIN Imagen img ON i.ImagenPrincipalId = img.Id
+                        WHERE i.ImagenPrincipalId IS NOT NULL;";
+                    
+                    imagenesInmueblesData = (await conexion.QueryAsync(sqlSoloImagenesPrincipales)).ToList();
+                }
+                catch (Exception)
+                {
+                    // Si todo falla, continuar sin imágenes adicionales
+                    imagenesInmueblesData = new List<dynamic>();
+                }
+            }
+
             var inmuebles = new List<Inmueble>();
 
             foreach (var inmuebleData in inmueblesData)
@@ -515,6 +662,7 @@ namespace AdmIn.Data.Repositorios
                     Descripcion = inmuebleData.Descripcion,
                     ImagenPrincipalId = inmuebleData.ImagenPrincipalId,
                     MonedaId = inmuebleData.MonedaId,
+                    CondicionId = inmuebleData.CondicionId,
                     Activo = inmuebleData.Activo,
                     FechaCreacion = inmuebleData.FechaCreacion,
                     FechaModificacion = inmuebleData.FechaModificacion,
@@ -530,6 +678,20 @@ namespace AdmIn.Data.Repositorios
                         Id = inmuebleData.Moneda_Id,
                         Codigo = inmuebleData.Moneda_Codigo,
                         Nombre = inmuebleData.Moneda_Nombre
+                    };
+                }
+
+                // Mapear la condición si existe
+                if (inmuebleData.Condicion_Id != null)
+                {
+                    inmueble.Condicion = new InmuebleCondicion
+                    {
+                        Id = inmuebleData.Condicion_Id,
+                        Nombre = inmuebleData.Condicion_Nombre,
+                        Descripcion = inmuebleData.Condicion_Descripcion,
+                        Color = inmuebleData.Condicion_Color,
+                        Activo = inmuebleData.Condicion_Activo,
+                        Orden = inmuebleData.Condicion_Orden
                     };
                 }
 
@@ -563,6 +725,26 @@ namespace AdmIn.Data.Repositorios
                         Nombre = inmuebleData.UsuarioModificador_Nombre
                     };
                 }
+
+                // Mapear todas las imágenes del inmueble
+                var imagenesDelInmueble = imagenesInmueblesData
+                    .Where(img => img.InmuebleId == inmueble.Id)
+                    .Select(img => new Imagen
+                    {
+                        Id = img.Id,
+                        Nombre = img.Nombre,
+                        Descripcion = img.Descripcion,
+                        Url = img.Url,
+                        UrlThumb = img.UrlThumb,
+                        FechaCreacion = img.FechaCreacion
+                    })
+                    .GroupBy(img => img.Id) // Evitar duplicados
+                    .Select(g => g.First())
+                    .OrderBy(img => img.Id == inmueble.ImagenPrincipalId ? 0 : 1) // Imagen principal primero
+                    .ThenBy(img => img.FechaCreacion)
+                    .ToList();
+
+                inmueble.Imagenes = imagenesDelInmueble;
 
                 inmuebles.Add(inmueble);
             }
@@ -598,24 +780,36 @@ namespace AdmIn.Data.Repositorios
                             i.Descripcion,
                             i.ImagenPrincipalId,
                             i.MonedaId,
+                            i.CondicionId,
                             i.Activo,
                             i.FechaCreacion,
                             i.FechaModificacion,
                             i.UsuarioCreadorId,
                             i.UsuarioModificadorId,
+                            -- Datos de la moneda
                             m.MonedaID as Moneda_Id,
                             m.Codigo as Moneda_Codigo,
                             m.Nombre as Moneda_Nombre,
+                            -- Datos de la condición
+                            ic.Id as Condicion_Id,
+                            ic.Nombre as Condicion_Nombre,
+                            ic.Descripcion as Condicion_Descripcion,
+                            ic.Color as Condicion_Color,
+                            ic.Activo as Condicion_Activo,
+                            ic.Orden as Condicion_Orden,
+                            -- Datos de la imagen principal
                             img.Id as ImagenPrincipal_Id,
                             img.Nombre as ImagenPrincipal_Nombre,
                             img.Url as ImagenPrincipal_Url,
                             img.UrlThumb as ImagenPrincipal_UrlThumb,
+                            -- Datos de usuarios
                             uc.UsuarioID as UsuarioCreador_Id,
                             uc.Nombre as UsuarioCreador_Nombre,
                             um.UsuarioID as UsuarioModificador_Id,
                             um.Nombre as UsuarioModificador_Nombre
                         FROM Inmueble i
                         LEFT JOIN Moneda m ON i.MonedaId = m.MonedaID
+                        LEFT JOIN InmuebleCondicion ic ON i.CondicionId = ic.Id
                         LEFT JOIN Imagen img ON i.ImagenPrincipalId = img.Id
                         LEFT JOIN Usuario uc ON i.UsuarioCreadorId = uc.UsuarioID
                         LEFT JOIN Usuario um ON i.UsuarioModificadorId = um.UsuarioID
@@ -664,6 +858,7 @@ namespace AdmIn.Data.Repositorios
                     Descripcion = row.Descripcion,
                     ImagenPrincipalId = row.ImagenPrincipalId,
                     MonedaId = row.MonedaId,
+                    CondicionId = row.CondicionId,
                     Activo = row.Activo,
                     FechaCreacion = row.FechaCreacion,
                     FechaModificacion = row.FechaModificacion,
@@ -679,6 +874,20 @@ namespace AdmIn.Data.Repositorios
                         Id = row.Moneda_Id,
                         Codigo = row.Moneda_Codigo,
                         Nombre = row.Moneda_Nombre
+                    };
+                }
+
+                // Mapear la condición si existe
+                if (row.Condicion_Id != null)
+                {
+                    inmueble.Condicion = new InmuebleCondicion
+                    {
+                        Id = row.Condicion_Id,
+                        Nombre = row.Condicion_Nombre,
+                        Descripcion = row.Condicion_Descripcion,
+                        Color = row.Condicion_Color,
+                        Activo = row.Condicion_Activo,
+                        Orden = row.Condicion_Orden
                     };
                 }
 

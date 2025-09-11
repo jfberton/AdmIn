@@ -70,9 +70,9 @@
                 </RadzenFormField>
             </RadzenColumn>
             <RadzenColumn Size="4">
-                <RadzenFormField Text="Estado" Variant="Variant.Outlined" Style="width:100%">
+                <RadzenFormField Text="Estado/Provincia" Variant="Variant.Outlined" Style="width:100%">
                     <RadzenTextBox @bind-Value="@Model.Estado" 
-                                  Name="estado" 
+                                  Name="estadoProvincia" 
                                   Placeholder="Ej: Buenos Aires" />
                 </RadzenFormField>
             </RadzenColumn>
@@ -91,6 +91,41 @@
                     <RadzenTextBox @bind-Value="@Model.CodigoPostal" 
                                   Name="codigoPostal" 
                                   Placeholder="Ej: 1900" />
+                </RadzenFormField>
+            </RadzenColumn>
+        </RadzenRow>
+    </RadzenFieldset>
+
+    <RadzenFieldset Text="Estado y Disponibilidad" class="mb-4">
+        <RadzenRow class="mb-3">
+            <!-- Estado del Inmueble -->
+            <RadzenColumn Size="6">
+                <RadzenFormField Text="Estado del Inmueble" Variant="Variant.Outlined" Style="width:100%">
+                    <ChildContent>
+                        <RadzenDropDown @bind-Value="@estadoSeleccionado" 
+                                       Data="@EstadosInmueble" 
+                                       Placeholder="Seleccione el estado del inmueble"
+                                       Name="estadoInmueble"
+                                       Change="@OnEstadoChanged" />
+                    </ChildContent>
+                    <Helper>
+                        <RadzenRequiredValidator Component="estadoInmueble" Text="El estado del inmueble es requerido" />
+                    </Helper>
+                </RadzenFormField>
+            </RadzenColumn>
+
+            <!-- Estado Activo -->
+            <RadzenColumn Size="6">
+                <RadzenFormField Text="Disponibilidad" Variant="Variant.Outlined" Style="width:100%">
+                    <ChildContent>
+                        <RadzenCheckBox @bind-Value="@Model.Activo" Name="activo" />
+                        <RadzenLabel Text="Inmueble Activo" Component="activo" Style="margin-left: 8px;" />
+                    </ChildContent>
+                    <Helper>
+                        <RadzenText TextStyle="TextStyle.Caption" Style="color: #6b7280; margin-top: 4px;">
+                            Un inmueble inactivo no aparecerá en las búsquedas
+                        </RadzenText>
+                    </Helper>
                 </RadzenFormField>
             </RadzenColumn>
         </RadzenRow>
@@ -175,7 +210,7 @@
     <RadzenFieldset Text="Información Adicional" class="mb-4">
         <RadzenRow class="mb-3">
             <!-- Administrador -->
-            <RadzenColumn Size="6">
+            <RadzenColumn Size="12">
                 <RadzenFormField Text="Administrador" Variant="Variant.Outlined" Style="width:100%">
                     <ChildContent>
                         @if (ListaAdministradores.Any())
@@ -184,7 +219,7 @@
                                            Data="@ListaAdministradores" 
                                            TextProperty="Nombre" 
                                            ValueProperty="Id"
-                                           Placeholder="Seleccione un administrador"
+                                           Placeholder="Seleccione un administrador (opcional)"
                                            AllowClear="true"
                                            Name="administrador" />
                         }
@@ -192,16 +227,6 @@
                         {
                             <RadzenTextBox Value="Cargando usuarios..." ReadOnly="true" />
                         }
-                    </ChildContent>
-                </RadzenFormField>
-            </RadzenColumn>
-
-            <!-- Estado Activo -->
-            <RadzenColumn Size="6">
-                <RadzenFormField Text="Estado" Variant="Variant.Outlined" Style="width:100%">
-                    <ChildContent>
-                        <RadzenCheckBox @bind-Value="@Model.Activo" Name="activo" />
-                        <RadzenLabel Text="Inmueble Activo" Component="activo" Style="margin-left: 8px;" />
                     </ChildContent>
                 </RadzenFormField>
             </RadzenColumn>
@@ -263,6 +288,18 @@
 
     private List<Moneda> ListaMonedas = new();
     private List<Usuario> ListaAdministradores = new();
+    
+    // Estados del inmueble
+    private List<string> EstadosInmueble = new()
+    {
+        "Disponible",
+        "Ocupado", 
+        "Reservado",
+        "En reparación",
+        "En mantenimiento"
+    };
+
+    private string estadoSeleccionado = "Disponible";
 
     protected override async Task OnInitializedAsync()
     {
@@ -276,9 +313,15 @@
                 Model.Activo = true;
                 Model.FechaCreacion = DateTime.Now;
                 Model.FechaModificacion = DateTime.Now;
-                // Establecer moneda por defecto
                 Model.MonedaId = 1;
+                Model.Estado = "Disponible"; // Estado por defecto
+                estadoSeleccionado = "Disponible";
                 Console.WriteLine("Valores por defecto establecidos");
+            }
+            else if (IsEditMode)
+            {
+                // En modo edición, usar el estado actual del modelo
+                estadoSeleccionado = !string.IsNullOrEmpty(Model.Estado) ? Model.Estado : "Disponible";
             }
 
             await CargarDatos();
@@ -353,6 +396,16 @@
         }
     }
 
+    private void OnEstadoChanged(object value)
+    {
+        if (value != null)
+        {
+            estadoSeleccionado = value.ToString() ?? "Disponible";
+            Model.Estado = estadoSeleccionado;
+            StateHasChanged();
+        }
+    }
+
     private async Task OnSubmit(Inmueble inmueble)
     {
         if (IsLoading) return;
@@ -361,6 +414,9 @@
         {
             IsLoading = true;
             Console.WriteLine("Iniciando submit del formulario...");
+            
+            // Asegurar que el estado esté asignado al modelo
+            inmueble.Estado = estadoSeleccionado;
             
             // Actualizar fechas
             if (IsEditMode)
@@ -384,4 +440,4 @@
             IsLoading = false;
         }
     }
-}
+}}

@@ -7,6 +7,8 @@
 @using Microsoft.AspNetCore.Components.Authorization
 
 @inject IServ_Inmueble serv_inmueble
+@inject IServ_InmuebleCondicion serv_condicion
+@inject IServ_Moneda serv_moneda
 @inject AuthenticationStateProvider authStateProvider
 
 <PageTitle>Editar Inmueble</PageTitle>
@@ -32,10 +34,271 @@
 
         <!-- Formulario Principal -->
         <RadzenCard Class="form-container">
-            <InmuebleFormComponent Model="@inmueble"
-                                  IsEditMode="true"
-                                  OnValidSubmit="@ActualizarInmueble"
-                                  OnCancel="@Cancelar" />
+            <RadzenTemplateForm TItem="Inmueble" Data="@inmuebleEditando" Submit="@ActualizarInmueble">
+                <RadzenFieldset Text="Información Básica" class="mb-4">
+                    <!-- Nombre del Inmueble -->
+                    <RadzenRow class="mb-3">
+                        <RadzenColumn>
+                            <RadzenFormField Text="Nombre del Inmueble" Variant="Variant.Outlined" Style="width:100%">
+                                <ChildContent>
+                                    <RadzenTextBox @bind-Value="@inmuebleEditando.Nombre" 
+                                                  MaxLength="255" 
+                                                  Name="nombre" 
+                                                  Placeholder="Ej: Casa en Palermo, Departamento Centro"
+                                                  TValue="string" />
+                                </ChildContent>
+                                <Helper>
+                                    <RadzenRequiredValidator Component="nombre" Text="El nombre del inmueble es requerido" />
+                                </Helper>
+                            </RadzenFormField>
+                        </RadzenColumn>
+                    </RadzenRow>
+
+                    <!-- Descripción -->
+                    <RadzenRow class="mb-3">
+                        <RadzenColumn>
+                            <RadzenFormField Text="Descripción" Variant="Variant.Outlined" Style="width:100%">
+                                <ChildContent>
+                                    <RadzenTextArea @bind-Value="@inmuebleEditando.Descripcion" 
+                                                   MaxLength="1000" 
+                                                   Rows="4"
+                                                   Name="descripcion"
+                                                   Placeholder="Descripción detallada del inmueble"
+                                                   TValue="string" />
+                                </ChildContent>
+                            </RadzenFormField>
+                        </RadzenColumn>
+                    </RadzenRow>
+
+                    <!-- Dirección -->
+                    <RadzenRow class="mb-3">
+                        <RadzenColumn>
+                            <RadzenFormField Text="Dirección" Variant="Variant.Outlined" Style="width:100%">
+                                <ChildContent>
+                                    <RadzenTextBox @bind-Value="@inmuebleEditando.Direccion" 
+                                                  MaxLength="500" 
+                                                  Name="direccion"
+                                                  Placeholder="Ej: Av. Corrientes 1234, Piso 5 Dpto A"
+                                                  TValue="string" />
+                                </ChildContent>
+                                <Helper>
+                                    <RadzenRequiredValidator Component="direccion" Text="La dirección es requerida" />
+                                </Helper>
+                            </RadzenFormField>
+                        </RadzenColumn>
+                    </RadzenRow>
+                </RadzenFieldset>
+
+                <RadzenFieldset Text="Ubicación Geográfica" class="mb-4">
+                    <RadzenRow class="mb-3">
+                        <RadzenColumn Size="4">
+                            <RadzenFormField Text="País" Variant="Variant.Outlined" Style="width:100%">
+                                <RadzenTextBox @bind-Value="@inmuebleEditando.Pais" 
+                                              Name="pais" 
+                                              Placeholder="Ej: Argentina" />
+                            </RadzenFormField>
+                        </RadzenColumn>
+                        <RadzenColumn Size="4">
+                            <RadzenFormField Text="Estado/Provincia" Variant="Variant.Outlined" Style="width:100%">
+                                <RadzenTextBox @bind-Value="@inmuebleEditando.Estado" 
+                                              Name="estadoGeografico" 
+                                              Placeholder="Ej: Buenos Aires" />
+                            </RadzenFormField>
+                        </RadzenColumn>
+                        <RadzenColumn Size="4">
+                            <RadzenFormField Text="Ciudad" Variant="Variant.Outlined" Style="width:100%">
+                                <RadzenTextBox @bind-Value="@inmuebleEditando.Ciudad" 
+                                              Name="ciudad" 
+                                              Placeholder="Ej: La Plata" />
+                            </RadzenFormField>
+                        </RadzenColumn>
+                    </RadzenRow>
+                    
+                    <RadzenRow class="mb-3">
+                        <RadzenColumn>
+                            <RadzenFormField Text="Código Postal" Variant="Variant.Outlined" Style="width:100%">
+                                <RadzenTextBox @bind-Value="@inmuebleEditando.CodigoPostal" 
+                                              Name="codigoPostal" 
+                                              Placeholder="Ej: 1900" />
+                            </RadzenFormField>
+                        </RadzenColumn>
+                    </RadzenRow>
+                </RadzenFieldset>
+
+                <RadzenFieldset Text="Condición y Disponibilidad" class="mb-4">
+                    <RadzenRow class="mb-3">
+                        <!-- Condición del Inmueble -->
+                        <RadzenColumn Size="6">
+                            <RadzenFormField Text="Condición del Inmueble" Variant="Variant.Outlined" Style="width:100%">
+                                <ChildContent>
+                                    <RadzenDropDown @bind-Value="@condicionSeleccionada" 
+                                                   Data="@condicionesDisponibles" 
+                                                   TextProperty="Nombre"
+                                                   ValueProperty="Id"
+                                                   Placeholder="Seleccione la condición del inmueble"
+                                                   Name="condicionInmueble"
+                                                   Change="@OnCondicionChanged" />
+                                </ChildContent>
+                                <Helper>
+                                    <RadzenRequiredValidator Component="condicionInmueble" Text="La condición del inmueble es requerida" />
+                                </Helper>
+                            </RadzenFormField>
+                        </RadzenColumn>
+
+                        <!-- Estado Activo -->
+                        <RadzenColumn Size="6">
+                            <RadzenFormField Text="Disponibilidad" Variant="Variant.Outlined" Style="width:100%">
+                                <ChildContent>
+                                    <RadzenCheckBox @bind-Value="@inmuebleEditando.Activo" Name="activo" />
+                                    <RadzenLabel Text="Inmueble Activo" Component="activo" Style="margin-left: 8px;" />
+                                </ChildContent>
+                                <Helper>
+                                    <RadzenText TextStyle="TextStyle.Caption" Style="color: #6b7280; margin-top: 4px;">
+                                        Un inmueble inactivo no aparecerá en las búsquedas
+                                    </RadzenText>
+                                </Helper>
+                            </RadzenFormField>
+                        </RadzenColumn>
+                    </RadzenRow>
+
+                    @if (condicionSeleccionada != null)
+                    {
+                        <RadzenRow class="mb-3">
+                            <RadzenColumn>
+                                <RadzenAlert AlertStyle="AlertStyle.Info" ShowIcon="true">
+                                    <RadzenText TextStyle="TextStyle.Body2">
+                                        Condición seleccionada: <strong>@condicionesDisponibles.FirstOrDefault(c => c.Id == condicionSeleccionada)?.Nombre</strong>
+                                        @if (!string.IsNullOrEmpty(condicionesDisponibles.FirstOrDefault(c => c.Id == condicionSeleccionada)?.Descripcion))
+                                        {
+                                            <br />@condicionesDisponibles.FirstOrDefault(c => c.Id == condicionSeleccionada)?.Descripcion
+                                        }
+                                    </RadzenText>
+                                </RadzenAlert>
+                            </RadzenColumn>
+                        </RadzenRow>
+                    }
+                </RadzenFieldset>
+
+                <RadzenFieldset Text="Información Económica" class="mb-4">
+                    <RadzenRow class="mb-3">
+                        <!-- Valor del Inmueble -->
+                        <RadzenColumn Size="6">
+                            <RadzenFormField Text="Valor del Inmueble" Variant="Variant.Outlined" Style="width:100%">
+                                <ChildContent>
+                                    <RadzenNumeric @bind-Value="@inmuebleEditando.Valor" 
+                                                  Format="C2" 
+                                                  Min="0"
+                                                  Name="valor"
+                                                  Placeholder="0.00"
+                                                  TValue="decimal" />
+                                </ChildContent>
+                                <Helper>
+                                    <RadzenRequiredValidator Component="valor" Text="El valor es requerido" />
+                                    <RadzenNumericRangeValidator Component="valor" Min="1" Text="El valor debe ser mayor a 0" />
+                                </Helper>
+                            </RadzenFormField>
+                        </RadzenColumn>
+
+                        <!-- Renta Mensual -->
+                        <RadzenColumn Size="6">
+                            <RadzenFormField Text="Renta Mensual" Variant="Variant.Outlined" Style="width:100%">
+                                <ChildContent>
+                                    <RadzenNumeric @bind-Value="@inmuebleEditando.RentaMensual" 
+                                                  Format="C2" 
+                                                  Min="0"
+                                                  Name="rentaMensual"
+                                                  Placeholder="0.00"
+                                                  TValue="decimal" />
+                                </ChildContent>
+                            </RadzenFormField>
+                        </RadzenColumn>
+                    </RadzenRow>
+
+                    <RadzenRow class="mb-3">
+                        <!-- Moneda -->
+                        <RadzenColumn Size="6">
+                            <RadzenFormField Text="Moneda" Variant="Variant.Outlined" Style="width:100%">
+                                <ChildContent>
+                                    @if (ListaMonedas.Any())
+                                    {
+                                        <RadzenDropDown @bind-Value="@inmuebleEditando.MonedaId" 
+                                                       Data="@ListaMonedas" 
+                                                       TextProperty="Nombre" 
+                                                       ValueProperty="Id"
+                                                       Placeholder="Seleccione una moneda"
+                                                       Name="moneda" />
+                                    }
+                                    else
+                                    {
+                                        <RadzenTextBox Value="Cargando monedas..." ReadOnly="true" />
+                                    }
+                                </ChildContent>
+                                <Helper>
+                                    <RadzenRequiredValidator Component="moneda" Text="La moneda es requerida" />
+                                </Helper>
+                            </RadzenFormField>
+                        </RadzenColumn>
+
+                        <!-- Construcción M2 -->
+                        <RadzenColumn Size="6">
+                            <RadzenFormField Text="Construcción (m²)" Variant="Variant.Outlined" Style="width:100%">
+                                <ChildContent>
+                                    <RadzenNumeric @bind-Value="@inmuebleEditando.ConstruccionM2" 
+                                                  Format="N2" 
+                                                  Min="0"
+                                                  Name="construccionM2"
+                                                  Placeholder="0.00"
+                                                  TValue="decimal" />
+                                </ChildContent>
+                            </RadzenFormField>
+                        </RadzenColumn>
+                    </RadzenRow>
+                </RadzenFieldset>
+
+                <RadzenFieldset Text="Coordenadas (Opcional)" class="mb-4">
+                    <RadzenRow class="mb-3">
+                        <RadzenColumn Size="6">
+                            <RadzenFormField Text="Latitud" Variant="Variant.Outlined" Style="width:100%">
+                                <ChildContent>
+                                    <RadzenNumeric @bind-Value="@inmuebleEditando.Latitud" 
+                                                  Format="N6" 
+                                                  Min="-90" 
+                                                  Max="90"
+                                                  Name="latitud"
+                                                  Placeholder="Ej: -34.603722"
+                                                  TValue="decimal" />
+                                </ChildContent>
+                            </RadzenFormField>
+                        </RadzenColumn>
+                        <RadzenColumn Size="6">
+                            <RadzenFormField Text="Longitud" Variant="Variant.Outlined" Style="width:100%">
+                                <ChildContent>
+                                    <RadzenNumeric @bind-Value="@inmuebleEditando.Longitud" 
+                                                  Format="N6" 
+                                                  Min="-180" 
+                                                  Max="180"
+                                                  Name="longitud"
+                                                  Placeholder="Ej: -58.381592"
+                                                  TValue="decimal" />
+                                </ChildContent>
+                            </RadzenFormField>
+                        </RadzenColumn>
+                    </RadzenRow>
+                </RadzenFieldset>
+
+                <!-- Botones de Acción -->
+                <RadzenStack Orientation="Orientation.Horizontal" Gap="1rem" JustifyContent="JustifyContent.End" class="mt-4">
+                    <RadzenButton ButtonStyle="ButtonStyle.Secondary" 
+                                 Icon="cancel" 
+                                 Text="Cancelar" 
+                                 Click="@Cancelar" />
+                    <RadzenButton ButtonStyle="ButtonStyle.Primary" 
+                                 Icon="save" 
+                                 Text="Actualizar" 
+                                 ButtonType="ButtonType.Submit"
+                                 IsBusy="@guardando" />
+                </RadzenStack>
+            </RadzenTemplateForm>
         </RadzenCard>
 
         <!-- Información de Auditoría -->
@@ -124,14 +387,25 @@ else
     [Parameter] public int Id { get; set; }
     
     private Inmueble? inmueble;
+    private Inmueble inmuebleEditando = new();
     private bool cargando = true;
+    private bool guardando = false;
     private int? usuarioActualId;
+
+    // Condiciones del inmueble
+    private List<InmuebleCondicion> condicionesDisponibles = new();
+    private int? condicionSeleccionada = null;
+    
+    // Monedas disponibles
+    private List<Moneda> ListaMonedas = new();
 
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
         
         await ObtenerUsuarioActual();
+        await CargarCondicionesDisponibles();
+        await CargarMonedas();
         await CargarInmueble();
     }
 
@@ -140,6 +414,64 @@ else
         if (inmueble?.Id != Id)
         {
             await CargarInmueble();
+        }
+    }
+
+    private async Task CargarMonedas()
+    {
+        try
+        {
+            var resultado = await serv_moneda.Obtener_todos();
+            if (resultado.Correcto && resultado.Datos != null)
+            {
+                ListaMonedas = resultado.Datos.ToList();
+            }
+            else
+            {
+                await LogHelper.Warn($"No se pudieron cargar las monedas: {resultado.Mensaje}");
+                // Crear una moneda por defecto si no hay ninguna
+                ListaMonedas = new List<Moneda>
+                {
+                    new Moneda { Id = 1, Nombre = "Peso Argentino", Codigo = "ARS" }
+                };
+            }
+        }
+        catch (Exception ex)
+        {
+            await LogHelper.Error($"Error al cargar monedas: {ex.Message}");
+            ListaMonedas = new List<Moneda>
+            {
+                new Moneda { Id = 1, Nombre = "Peso Argentino", Codigo = "ARS" }
+            };
+        }
+    }
+
+    private async Task CargarCondicionesDisponibles()
+    {
+        try
+        {
+            var resultado = await serv_condicion.Obtener_activos();
+            if (resultado.Correcto && resultado.Datos != null)
+            {
+                condicionesDisponibles = resultado.Datos.ToList();
+            }
+            else
+            {
+                await LogHelper.Warn($"No se pudieron cargar las condiciones: {resultado.Mensaje}");
+                // Crear una condición por defecto si no hay ninguna
+                condicionesDisponibles = new List<InmuebleCondicion>
+                {
+                    new InmuebleCondicion { Id = 1, Nombre = "Disponible", Descripcion = "Condición por defecto" }
+                };
+            }
+        }
+        catch (Exception ex)
+        {
+            await LogHelper.Error($"Error al cargar condiciones: {ex.Message}");
+            condicionesDisponibles = new List<InmuebleCondicion>
+            {
+                new InmuebleCondicion { Id = 1, Nombre = "Disponible", Descripcion = "Condición por defecto" }
+            };
         }
     }
 
@@ -173,6 +505,37 @@ else
             if (resultado.Correcto && resultado.Datos != null)
             {
                 inmueble = resultado.Datos;
+                
+                // Crear copia para edición
+                inmuebleEditando = new Inmueble
+                {
+                    Id = inmueble.Id,
+                    Nombre = inmueble.Nombre,
+                    Direccion = inmueble.Direccion,
+                    Pais = inmueble.Pais,
+                    Estado = inmueble.Estado,
+                    Ciudad = inmueble.Ciudad,
+                    CodigoPostal = inmueble.CodigoPostal,
+                    Latitud = inmueble.Latitud,
+                    Longitud = inmueble.Longitud,
+                    Valor = inmueble.Valor,
+                    ConstruccionM2 = inmueble.ConstruccionM2,
+                    RentaMensual = inmueble.RentaMensual,
+                    AdministradorId = inmueble.AdministradorId,
+                    Descripcion = inmueble.Descripcion,
+                    ImagenPrincipalId = inmueble.ImagenPrincipalId,
+                    MonedaId = inmueble.MonedaId,
+                    CondicionId = inmueble.CondicionId,
+                    Activo = inmueble.Activo,
+                    FechaCreacion = inmueble.FechaCreacion,
+                    FechaModificacion = inmueble.FechaModificacion,
+                    UsuarioCreadorId = inmueble.UsuarioCreadorId,
+                    UsuarioModificadorId = inmueble.UsuarioModificadorId
+                };
+
+                // Establecer condición seleccionada
+                condicionSeleccionada = inmueble.CondicionId > 0 ? inmueble.CondicionId : 1;
+                
                 EstablecerTituloPagina("Inmuebles", $"Editar: {inmueble.Nombre}");
                 await LogHelper.Info($"Inmueble cargado para edición: {inmueble.Nombre}");
             }
@@ -197,11 +560,27 @@ else
         }
     }
 
+    private void OnCondicionChanged(object value)
+    {
+        if (value != null && int.TryParse(value.ToString(), out int condicionId))
+        {
+            condicionSeleccionada = condicionId;
+            inmuebleEditando.CondicionId = condicionId;
+            StateHasChanged();
+        }
+    }
+
     private async Task ActualizarInmueble(Inmueble inmuebleActualizado)
     {
+        if (guardando) return;
+        
         try
         {
+            guardando = true;
             await LogHelper.Info($"Iniciando actualización de inmueble ID: {inmuebleActualizado.Id}");
+
+            // Asegurar que la condición esté asignada al modelo
+            inmuebleActualizado.CondicionId = condicionSeleccionada ?? 1;
 
             // Mantener información de auditoría
             inmuebleActualizado.FechaModificacion = DateTime.Now;
@@ -238,6 +617,10 @@ else
                 "Error Inesperado", 
                 $"Ocurrió un error inesperado: {ex.Message}"
             );
+        }
+        finally
+        {
+            guardando = false;
         }
     }
 

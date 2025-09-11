@@ -1,0 +1,178 @@
+@page "/monedas/detalle/{id:int}"
+
+@inherits BaseComponent
+
+@using AdmIn.Common.Entidades
+@using AdmIn.Common
+@using AdmIn.UI.Services
+@using Microsoft.AspNetCore.Components.Authorization
+
+@inject IServ_Moneda serv_moneda;
+
+@if (moneda == null)
+{
+    <RadzenProgressBarCircular ProgressBarStyle="ProgressBarStyle.Primary" 
+                              Value="100" 
+                              ShowValue="false" 
+                              Mode="ProgressBarMode.Indeterminate" />
+    <p>Cargando moneda...</p>
+}
+else
+{
+    <RadzenStack Gap="2rem" Class="p-4">
+        <!-- Header -->
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem">
+            <RadzenButton ButtonStyle="ButtonStyle.Light" 
+                         Icon="arrow_back" 
+                         Click="@(() => IrA("/monedas"))"
+                         Size="ButtonSize.Medium" />
+            <RadzenText TextStyle="TextStyle.H4" Text="@($"Moneda: {moneda.Nombre}")" />
+        </RadzenStack>
+
+        <!-- Breadcrumb -->
+        <RadzenBreadCrumb>
+            <RadzenBreadCrumbItem Path="/monedas" Text="Monedas" Icon="currency_exchange" />
+            <RadzenBreadCrumbItem Text="@moneda.Nombre" Icon="monetization_on" />
+        </RadzenBreadCrumb>
+
+        <!-- Información Principal -->
+        <RadzenCard Class="detail-card">
+            <RadzenStack Gap="1.5rem">
+                <RadzenText TextStyle="TextStyle.H6" Text="Información Básica" />
+                
+                <RadzenRow Gap="2rem">
+                    <RadzenColumn Size="6" SizeMD="4">
+                        <div class="detail-field">
+                            <RadzenText TextStyle="TextStyle.Caption" Text="CÓDIGO" />
+                            <RadzenText TextStyle="TextStyle.H6" Text="@moneda.Codigo" />
+                        </div>
+                    </RadzenColumn>
+                    <RadzenColumn Size="6" SizeMD="8">
+                        <div class="detail-field">
+                            <RadzenText TextStyle="TextStyle.Caption" Text="NOMBRE" />
+                            <RadzenText TextStyle="TextStyle.H6" Text="@moneda.Nombre" />
+                        </div>
+                    </RadzenColumn>
+                </RadzenRow>
+            </RadzenStack>
+        </RadzenCard>
+
+        <!-- Acciones -->
+        <RadzenCard Class="actions-card">
+            <RadzenStack Orientation="Orientation.Horizontal" Gap="1rem" JustifyContent="JustifyContent.End">
+                <RadzenButton ButtonStyle="ButtonStyle.Secondary" 
+                             Icon="list" 
+                             Text="Volver al Listado" 
+                             Click="@(() => IrA("/monedas"))" />
+                
+                <AuthorizeView Roles="admin_usuario">
+                    <Authorized>
+                        <RadzenButton ButtonStyle="ButtonStyle.Primary" 
+                                     Icon="edit" 
+                                     Text="Editar" 
+                                     Click="@(() => IrA($"/monedas/modificar/{moneda.Id}"))" />
+                        
+                        <RadzenButton ButtonStyle="ButtonStyle.Danger" 
+                                     Icon="delete" 
+                                     Text="Eliminar" 
+                                     Click="@Eliminar" />
+                    </Authorized>
+                </AuthorizeView>
+            </RadzenStack>
+        </RadzenCard>
+    </RadzenStack>
+}
+
+<style>
+    .detail-card {
+        max-width: 800px;
+        margin: 0 auto;
+    }
+    
+    .actions-card {
+        max-width: 800px;
+        margin: 0 auto;
+        background: #f8fafc;
+    }
+    
+    .detail-field {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .detail-field .rz-text:first-child {
+        color: #6b7280;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+    }
+</style>
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    Moneda? moneda;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        
+        try
+        {
+            var rta = await serv_moneda.Obtener_por_id(Id);
+            if (rta.Correcto && rta.Datos != null)
+            {
+                moneda = rta.Datos;
+                base.EstablecerTituloPagina("Monedas", $"Detalle: {moneda.Nombre}");
+            }
+            else
+            {
+                base.MostrarNotificacion(NotificationSeverity.Error, "Error!", "No se pudo cargar la moneda", "/monedas");
+            }
+        }
+        catch (Exception ex)
+        {
+            base.MostrarNotificacion(NotificationSeverity.Error, "Error!", $"Error al cargar la moneda: {ex.Message}", "/monedas");
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (moneda?.Id != Id)
+        {
+            await OnInitializedAsync();
+        }
+    }
+
+    async Task Eliminar()
+    {
+        if (moneda == null) return;
+
+        try
+        {
+            var confirmResult = await base.MostrarConfirmacion(
+                $"¿Está seguro de eliminar la moneda '{moneda.Nombre}'?", 
+                "Confirmar eliminación");
+
+            if (confirmResult == true)
+            {
+                var rta = await serv_moneda.Eliminar(moneda.Id);
+
+                if (rta.Correcto)
+                {
+                    base.MostrarNotificacion(NotificationSeverity.Success, "Éxito!", 
+                        "Moneda eliminada correctamente", "/monedas");
+                }
+                else
+                {
+                    base.MostrarNotificacion(NotificationSeverity.Error, "Error!", rta.Mensaje);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            base.MostrarNotificacion(NotificationSeverity.Error, "Error!", 
+                $"Error al eliminar moneda: {ex.Message}");
+        }
+    }
+}
