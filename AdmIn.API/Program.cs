@@ -64,6 +64,10 @@ builder.Services.AddScoped<IInmuebleCondicionRepository, InmuebleCondicionReposi
 builder.Services.AddScoped<IServ_Caracteristica, Serv_Caracteristica>();
 builder.Services.AddScoped<ICaracteristicaRepository, CaracteristicaRepository>();
 
+// Register TipoServicio services
+builder.Services.AddScoped<IServ_TipoServicio, Serv_TipoServicio>();
+builder.Services.AddScoped<ITipoServicioRepository, TipoServicioRepository>();
+
 // Servicios de imágenes
 builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
 builder.Services.AddScoped<IServ_ImagenUpload, Serv_ImagenUpload>();
