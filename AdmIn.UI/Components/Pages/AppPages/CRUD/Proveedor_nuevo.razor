@@ -1,0 +1,329 @@
+@page "/proveedores/nuevo"
+@using AdmIn.Common
+@using AdmIn.Common.Entidades
+@using AdmIn.UI.Services
+@inject IServ_Proveedor ServicioProveedor
+@inject IServ_TipoServicio ServicioTipoServicio
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Nuevo Proveedor</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3>Nuevo Proveedor</h3>
+    <button class="btn btn-outline-secondary" @onclick="Regresar">
+        <i class="fas fa-arrow-left"></i> Regresar
+    </button>
+</div>
+
+<div class="alert alert-info">
+    <h6><i class="fas fa-info-circle"></i> Información importante:</h6>
+    <p class="mb-0">Al crear un proveedor se creará automáticamente un usuario asociado con rol 'proveedor' (RolID = 5) usando el email y nombre proporcionados. Se generará una contraseña temporal que podrá ser cambiada posteriormente.</p>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <EditForm Model="proveedor" OnValidSubmit="GuardarProveedor">
+            <DataAnnotationsValidator />
+            
+            <!-- Información básica -->
+            <h5 class="card-title mb-3">
+                <i class="fas fa-user"></i> Información Básica
+            </h5>
+            
+            <div class="row g-3 mb-4">
+                <div class="col-md-6">
+                    <label class="form-label">Nombre <span class="text-danger">*</span></label>
+                    <InputText class="form-control" @bind-Value="proveedor.Nombre" 
+                               placeholder="Ingrese el nombre del proveedor" />
+                    <ValidationMessage For="@(() => proveedor.Nombre)" class="text-danger" />
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">RFC <span class="text-danger">*</span></label>
+                    <InputText class="form-control" @bind-Value="proveedor.RFC" 
+                               @onblur="ValidarRFC"
+                               placeholder="Ingrese el RFC" />
+                    <ValidationMessage For="@(() => proveedor.RFC)" class="text-danger" />
+                    @if (!string.IsNullOrEmpty(mensajeValidacionRFC))
+                    {
+                        <div class="text-danger small">@mensajeValidacionRFC</div>
+                    }
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Email <span class="text-danger">*</span></label>
+                    <InputText class="form-control" @bind-Value="proveedor.Email" 
+                               @onblur="ValidarEmail"
+                               type="email" 
+                               placeholder="Ingrese el email (será usado para crear el usuario)" />
+                    <ValidationMessage For="@(() => proveedor.Email)" class="text-danger" />
+                    <div class="form-text">Este email será usado para crear el usuario asociado al proveedor.</div>
+                    @if (!string.IsNullOrEmpty(mensajeValidacionEmail))
+                    {
+                        <div class="text-danger small">@mensajeValidacionEmail</div>
+                    }
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Teléfono</label>
+                    <InputText class="form-control" @bind-Value="proveedor.Telefono" 
+                               placeholder="Ingrese el teléfono" />
+                    <ValidationMessage For="@(() => proveedor.Telefono)" class="text-danger" />
+                </div>
+
+                <div class="col-12">
+                    <label class="form-label">Dirección</label>
+                    <InputTextArea class="form-control" @bind-Value="proveedor.Direccion" 
+                                   rows="3" 
+                                   placeholder="Ingrese la dirección completa" />
+                    <ValidationMessage For="@(() => proveedor.Direccion)" class="text-danger" />
+                </div>
+
+                <div class="col-12">
+                    <div class="form-check">
+                        <InputCheckbox class="form-check-input" @bind-Value="proveedor.Activo" />
+                        <label class="form-check-label">
+                            Proveedor Activo
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Servicios que ofrece -->
+            <h5 class="card-title mb-3">
+                <i class="fas fa-tools"></i> Servicios que Ofrece
+            </h5>
+            
+            @if (cargandoServicios)
+            {
+                <div class="d-flex justify-content-center mb-4">
+                    <div class="spinner-border spinner-border-sm" role="status">
+                        <span class="visually-hidden">Cargando servicios...</span>
+                    </div>
+                </div>
+            }
+            else if (todosLosServicios?.Any() == true)
+            {
+                <div class="row g-2 mb-4">
+                    @foreach (var servicio in todosLosServicios)
+                    {
+                        <div class="col-md-6 col-lg-4">
+                            <div class="form-check">
+                                <input class="form-check-input" 
+                                       type="checkbox" 
+                                       id="servicio_@servicio.Id"
+                                       @onchange="@((e) => CambiarSeleccionServicio(servicio.Id, (bool)e.Value!))" 
+                                       checked="@(serviciosSeleccionados.ContainsKey(servicio.Id) && serviciosSeleccionados[servicio.Id])" />
+                                <label class="form-check-label" for="servicio_@servicio.Id">
+                                    @servicio.Nombre
+                                </label>
+                                @if (!string.IsNullOrEmpty(servicio.Descripcion))
+                                {
+                                    <div class="form-text small">@servicio.Descripcion</div>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="alert alert-warning mb-4">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    No hay servicios disponibles para asignar. Puede agregar servicios después de crear el proveedor.
+                </div>
+            }
+
+            <hr />
+
+            <div class="d-flex justify-content-end gap-2">
+                <button type="button" class="btn btn-outline-secondary" @onclick="Regresar">
+                    <i class="fas fa-times"></i> Cancelar
+                </button>
+                <button type="submit" class="btn btn-primary" disabled="@guardando">
+                    @if (guardando)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2"></span>
+                    }
+                    <i class="fas fa-save"></i> Guardar
+                </button>
+            </div>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    private Proveedor proveedor = new() { Activo = true };
+    private List<TipoServicio>? todosLosServicios;
+    private Dictionary<int, bool> serviciosSeleccionados = new();
+    private bool guardando = false;
+    private bool cargandoServicios = true;
+    private string mensajeValidacionRFC = "";
+    private string mensajeValidacionEmail = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarServicios();
+    }
+
+    private async Task CargarServicios()
+    {
+        try
+        {
+            cargandoServicios = true;
+            StateHasChanged();
+
+            var resultado = await ServicioTipoServicio.Obtener_todos();
+            
+            if (resultado.Correcto && resultado.Datos != null)
+            {
+                todosLosServicios = resultado.Datos.ToList();
+                
+                // Inicializar diccionario de servicios seleccionados
+                serviciosSeleccionados.Clear();
+                foreach (var servicio in todosLosServicios)
+                {
+                    serviciosSeleccionados[servicio.Id] = false;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("alert", $"Error al cargar servicios: {ex.Message}");
+        }
+        finally
+        {
+            cargandoServicios = false;
+            StateHasChanged();
+        }
+    }
+
+    private void CambiarSeleccionServicio(int servicioId, bool seleccionado)
+    {
+        serviciosSeleccionados[servicioId] = seleccionado;
+        StateHasChanged();
+    }
+
+    private async Task GuardarProveedor()
+    {
+        // Validaciones finales
+        if (string.IsNullOrWhiteSpace(proveedor.Nombre))
+        {
+            await JSRuntime.InvokeVoidAsync("alert", "El nombre es requerido.");
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(proveedor.RFC))
+        {
+            await JSRuntime.InvokeVoidAsync("alert", "El RFC es requerido.");
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(proveedor.Email))
+        {
+            await JSRuntime.InvokeVoidAsync("alert", "El email es requerido para crear el usuario asociado.");
+            return;
+        }
+
+        if (!string.IsNullOrEmpty(mensajeValidacionRFC) || !string.IsNullOrEmpty(mensajeValidacionEmail))
+        {
+            await JSRuntime.InvokeVoidAsync("alert", "Por favor corrija los errores de validación antes de continuar.");
+            return;
+        }
+
+        guardando = true;
+        StateHasChanged();
+
+        try
+        {
+            var resultado = await ServicioProveedor.Crear(proveedor);
+
+            if (resultado.Correcto)
+            {
+                // TODO: Guardar servicios seleccionados
+                var serviciosSeleccionadosList = serviciosSeleccionados
+                    .Where(kvp => kvp.Value)
+                    .Select(kvp => kvp.Key)
+                    .ToList();
+
+                if (serviciosSeleccionadosList.Any())
+                {
+                    // Aquí guardaríamos los servicios asociados al proveedor
+                    // Por ahora solo mostramos un mensaje informativo
+                }
+
+                await JSRuntime.InvokeVoidAsync("alert", 
+                    $"{resultado.Mensaje}\n\n" +
+                    $"Servicios seleccionados: {serviciosSeleccionadosList.Count}\n" +
+                    "Nota: La funcionalidad de servicios está en desarrollo.");
+                    
+                Navigation.NavigateTo("/proveedores");
+            }
+            else
+            {
+                await JSRuntime.InvokeVoidAsync("alert", $"Error al crear proveedor: {resultado.Mensaje}");
+            }
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("alert", $"Error: {ex.Message}");
+        }
+        finally
+        {
+            guardando = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ValidarRFC()
+    {
+        mensajeValidacionRFC = "";
+
+        if (!string.IsNullOrWhiteSpace(proveedor.RFC))
+        {
+            try
+            {
+                var resultado = await ServicioProveedor.Validar_rfc_unico(proveedor.RFC);
+                if (!resultado.Correcto || !resultado.Datos)
+                {
+                    mensajeValidacionRFC = "Este RFC ya está en uso por otro proveedor.";
+                }
+            }
+            catch (Exception ex)
+            {
+                mensajeValidacionRFC = $"Error al validar RFC: {ex.Message}";
+            }
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task ValidarEmail()
+    {
+        mensajeValidacionEmail = "";
+
+        if (!string.IsNullOrWhiteSpace(proveedor.Email))
+        {
+            try
+            {
+                var resultado = await ServicioProveedor.Validar_email_unico(proveedor.Email);
+                if (!resultado.Correcto || !resultado.Datos)
+                {
+                    mensajeValidacionEmail = "Este email ya está en uso por otro proveedor o usuario.";
+                }
+            }
+            catch (Exception ex)
+            {
+                mensajeValidacionEmail = $"Error al validar email: {ex.Message}";
+            }
+        }
+
+        StateHasChanged();
+    }
+
+    private void Regresar()
+    {
+        Navigation.NavigateTo("/proveedores");
+    }
+}

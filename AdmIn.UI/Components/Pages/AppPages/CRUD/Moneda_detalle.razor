@@ -36,32 +36,54 @@ else
         </RadzenBreadCrumb>
 
         <!-- Información Principal -->
-        <RadzenCard Class="detail-card">
-            <RadzenStack Gap="1.5rem">
-                <RadzenText TextStyle="TextStyle.H6" Text="Información Básica" />
-                
-                <RadzenRow Gap="2rem">
-                    <RadzenColumn Size="6" SizeMD="4">
-                        <div class="detail-field">
-                            <RadzenText TextStyle="TextStyle.Caption" Text="ID" />
-                            <RadzenText TextStyle="TextStyle.H6" Text="@moneda.Id.ToString()" />
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-info-circle"></i> Información General
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">ID:</label>
+                        <p class="form-control-plaintext">@moneda.Id</p>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Código:</label>
+                        <p class="form-control-plaintext">
+                            <span class="badge bg-primary fs-6">
+                                <i class="fas fa-tag me-1"></i>
+                                @moneda.Codigo
+                            </span>
+                        </p>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Nombre:</label>
+                        <p class="form-control-plaintext">@moneda.Nombre</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Información Adicional -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-chart-line"></i> Información de Uso
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-12">
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Esta moneda puede ser asignada a usuarios para definir su moneda de trabajo predeterminada.
+                            También se utiliza en la gestión de inmuebles y transacciones del sistema.
                         </div>
-                    </RadzenColumn>
-                    <RadzenColumn Size="6" SizeMD="4">
-                        <div class="detail-field">
-                            <RadzenText TextStyle="TextStyle.Caption" Text="CÓDIGO" />
-                            <RadzenText TextStyle="TextStyle.H6" Text="@moneda.Codigo" />
-                        </div>
-                    </RadzenColumn>
-                    <RadzenColumn Size="12" SizeMD="4">
-                        <div class="detail-field">
-                            <RadzenText TextStyle="TextStyle.Caption" Text="NOMBRE" />
-                            <RadzenText TextStyle="TextStyle.H6" Text="@moneda.Nombre" />
-                        </div>
-                    </RadzenColumn>
-                </RadzenRow>
-            </RadzenStack>
-        </RadzenCard>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <!-- Acciones -->
         <RadzenCard Class="actions-card">

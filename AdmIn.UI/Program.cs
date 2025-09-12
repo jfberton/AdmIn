@@ -32,6 +32,7 @@ builder.Services.AddScoped<IServ_Inmueble, Serv_Inmueble>();
 builder.Services.AddScoped<IServ_InmuebleCondicion, Serv_InmuebleCondicion>();
 builder.Services.AddScoped<IServ_Caracteristica, Serv_Caracteristica>();
 builder.Services.AddScoped<IServ_TipoServicio, Serv_TipoServicio>();
+builder.Services.AddScoped<IServ_Proveedor, Serv_Proveedor>();
 builder.Services.AddScoped<IServ_Imagen, Serv_Imagen>();
 
 //Servicio de mock

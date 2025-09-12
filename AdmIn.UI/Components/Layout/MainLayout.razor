@@ -76,17 +76,6 @@
                         <Authorized>
                             <RadzenProfileMenu>
                                 <Template>
-                                    @* Debug info - remover en producción *@
-                                    @if (showDebugInfo)
-                                    {
-                                        <div style="position: absolute; top: 50px; right: 10px; background: black; color: white; padding: 5px; font-size: 10px; z-index: 9999;">
-                                            Usuario: @(usuarioActual?.Nombre ?? "NULL")<br/>
-                                            ImagenPerfilId: @(usuarioActual?.ImagenPerfilId?.ToString() ?? "NULL")<br/>
-                                            ImagenPerfil: @(usuarioActual?.ImagenPerfil?.Url ?? "NULL")<br/>
-                                            ObtenerUrl: @(usuarioActual?.ObtenerUrlImagenPerfil() ?? "NULL")
-                                        </div>
-                                    }
-                                    
                                     @* Mostrar placeholder temporalmente si no hay imagen *@
                                     @if (usuarioActual?.ObtenerUrlImagenPerfil() != null)
                                     {
@@ -113,10 +102,6 @@
                                                      Click="@(() => CambiarPassword())">Cambiar contraseña</RadzenButton>
                                         <RadzenButton Icon="logout" Variant="Variant.Text" Size="ButtonSize.Small" 
                                                      Click="@(() => Logout())">Cerrar sesión</RadzenButton>
-                                        
-                                        <!-- Debug toggle -->
-                                        <RadzenButton Icon="bug_report" Variant="Variant.Text" Size="ButtonSize.ExtraSmall" 
-                                                     Click="@(() => showDebugInfo = !showDebugInfo)">Debug</RadzenButton>
                                     </RadzenStack>
                                 </ChildContent>
                             </RadzenProfileMenu>
@@ -133,12 +118,10 @@
             <MenuItem Text="Usuarios" Icon="person_outline" Path="/usuarios" Roles="admin_usuario" OnMenuItemClick="@OnMenuItemClick" />
             <MenuItem Text="Características" Icon="category" Path="/caracteristicas" Roles="admin_usuario" OnMenuItemClick="@OnMenuItemClick" />
             <MenuItem Text="Tipos de Servicio" Icon="construction" Path="/tipos-servicio" Roles="admin_usuario" OnMenuItemClick="@OnMenuItemClick" />
+            <MenuItem Text="Proveedores" Icon="business" Path="/proveedores" Roles="admin_usuario" OnMenuItemClick="@OnMenuItemClick" />
             <MenuItem Text="Monedas" Icon="currency_exchange" Path="/monedas" Roles="admin_usuario" OnMenuItemClick="@OnMenuItemClick" />
             <MenuItem Text="Inmuebles" Icon="apartment" Path="/inmuebles" Roles="admin_propiedad" OnMenuItemClick="@OnMenuItemClick" />
             <MenuItem Text="Reparaciones" Icon="build" Path="/m/reparaciones" Roles="add_reparacion, admin_reparacion" OnMenuItemClick="@OnMenuItemClick" />
-            <MenuItem Text="Test Cloudinary" Icon="cloud_upload" Path="/test-cloudinary" Roles="admin_usuario" OnMenuItemClick="@OnMenuItemClick" />
-            <MenuItem Text="Test Perfil" Icon="bug_report" Path="/test-perfil" Roles="admin_usuario" OnMenuItemClick="@OnMenuItemClick" />
-            <MenuItem Text="Test Inmueble Form" Icon="home_work" Path="/test-inmueble-form" Roles="admin_usuario" OnMenuItemClick="@OnMenuItemClick" />
         </RadzenPanelMenu>
     </RadzenSidebar>
 
@@ -177,7 +160,6 @@
     string footerText = $"Sistema de administración de inmuebles - {DateTime.Now.Year}";
     private string userName;
     private Usuario? usuarioActual;
-    private bool showDebugInfo = false; // Para debug temporal
 
     protected override async Task OnInitializedAsync()
     {
@@ -196,22 +178,13 @@
             var authState = await authStateProvider.GetAuthenticationStateAsync();
             var userEmail = authState.User.Identity?.Name;
             
-            Console.WriteLine($"[MainLayout] Cargando usuario para email: {userEmail}");
-            
             if (!string.IsNullOrEmpty(userEmail))
             {
                 var resultado = await serv_Usuario.Obtener_usuario_por_email(userEmail);
                 if (resultado.Correcto)
                 {
                     usuarioActual = resultado.Datos;
-                    Console.WriteLine($"[MainLayout] Usuario cargado: {usuarioActual?.Nombre}, ImagenPerfilId: {usuarioActual?.ImagenPerfilId}");
-                    Console.WriteLine($"[MainLayout] ImagenPerfil: {usuarioActual?.ImagenPerfil?.Url}");
-                    Console.WriteLine($"[MainLayout] ObtenerUrlImagenPerfil: {usuarioActual?.ObtenerUrlImagenPerfil()}");
                     StateHasChanged();
-                }
-                else
-                {
-                    Console.WriteLine($"[MainLayout] Error cargando usuario: {resultado.Mensaje}");
                 }
             }
         }

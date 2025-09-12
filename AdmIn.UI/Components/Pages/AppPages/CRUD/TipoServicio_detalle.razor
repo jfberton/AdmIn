@@ -35,43 +35,59 @@ else
             <RadzenBreadCrumbItem Text="@tipoServicio.Nombre" Icon="build" />
         </RadzenBreadCrumb>
 
-        <!-- Información Principal -->
-        <RadzenCard Class="detail-card">
-            <RadzenStack Gap="1.5rem">
-                <RadzenText TextStyle="TextStyle.H6" Text="Información Básica" />
-                
-                <RadzenRow Gap="2rem">
-                    <RadzenColumn Size="6" SizeMD="4">
-                        <div class="detail-field">
-                            <RadzenText TextStyle="TextStyle.Caption" Text="ID" />
-                            <RadzenText TextStyle="TextStyle.H6" Text="@tipoServicio.Id.ToString()" />
-                        </div>
-                    </RadzenColumn>
-                    <RadzenColumn Size="6" SizeMD="8">
-                        <div class="detail-field">
-                            <RadzenText TextStyle="TextStyle.Caption" Text="NOMBRE" />
-                            <RadzenText TextStyle="TextStyle.H6" Text="@tipoServicio.Nombre" />
-                        </div>
-                    </RadzenColumn>
-                </RadzenRow>
-
-                <RadzenRow Gap="2rem">
-                    <RadzenColumn Size="12">
-                        <div class="detail-field">
-                            <RadzenText TextStyle="TextStyle.Caption" Text="DESCRIPCIÓN" />
+        <!-- Información Principal con estilo Bootstrap -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-info-circle"></i> Información General
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">ID:</label>
+                        <p class="form-control-plaintext">@tipoServicio.Id</p>
+                    </div>
+                    <div class="col-md-8">
+                        <label class="form-label fw-bold">Nombre:</label>
+                        <p class="form-control-plaintext">@tipoServicio.Nombre</p>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-bold">Descripción:</label>
+                        <p class="form-control-plaintext">
                             @if (!string.IsNullOrWhiteSpace(tipoServicio.Descripcion))
                             {
-                                <RadzenText TextStyle="TextStyle.Body1" Text="@tipoServicio.Descripcion" />
+                                @tipoServicio.Descripcion
                             }
                             else
                             {
-                                <RadzenText TextStyle="TextStyle.Body1" Text="Sin descripción" Style="font-style: italic; color: #6b7280;" />
+                                <span class="text-muted">Sin descripción</span>
                             }
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Información Técnica -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-cogs"></i> Información del Sistema
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-12">
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Este tipo de servicio puede ser asignado a proveedores para definir los servicios que ofrecen.
+                            Los proveedores podrán gestionar y ofrecer servicios de este tipo a través del sistema.
                         </div>
-                    </RadzenColumn>
-                </RadzenRow>
-            </RadzenStack>
-        </RadzenCard>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <!-- Acciones -->
         <RadzenCard Class="actions-card">

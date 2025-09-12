@@ -10,10 +10,50 @@
 
 @inject IServ_TipoServicio Serv_tipoServicio;
 
-<MiRadzenButton ButtonStyle="ButtonStyle.Primary" Text="Agregar tipo de servicio" OnClick="@(() => Agregar())" />
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3>Gestión de Tipos de Servicio</h3>
+    <button class="btn btn-primary" @onclick="NuevoTipoServicio">
+        <i class="fas fa-plus"></i> Nuevo Tipo de Servicio
+    </button>
+</div>
+
+<!-- Filtros Avanzados -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label">Buscar:</label>
+                <input type="text" class="form-control" @bind="filtroTexto"
+                       @onkeypress="@(async (e) => { if (e.Key == "Enter") await RecargarGrilla(); })"
+                       placeholder="Nombre o descripción..." />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Ordenar por:</label>
+                <select class="form-select" @bind="ordenarPor" @bind:after="RecargarGrilla">
+                    <option value="Nombre">Nombre</option>
+                    <option value="Descripcion">Descripción</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Por página:</label>
+                <select class="form-select" @bind="tamanioPagina" @bind:after="RecargarGrilla">
+                    <option value="5">5</option>
+                    <option value="10">10</option>
+                    <option value="25">25</option>
+                    <option value="50">50</option>
+                </select>
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+                <button class="btn btn-outline-primary w-100" @onclick="RecargarGrilla">
+                    <i class="fas fa-search"></i> Buscar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <RadzenDataGrid class="rz-m-2" @ref="grilla" IsLoading=@isLoading Count="@count" Data="@items" EmptyText="No hay registros para mostrar"
-LoadData="@LoadData" AllowSorting="true" AllowFiltering="true" FilterMode="FilterMode.Simple" AllowPaging="true" PageSize="5"
+LoadData="@LoadData" AllowSorting="false" AllowFiltering="false" AllowPaging="true" PageSize="@tamanioPagina"
 PagerHorizontalAlign="HorizontalAlign.Center" TItem="TipoServicio">
     <Columns>
         <RadzenDataGridColumn TItem="TipoServicio" Property="Nombre" Title="Nombre" MinWidth="200px" />
@@ -49,6 +89,11 @@ PagerHorizontalAlign="HorizontalAlign.Center" TItem="TipoServicio">
     bool isLoading = false;
     int count;
     IEnumerable<TipoServicio> items;
+    
+    // Filtros avanzados
+    string filtroTexto = "";
+    string ordenarPor = "Nombre";
+    int tamanioPagina = 10;
 
     protected override async Task OnInitializedAsync()
     {
@@ -65,9 +110,9 @@ PagerHorizontalAlign="HorizontalAlign.Center" TItem="TipoServicio">
             Filtros_paginado filtros = new Filtros_paginado
             {
                 Skip = args.Skip.HasValue ? args.Skip.Value : 0,
-                Top = args.Top.HasValue ? args.Top.Value : 5,
-                OrderBy = !string.IsNullOrEmpty(args.OrderBy) ? args.OrderBy : "Nombre",
-                Filter = args.Filter
+                Top = args.Top.HasValue ? args.Top.Value : tamanioPagina,
+                OrderBy = ordenarPor,
+                Filter = filtroTexto
             };
 
             var rta = await Serv_tipoServicio.Obtener_paginado(filtros);
@@ -92,7 +137,15 @@ PagerHorizontalAlign="HorizontalAlign.Center" TItem="TipoServicio">
         }
     }
 
-    void Agregar()
+    async Task RecargarGrilla()
+    {
+        if (grilla != null)
+        {
+            await grilla.FirstPage();
+        }
+    }
+
+    void NuevoTipoServicio()
     {
         base.IrA("/tipos-servicio/nuevo");
     }

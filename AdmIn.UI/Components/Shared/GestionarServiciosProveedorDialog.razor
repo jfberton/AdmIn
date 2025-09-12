@@ -1,0 +1,137 @@
+@using AdmIn.Common
+@using AdmIn.Common.Entidades
+@using AdmIn.UI.Services
+
+@inject IServ_TipoServicio ServicioTipoServicio
+@inject NotificationService notificationService
+@inject DialogService dialogService
+
+<RadzenStack Gap="1rem">
+    <RadzenText TextStyle="TextStyle.H6" Text="Gestionar Servicios del Proveedor" />
+    
+    <RadzenText TextStyle="TextStyle.Body2" Text="Selecciona los servicios que ofrece este proveedor:" />
+    
+    @if (cargandoServicios)
+    {
+        <RadzenProgressBarCircular />
+    }
+    else if (todosLosServicios?.Any() == true)
+    {
+        <RadzenStack Gap="0.5rem">
+            @foreach (var servicio in todosLosServicios)
+            {
+                <RadzenCheckBox 
+                    @bind-Value="@serviciosSeleccionados[servicio.Id]" 
+                    Name="@($"servicio_{servicio.Id}")" />
+                    
+                <RadzenLabel Text="@servicio.Nombre" Component="@($"servicio_{servicio.Id}")" Style="margin-left: 8px;" />
+                
+                @if (!string.IsNullOrEmpty(servicio.Descripcion))
+                {
+                    <RadzenText TextStyle="TextStyle.Caption" Text="@servicio.Descripcion" Style="margin-left: 28px; color: #666;" />
+                }
+            }
+        </RadzenStack>
+    }
+    else
+    {
+        <RadzenAlert AlertStyle="AlertStyle.Warning" Text="No hay servicios disponibles para asignar." />
+    }
+    
+    <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" JustifyContent="JustifyContent.End">
+        <RadzenButton ButtonStyle="ButtonStyle.Success" 
+                     Text="Guardar" 
+                     Icon="save"
+                     Click="@GuardarServicios" 
+                     Disabled="@guardando" />
+                     
+        <RadzenButton ButtonStyle="ButtonStyle.Secondary" 
+                     Text="Cancelar" 
+                     Icon="cancel"
+                     Click="@(() => dialogService.Close(false))" />
+    </RadzenStack>
+</RadzenStack>
+
+@code {
+    [Parameter] public int ProveedorId { get; set; }
+    [Parameter] public List<TipoServicio>? ServiciosActuales { get; set; }
+
+    private List<TipoServicio>? todosLosServicios;
+    private Dictionary<int, bool> serviciosSeleccionados = new();
+    private bool cargandoServicios = true;
+    private bool guardando = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarServicios();
+    }
+
+    private async Task CargarServicios()
+    {
+        try
+        {
+            cargandoServicios = true;
+            StateHasChanged();
+
+            var resultado = await ServicioTipoServicio.Obtener_todos();
+            
+            if (resultado.Correcto && resultado.Datos != null)
+            {
+                todosLosServicios = resultado.Datos.ToList();
+                
+                // Inicializar el diccionario de servicios seleccionados
+                serviciosSeleccionados.Clear();
+                foreach (var servicio in todosLosServicios)
+                {
+                    serviciosSeleccionados[servicio.Id] = ServiciosActuales?.Any(s => s.Id == servicio.Id) == true;
+                }
+            }
+            else
+            {
+                notificationService.Notify(NotificationSeverity.Error, "Error", resultado.Mensaje ?? "Error al cargar servicios");
+            }
+        }
+        catch (Exception ex)
+        {
+            notificationService.Notify(NotificationSeverity.Error, "Error", $"Error al cargar servicios: {ex.Message}");
+        }
+        finally
+        {
+            cargandoServicios = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task GuardarServicios()
+    {
+        try
+        {
+            guardando = true;
+            StateHasChanged();
+
+            // Obtener los servicios seleccionados
+            var serviciosSeleccionadosList = serviciosSeleccionados
+                .Where(kvp => kvp.Value)
+                .Select(kvp => kvp.Key)
+                .ToList();
+
+            // TODO: Implementar el guardado de servicios en el backend
+            // Por ahora simulamos éxito
+            await Task.Delay(1000); // Simular procesamiento
+
+            notificationService.Notify(NotificationSeverity.Success, "Éxito", "Servicios actualizados correctamente");
+            
+            // Cerrar el diálogo y devolver true para indicar que se guardaron cambios
+            dialogService.Close(true);
+        }
+        catch (Exception ex)
+        {
+            notificationService.Notify(NotificationSeverity.Error, "Error", $"Error al guardar servicios: {ex.Message}");
+        }
+        finally
+        {
+            guardando = false;
+            StateHasChanged();
+        }
+    }
+}

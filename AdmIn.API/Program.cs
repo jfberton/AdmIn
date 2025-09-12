@@ -68,6 +68,10 @@ builder.Services.AddScoped<ICaracteristicaRepository, CaracteristicaRepository>(
 builder.Services.AddScoped<IServ_TipoServicio, Serv_TipoServicio>();
 builder.Services.AddScoped<ITipoServicioRepository, TipoServicioRepository>();
 
+// Register Proveedor services (Serv_Proveedor needs both IProveedorRepository and IUsuarioRepository)
+builder.Services.AddScoped<IServ_Proveedor, Serv_Proveedor>();
+builder.Services.AddScoped<IProveedorRepository, ProveedorRepository>();
+
 // Servicios de imágenes
 builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
 builder.Services.AddScoped<IServ_ImagenUpload, Serv_ImagenUpload>();

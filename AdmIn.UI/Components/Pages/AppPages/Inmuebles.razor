@@ -14,34 +14,40 @@
 @inherits BaseComponent
 
 <div class="inmueble-admin-page">
-    <!-- Header Principal -->
-    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="var(--spacing-md)" class="action-bar rz-mb-4" Wrap="FlexWrap.Wrap">
-        <RadzenButton Text="Agregar Inmueble" Icon="add_home" Click="@(() => IrA("/inmuebles/nuevo"))" />
-        
-        <!-- Toggle para cambiar entre vistas -->
-        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
-            <RadzenText TextStyle="TextStyle.Body2" Text="Vista:" />
-            <RadzenButton Text="@(mostrarInactivos ? "Ver Activos" : "Ver Inactivos")" 
-                         Icon="@(mostrarInactivos ? "visibility" : "visibility_off")" 
-                         ButtonStyle="@(mostrarInactivos ? ButtonStyle.Success : ButtonStyle.Warning)"
-                         Size="ButtonSize.Small"
-                         Click="@CambiarVistaInmuebles" />
-        </RadzenStack>
-    </RadzenStack>
+    <!-- Header con estilo consistente -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="d-flex align-items-center gap-3">
+            <h3>@(mostrarInactivos ? "Inmuebles Inactivos" : "Inmuebles Activos")</h3>
+            <span class="badge @(mostrarInactivos ? "bg-warning" : "bg-success") fs-6">
+                @(mostrarInactivos ? (InmueblesInactivos?.Count() ?? 0) : (InmueblesActivos?.Count() ?? 0)) inmuebles
+            </span>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn @(mostrarInactivos ? "btn-success" : "btn-warning") btn-sm" @onclick="CambiarVistaInmuebles">
+                <i class="fas @(mostrarInactivos ? "fa-eye" : "fa-eye-slash")"></i>
+                @(mostrarInactivos ? "Ver Activos" : "Ver Inactivos")
+            </button>
+            <button class="btn btn-primary" @onclick="AgregarInmueble">
+                <i class="fas fa-plus"></i> Agregar Inmueble
+            </button>
+        </div>
+    </div>
 
     @if (!mostrarInactivos)
     {
         <!-- Sección de Inmuebles Activos -->
         <RadzenCard class="section-card">
             <RadzenStack Gap="1rem">
-                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
-                    <RadzenText TextStyle="TextStyle.H5" Text="Inmuebles Activos" />
-                    <RadzenBadge BadgeStyle="BadgeStyle.Success" Text="@($"{InmueblesActivos?.Count() ?? 0} inmuebles")" />
-                </RadzenStack>
-
                 <!-- Filtros por Condición (Estado Operativo) -->
                 <div class="filter-tabs-container">
-                    <button class="filter-tab @GetFilterTabClass(null)" @onclick="() => FiltrarInmueblesPorCondicion(null)">Todos</button>
+                    <button class="filter-tab @GetFilterTabClass(null)" @onclick="() => FiltrarInmueblesPorCondicion(null)">
+                        <i class="fas fa-list me-1"></i>
+                        Todos
+                        @if (InmueblesActivos != null)
+                        {
+                            <span class="filter-count">(@InmueblesActivos.Count())</span>
+                        }
+                    </button>
                     @if (condicionesDisponibles != null)
                     {
                         @foreach (var condicion in condicionesDisponibles.Where(c => c.Activo))
@@ -112,14 +118,6 @@
         <!-- Sección de Inmuebles Inactivos -->
         <RadzenCard class="section-card inactive-section">
             <RadzenStack Gap="1rem">
-                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
-                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
-                        <RadzenIcon Icon="visibility_off" Style="color: var(--rz-warning);" />
-                        <RadzenText TextStyle="TextStyle.H5" Text="Inmuebles Inactivos" />
-                    </RadzenStack>
-                    <RadzenBadge BadgeStyle="BadgeStyle.Warning" Text="@($"{InmueblesInactivos?.Count() ?? 0} inmuebles")" />
-                </RadzenStack>
-
                 <RadzenAlert AlertStyle="AlertStyle.Warning" Variant="Variant.Flat" ShowIcon="true">
                     <RadzenText TextStyle="TextStyle.Body2">
                         Estos inmuebles están marcados como inactivos y no aparecen en las búsquedas públicas. 
@@ -186,7 +184,6 @@
     }
 </div>
 
-<!-- Resto del CSS... -->
 <style>
     .section-card {
         margin-bottom: 2rem;
@@ -203,6 +200,8 @@
         gap: 0.5rem;
         flex-wrap: wrap;
         padding: 1rem 0;
+        border-bottom: 1px solid var(--rz-border-color);
+        margin-bottom: 1rem;
     }
 
     .filter-tab {
@@ -239,6 +238,7 @@
         border-radius: 10px;
         font-size: 0.75rem;
         font-weight: 600;
+        margin-left: 0.25rem;
     }
 
     .active-tab .filter-count {
@@ -278,6 +278,20 @@
 
     .inmueble-grid {
         min-height: 200px;
+    }
+
+    /* Estilos para el header consistente */
+    .gap-2 {
+        gap: 0.5rem;
+    }
+
+    .gap-3 {
+        gap: 1rem;
+    }
+
+    .btn-sm {
+        padding: 0.375rem 0.75rem;
+        font-size: 0.875rem;
     }
 </style>
 
@@ -373,6 +387,11 @@
         {
             MostrarNotificacion(NotificationSeverity.Error, "Error", $"Error al cargar inmuebles: {ex.Message}");
         }
+    }
+
+    private void AgregarInmueble()
+    {
+        base.IrA("/inmuebles/nuevo");
     }
 
     private void CambiarVistaInmuebles()

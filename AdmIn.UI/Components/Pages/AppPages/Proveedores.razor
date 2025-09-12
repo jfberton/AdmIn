@@ -1,0 +1,298 @@
+@page "/proveedores"
+
+@inherits BaseComponent
+
+@using AdmIn.Common
+@using AdmIn.Common.Entidades
+@using AdmIn.UI.Services
+@using AdmIn.UI.Services.UtilityServices
+@using Microsoft.AspNetCore.Components.Authorization
+
+@inject IServ_Proveedor ServicioProveedor
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3>Gestión de Proveedores</h3>
+    <button class="btn btn-primary" @onclick="NuevoProveedor">
+        <i class="fas fa-plus"></i> Nuevo Proveedor
+    </button>
+</div>
+
+<!-- Filtros Avanzados -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label">Buscar:</label>
+                <input type="text" class="form-control" @bind="filtroTexto" 
+                       @onkeypress="@(async (e) => { if (e.Key == "Enter") await RecargarGrilla(); })"
+                       placeholder="Nombre, RFC o Email..." />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Ordenar por:</label>
+                <select class="form-select" @bind="ordenarPor" @bind:after="RecargarGrilla">
+                    <option value="Nombre">Nombre</option>
+                    <option value="RFC">RFC</option>
+                    <option value="Email">Email</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Estado:</label>
+                <select class="form-select" @bind="filtroEstado" @bind:after="RecargarGrilla">
+                    <option value="todos">Todos</option>
+                    <option value="activos">Activos</option>
+                    <option value="inactivos">Inactivos</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Por página:</label>
+                <select class="form-select" @bind="tamanioPagina" @bind:after="RecargarGrilla">
+                    <option value="5">5</option>
+                    <option value="10">10</option>
+                    <option value="25">25</option>
+                    <option value="50">50</option>
+                </select>
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button class="btn btn-outline-primary w-100" @onclick="RecargarGrilla">
+                    <i class="fas fa-search"></i> Buscar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<RadzenDataGrid class="rz-m-2" @ref="grilla" IsLoading=@isLoading Count="@count" Data="@items" EmptyText="No hay registros para mostrar"
+LoadData="@LoadData" AllowSorting="false" AllowFiltering="false" AllowPaging="true" PageSize="@tamanioPagina"
+PagerHorizontalAlign="HorizontalAlign.Center" TItem="Proveedor">
+    <Columns>
+        <RadzenDataGridColumn TItem="Proveedor" Property="Nombre" Title="Nombre" MinWidth="150px" />
+        <RadzenDataGridColumn TItem="Proveedor" Property="RFC" Title="RFC" MinWidth="120px" />
+        <RadzenDataGridColumn TItem="Proveedor" Property="Email" Title="Email" MinWidth="200px" />
+        <RadzenDataGridColumn TItem="Proveedor" Property="Telefono" Title="Teléfono" MinWidth="120px" />
+        <RadzenDataGridColumn TItem="Proveedor" Title="Estado" MinWidth="100px" Filterable="false">
+            <Template Context="proveedor">
+                <span class="badge @(proveedor.Activo ? "bg-success" : "bg-secondary")">
+                    @(proveedor.Activo ? "Activo" : "Inactivo")
+                </span>
+            </Template>
+        </RadzenDataGridColumn>
+        <RadzenDataGridColumn TItem="Proveedor" Title="Fecha Creación" MinWidth="120px" Filterable="false">
+            <Template Context="proveedor">
+                @proveedor.FechaCreacion.ToString("dd/MM/yyyy")
+            </Template>
+        </RadzenDataGridColumn>
+        <RadzenDataGridColumn Width="250px" TItem="Proveedor" Context="proveedor" MinWidth="250px">
+            <Template>
+                <MiRadzenButton ButtonStyle="ButtonStyle.Primary" Variant="Variant.Outlined" Shade="Shade.Lighter" Title="Ver" Icon="visibility" Size="ButtonSize.ExtraSmall" OnClick=@(() => VerDetalle(proveedor)) />
+                <AuthorizeView Roles="admin_usuario">
+                    <Authorized>
+                        <MiRadzenButton ButtonStyle="ButtonStyle.Primary" Variant="Variant.Outlined" Shade="Shade.Lighter" Title="Editar" Icon="edit" Size="ButtonSize.ExtraSmall" OnClick=@(() => EditarProveedor(proveedor)) />
+                        <MiRadzenButton ButtonStyle="ButtonStyle.Danger" Variant="Variant.Outlined" Shade="Shade.Lighter" Title="Eliminar" Icon="delete" Size="ButtonSize.ExtraSmall" OnClick=@(() => EliminarProveedor(proveedor)) />
+                    </Authorized>
+                </AuthorizeView>
+            </Template>
+        </RadzenDataGridColumn>
+    </Columns>
+</RadzenDataGrid>
+
+@code {
+    RadzenDataGrid<Proveedor> grilla;
+
+    bool isLoading = false;
+    int count;
+    IEnumerable<Proveedor> items;
+    
+    // Filtros avanzados
+    string filtroTexto = "";
+    string ordenarPor = "Nombre";
+    string filtroEstado = "todos";
+    int tamanioPagina = 10;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        base.EstablecerTituloPagina("Proveedores", "Listado");
+    }
+
+    async Task LoadData(LoadDataArgs args)
+    {
+        isLoading = true;
+
+        try
+        {
+            var filtros = new Filtros_paginado
+            {
+                Skip = args.Skip.HasValue ? args.Skip.Value : 0,
+                Top = args.Top.HasValue ? args.Top.Value : tamanioPagina,
+                OrderBy = ordenarPor,
+                Filter = filtroTexto
+            };
+
+            DTO<Items_pagina<Proveedor>> resultado;
+
+            if (filtroEstado == "activos")
+            {
+                var activosResult = await ServicioProveedor.Obtener_activos();
+                if (activosResult.Correcto && activosResult.Datos != null)
+                {
+                    var items = activosResult.Datos.ToList();
+                    
+                    // Aplicar filtro de búsqueda si existe
+                    if (!string.IsNullOrEmpty(filtros.Filter))
+                    {
+                        items = items.Where(p => 
+                            p.Nombre.Contains(filtros.Filter, StringComparison.OrdinalIgnoreCase) ||
+                            p.RFC.Contains(filtros.Filter, StringComparison.OrdinalIgnoreCase) ||
+                            (!string.IsNullOrEmpty(p.Email) && p.Email.Contains(filtros.Filter, StringComparison.OrdinalIgnoreCase))
+                        ).ToList();
+                    }
+
+                    // Aplicar ordenamiento
+                    items = filtros.OrderBy switch
+                    {
+                        "RFC" => items.OrderBy(p => p.RFC).ToList(),
+                        "Email" => items.OrderBy(p => p.Email).ToList(),
+                        _ => items.OrderBy(p => p.Nombre).ToList()
+                    };
+
+                    // Aplicar paginación manual
+                    var itemsPaginados = items.Skip(filtros.Skip).Take(filtros.Top).ToList();
+
+                    resultado = new DTO<Items_pagina<Proveedor>>
+                    {
+                        Correcto = true,
+                        Datos = new Items_pagina<Proveedor>
+                        {
+                            Items = itemsPaginados,
+                            Total_items = items.Count
+                        }
+                    };
+                }
+                else
+                {
+                    resultado = new DTO<Items_pagina<Proveedor>>
+                    {
+                        Correcto = false,
+                        Mensaje = activosResult.Mensaje
+                    };
+                }
+            }
+            else if (filtroEstado == "inactivos")
+            {
+                // Para inactivos, necesitamos obtener todos y filtrar
+                var todosResult = await ServicioProveedor.Obtener_paginado(new Filtros_paginado { Skip = 0, Top = int.MaxValue });
+                if (todosResult.Correcto && todosResult.Datos != null)
+                {
+                    var items = todosResult.Datos.Items.Where(p => !p.Activo).ToList();
+                    
+                    // Aplicar filtro de búsqueda si existe
+                    if (!string.IsNullOrEmpty(filtros.Filter))
+                    {
+                        items = items.Where(p => 
+                            p.Nombre.Contains(filtros.Filter, StringComparison.OrdinalIgnoreCase) ||
+                            p.RFC.Contains(filtros.Filter, StringComparison.OrdinalIgnoreCase) ||
+                            (!string.IsNullOrEmpty(p.Email) && p.Email.Contains(filtros.Filter, StringComparison.OrdinalIgnoreCase))
+                        ).ToList();
+                    }
+
+                    // Aplicar ordenamiento
+                    items = filtros.OrderBy switch
+                    {
+                        "RFC" => items.OrderBy(p => p.RFC).ToList(),
+                        "Email" => items.OrderBy(p => p.Email).ToList(),
+                        _ => items.OrderBy(p => p.Nombre).ToList()
+                    };
+
+                    // Aplicar paginación manual
+                    var itemsPaginados = items.Skip(filtros.Skip).Take(filtros.Top).ToList();
+
+                    resultado = new DTO<Items_pagina<Proveedor>>
+                    {
+                        Correcto = true,
+                        Datos = new Items_pagina<Proveedor>
+                        {
+                            Items = itemsPaginados,
+                            Total_items = items.Count
+                        }
+                    };
+                }
+                else
+                {
+                    resultado = todosResult;
+                }
+            }
+            else
+            {
+                resultado = await ServicioProveedor.Obtener_paginado(filtros);
+            }
+
+            if (resultado.Correcto && resultado.Datos != null)
+            {
+                items = resultado.Datos.Items;
+                count = resultado.Datos.Total_items;
+            }
+            else
+            {
+                base.MostrarNotificacion(NotificationSeverity.Error, "Error!", resultado.Mensaje);
+            }
+        }
+        catch (Exception ex)
+        {
+            base.MostrarNotificacion(NotificationSeverity.Error, "Error!", $"Error al cargar proveedores: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    async Task RecargarGrilla()
+    {
+        if (grilla != null)
+        {
+            await grilla.FirstPage();
+        }
+    }
+
+    void NuevoProveedor()
+    {
+        base.IrA("/proveedores/nuevo");
+    }
+
+    void VerDetalle(Proveedor proveedor)
+    {
+        base.IrA($"/proveedores/detalle/{proveedor.Id}");
+    }
+
+    void EditarProveedor(Proveedor proveedor)
+    {
+        base.IrA($"/proveedores/modificar/{proveedor.Id}");
+    }
+
+    async Task EliminarProveedor(Proveedor proveedor)
+    {
+        try
+        {
+            var confirmResult = await base.MostrarConfirmacion("¿Está seguro de eliminar el proveedor '" + proveedor.Nombre + "'?", "Confirmar eliminación");
+
+            if (confirmResult == true)
+            {
+                var resultado = await ServicioProveedor.Eliminar(proveedor.Id);
+
+                if (resultado.Correcto)
+                {
+                    base.MostrarNotificacion(NotificationSeverity.Success, "Éxito!", "Proveedor eliminado correctamente");
+                    await grilla.Reload();
+                }
+                else
+                {
+                    base.MostrarNotificacion(NotificationSeverity.Error, "Error!", resultado.Mensaje);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            base.MostrarNotificacion(NotificationSeverity.Error, "Error!", $"Error al eliminar proveedor: {ex.Message}");
+        }
+    }
+}
