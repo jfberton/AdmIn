@@ -6,10 +6,12 @@
 @using AdmIn.Common
 @using AdmIn.UI.Services
 @using AdmIn.UI.Services.UtilityServices
+@using AdmIn.UI.Components.Shared
 @using Microsoft.AspNetCore.Components.Authorization
 
 @inject IServ_Usuario serv_usuario;
 @inject IServ_Rol serv_rol;
+@inject DialogService dialogService;
 
 @if (usuario == null)
 {
@@ -105,52 +107,112 @@ else
             </div>
         </div>
 
-        <!-- Roles Asignados -->
+        <!-- Imagen de Perfil -->
         <div class="card mb-4">
-            <div class="card-header">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-camera"></i> Imagen de Perfil
+                </h5>
+                <RadzenButton ButtonStyle="ButtonStyle.Primary" 
+                             Icon="camera" 
+                             Text="Cambiar Foto" 
+                             Size="ButtonSize.Small"
+                             Click="@CambiarImagenPerfil" />
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 text-center">
+                        @if (usuario.ImagenPerfil != null)
+                        {
+                            <img src="@usuario.ObtenerUrlImagenPerfil()" 
+                                 alt="Imagen de perfil" 
+                                 class="img-fluid rounded-circle mb-3" 
+                                 style="width: 120px; height: 120px; object-fit: cover; border: 3px solid #e9ecef;" />
+                        }
+                        else
+                        {
+                            <div class="bg-light rounded-circle d-flex align-items-center justify-content-center mb-3 mx-auto" 
+                                 style="width: 120px; height: 120px; border: 3px solid #e9ecef;">
+                                <i class="fas fa-user-circle text-muted" style="font-size: 80px;"></i>
+                            </div>
+                        }
+                    </div>
+                    <div class="col-md-9">
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <p class="mb-2">
+                                    @if (usuario.ImagenPerfil != null)
+                                    {
+                                        <span class="text-success">
+                                            <i class="fas fa-check-circle me-1"></i>
+                                            Imagen de perfil configurada
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">
+                                            <i class="fas fa-info-circle me-1"></i>
+                                            Sin imagen de perfil personalizada
+                                        </span>
+                                    }
+                                </p>
+                                <p class="text-muted small mb-0">
+                                    Puedes cambiar la imagen de perfil haciendo clic en "Cambiar Foto". 
+                                    Esta imagen se mostrará en toda la aplicación.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Roles Asignados con estilo horizontal -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="card-title mb-0">
                     <i class="fas fa-user-tag"></i> Roles Asignados
                 </h5>
+                @if (rolesAsignados?.Count > 0)
+                {
+                    <span class="badge bg-secondary text-white">@rolesAsignados.Count roles</span>
+                }
             </div>
             <div class="card-body">
                 @if (rolesAsignados?.Any() == true)
                 {
-                    <div class="row">
+                    <div class="roles-horizontal-stack">
                         @foreach (var rol in rolesAsignados)
                         {
-                            <div class="col-md-4 mb-2">
-                                <span class="badge bg-info fs-6">
-                                    <i class="fas fa-shield-alt me-1"></i>
-                                    @rol.Nombre
-                                </span>
+                            <div class="role-horizontal-item-detail">
+                                <div class="role-horizontal-content">
+                                    <div class="role-simple-main">
+                                        <span class="role-simple-name">@rol.Nombre</span>
+                                        <i class="fas fa-shield-alt role-simple-check"></i>
+                                    </div>
+                                    @if (!string.IsNullOrEmpty(rol.Descripcion))
+                                    {
+                                        <div class="role-simple-description">
+                                            @rol.Descripcion
+                                        </div>
+                                    }
+                                </div>
                             </div>
                         }
                     </div>
                 }
                 else
                 {
-                    <p class="text-muted mb-0">No tiene roles asignados.</p>
+                    <div class="alert alert-light border d-flex align-items-center">
+                        <i class="fas fa-info-circle text-muted me-3"></i>
+                        <div>
+                            <strong>Sin roles asignados</strong>
+                            <p class="mb-0 text-muted">Este usuario no tiene roles asignados actualmente. Puede gestionar los roles desde las opciones de edición.</p>
+                        </div>
+                    </div>
                 }
             </div>
         </div>
-
-        <!-- Imagen de Perfil (si existe) -->
-        @if (usuario.ImagenPerfil != null)
-        {
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">
-                        <i class="fas fa-camera"></i> Imagen de Perfil
-                    </h5>
-                </div>
-                <div class="card-body text-center">
-                    <img src="@usuario.ObtenerUrlImagenPerfil()" 
-                         alt="Imagen de perfil" 
-                         class="img-fluid rounded-circle mb-3" 
-                         style="width: 150px; height: 150px; object-fit: cover;" />
-                </div>
-            </div>
-        }
 
         <!-- Acciones -->
         <RadzenCard Class="actions-card">
@@ -201,6 +263,97 @@ else
         letter-spacing: 0.05em;
         margin-bottom: 0.25rem;
     }
+
+    /* Estilos para la lista horizontal de roles */
+    .roles-horizontal-stack {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+    }
+
+    .role-horizontal-item-detail {
+        flex: 1;
+        min-width: 200px; /* Ancho mínimo para evitar que se compriman demasiado */
+        max-width: 250px; /* Ancho máximo para mantener consistencia */
+        background: #fafafa;
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+        padding: 1rem;
+        transition: all 0.2s ease;
+    }
+
+    .role-horizontal-item-detail:hover {
+        background: #f5f5f5;
+        border-color: #dee2e6;
+    }
+
+    .role-horizontal-content {
+        width: 100%;
+    }
+
+    .role-simple-main {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.25rem;
+    }
+
+    .role-simple-name {
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: #495057;
+        margin: 0;
+    }
+
+    .role-simple-check {
+        color: #007bff;
+        font-size: 0.9rem;
+        opacity: 0.8;
+    }
+
+    .role-simple-description {
+        font-size: 0.8rem;
+        color: #6c757d;
+        line-height: 1.4;
+        margin-top: 0.25rem;
+        padding-left: 0;
+    }
+
+    /* Responsivo */
+    @@media (max-width: 768px) {
+        .roles-horizontal-stack {
+            flex-direction: column; /* En móvil volvemos a vertical */
+        }
+        
+        .role-horizontal-item-detail {
+            flex: none;
+            min-width: auto;
+            max-width: none;
+            padding: 0.75rem;
+        }
+        
+        .role-simple-name {
+            font-size: 0.85rem;
+        }
+        
+        .role-simple-description {
+            font-size: 0.75rem;
+        }
+    }
+
+    /* Para tablets */
+    @@media (min-width: 769px) and (max-width: 1024px) {
+        .role-horizontal-item-detail {
+            min-width: 180px;
+            max-width: 220px;
+        }
+    }
+
+    /* Estado de sin roles mejorado */
+    .alert-light {
+        background-color: #fafafa;
+        border-color: #e9ecef;
+    }
 </style>
 
 @code {
@@ -242,6 +395,40 @@ else
         catch (Exception ex)
         {
             base.MostrarNotificacion(NotificationSeverity.Error, "Error!", $"Error al cargar usuario: {ex.Message}", "/usuarios");
+        }
+    }
+
+    private async Task CambiarImagenPerfil()
+    {
+        if (usuario == null) return;
+
+        try
+        {
+            var resultado = await dialogService.OpenAsync<CambiarFotoDialog>("Cambiar Imagen de Perfil",
+                new Dictionary<string, object>
+                {
+                    { "Usuario", usuario }
+                },
+                new DialogOptions { 
+                    Width = "600px", 
+                    Height = "500px",
+                    Resizable = true,
+                    Draggable = true,
+                    CloseDialogOnOverlayClick = false
+                });
+
+            if (resultado is bool cambiado && cambiado)
+            {
+                // Recargar el usuario para mostrar la nueva imagen
+                await CargarUsuario();
+                base.MostrarNotificacion(NotificationSeverity.Success, "Éxito!", 
+                    "Imagen de perfil actualizada correctamente");
+            }
+        }
+        catch (Exception ex)
+        {
+            base.MostrarNotificacion(NotificationSeverity.Error, "Error!", 
+                $"Error al cambiar imagen: {ex.Message}");
         }
     }
 }

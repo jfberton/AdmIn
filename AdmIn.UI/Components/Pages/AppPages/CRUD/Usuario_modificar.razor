@@ -6,10 +6,13 @@
 @using AdmIn.Common
 @using AdmIn.UI.Services
 @using AdmIn.UI.Services.UtilityServices
+@using AdmIn.UI.Components.Shared
 
 @inject IServ_Usuario serv_usuario;
 @inject IServ_Rol serv_rol;
 @inject IServ_Moneda serv_moneda;
+@inject IServ_Imagen serv_imagen;
+@inject DialogService dialogService;
 
 <RadzenTemplateForm @ref="form" TItem="Usuario" Data="@usuario">
     <RadzenRow class="rz-mx-2 rz-mb-8">
@@ -84,6 +87,59 @@
             <RadzenLabel Text="Roles" />
             <RadzenListBox @bind-Value="valuesRoles" TValue="IEnumerable<int>" Data="@roles" AllowSelectAll="false"
                            TextProperty="Nombre" ValueProperty="Id" Style="width:100%" Multiple="true" />
+        </RadzenColumn>
+    </RadzenRow>
+
+    <!-- Sección de Imagen de Perfil -->
+    <RadzenRow class="rz-mx-2 rz-mb-8">
+        <RadzenColumn>
+            <RadzenCard>
+                <RadzenStack Gap="1rem">
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
+                        <RadzenText TextStyle="TextStyle.H6" Text="Imagen de Perfil" />
+                        <RadzenButton ButtonStyle="ButtonStyle.Primary" 
+                                     Icon="camera" 
+                                     Text="Cambiar Foto" 
+                                     Size="ButtonSize.Small"
+                                     Click="@CambiarImagenPerfil" />
+                    </RadzenStack>
+                    
+                    <div class="text-center">
+                        @if (usuario.ImagenPerfil != null)
+                        {
+                            <img src="@usuario.ObtenerUrlImagenPerfil()" 
+                                 alt="Imagen de perfil actual" 
+                                 class="img-fluid rounded-circle mb-3" 
+                                 style="width: 120px; height: 120px; object-fit: cover; border: 3px solid #e9ecef;" />
+                        }
+                        else
+                        {
+                            <div class="bg-light rounded-circle d-flex align-items-center justify-content-center mb-3 mx-auto" 
+                                 style="width: 120px; height: 120px; border: 3px solid #e9ecef;">
+                                <i class="fas fa-user-circle text-muted" style="font-size: 80px;"></i>
+                            </div>
+                        }
+                        
+                        <div class="text-muted small">
+                            @if (usuario.ImagenPerfil != null)
+                            {
+                                <i class="fas fa-check-circle text-success me-1"></i>
+                                <span>Imagen actual del perfil</span>
+                            }
+                            else
+                            {
+                                <i class="fas fa-info-circle me-1"></i>
+                                <span>Sin imagen de perfil</span>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info mt-3 small">
+                        <i class="fas fa-lightbulb me-1"></i>
+                        <strong>Gestionar Imagen:</strong> Haz clic en "Cambiar Foto" para actualizar la imagen de perfil.
+                    </div>
+                </RadzenStack>
+            </RadzenCard>
         </RadzenColumn>
     </RadzenRow>
 
@@ -175,6 +231,46 @@
         }
     }
 
+    private async Task CambiarImagenPerfil()
+    {
+        if (usuario == null) return;
+
+        try
+        {
+            var resultado = await dialogService.OpenAsync<CambiarFotoDialog>("Cambiar Imagen de Perfil",
+                new Dictionary<string, object>
+                {
+                    { "Usuario", usuario }
+                },
+                new DialogOptions { 
+                    Width = "600px", 
+                    Height = "500px",
+                    Resizable = true,
+                    Draggable = true,
+                    CloseDialogOnOverlayClick = false
+                });
+
+            if (resultado is bool cambiado && cambiado)
+            {
+                // Recargar el usuario para mostrar la nueva imagen
+                var rta_usuario = await serv_usuario.Obtener_por_id(usuario.Id);
+                if (rta_usuario.Correcto)
+                {
+                    usuario = rta_usuario.Datos;
+                    StateHasChanged();
+                }
+                
+                NotificationService.Notify(NotificationSeverity.Success, "Éxito", 
+                    "Imagen de perfil actualizada correctamente");
+            }
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "Error", 
+                $"Error al cambiar imagen: {ex.Message}");
+        }
+    }
+
     async Task OnSubmit()
     {
         if (Is_valid())
@@ -211,4 +307,4 @@
         base.IrA("/usuarios");
     }
 
-}
+}}

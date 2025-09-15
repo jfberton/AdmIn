@@ -121,22 +121,46 @@ else
                         }
                         else if (todosLosServicios?.Any() == true)
                         {
-                            <div class="row g-2 mb-4">
+                            <div class="services-horizontal-stack mb-4">
                                 @foreach (var servicio in todosLosServicios)
                                 {
-                                    <div class="col-md-6 col-lg-4">
-                                        <div class="form-check">
-                                            <input class="form-check-input" 
-                                                   type="checkbox" 
-                                                   id="servicio_@servicio.Id"
-                                                   @onchange="@((e) => CambiarSeleccionServicio(servicio.Id, (bool)e.Value!))" 
-                                                   checked="@(serviciosSeleccionados.ContainsKey(servicio.Id) && serviciosSeleccionados[servicio.Id])" />
-                                            <label class="form-check-label" for="servicio_@servicio.Id">
-                                                @servicio.Nombre
-                                            </label>
+                                    <div class="service-horizontal-item @(serviciosSeleccionados.ContainsKey(servicio.Id) && serviciosSeleccionados[servicio.Id] ? "selected" : "")"
+                                         @onclick="@(() => CambiarSeleccionServicio(servicio.Id, !(serviciosSeleccionados.ContainsKey(servicio.Id) && serviciosSeleccionados[servicio.Id])))">
+                                        
+                                        <div class="service-horizontal-content">
+                                            <!-- Header: Checkbox + Nombre + Badge en la misma línea -->
+                                            <div class="service-main-row">
+                                                <div class="service-check">
+                                                    <input class="form-check-input" 
+                                                           type="checkbox" 
+                                                           id="servicio_@servicio.Id"
+                                                           @onchange="@((e) => CambiarSeleccionServicio(servicio.Id, (bool)e.Value!))" 
+                                                           checked="@(serviciosSeleccionados.ContainsKey(servicio.Id) && serviciosSeleccionados[servicio.Id])"
+                                                           @onclick:stopPropagation="true" />
+                                                </div>
+                                                
+                                                <div class="service-name-container">
+                                                    <h6 class="service-name mb-0">@servicio.Nombre</h6>
+                                                </div>
+
+                                                <div class="service-badge">
+                                                    @if (serviciosSeleccionados.ContainsKey(servicio.Id) && serviciosSeleccionados[servicio.Id])
+                                                    {
+                                                        <i class="fas fa-check-circle text-success"></i>
+                                                    }
+                                                    else
+                                                    {
+                                                        <i class="far fa-circle text-muted"></i>
+                                                    }
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Descripción debajo si existe -->
                                             @if (!string.IsNullOrEmpty(servicio.Descripcion))
                                             {
-                                                <div class="form-text small">@servicio.Descripcion</div>
+                                                <div class="service-description-row">
+                                                    <p class="service-description mb-0">@servicio.Descripcion</p>
+                                                </div>
                                             }
                                         </div>
                                     </div>
@@ -236,12 +260,193 @@ else
     </div>
 }
 
+<!-- Estilos CSS para las tarjetas de servicios horizontales -->
+<style>
+    /* Layout horizontal para servicios */
+    .services-horizontal-stack {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+
+    .service-horizontal-item {
+        flex: 1;
+        min-width: 200px; /* Ancho mínimo para evitar que se compriman demasiado */
+        max-width: 250px; /* Ancho máximo para mantener consistencia */
+        background: #ffffff;
+        border: 2px solid #e9ecef;
+        border-radius: 12px;
+        padding: 0.875rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        position: relative;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+
+    .service-horizontal-item:hover {
+        border-color: #007bff;
+        box-shadow: 0 4px 12px rgba(0, 123, 255, 0.15);
+        transform: translateY(-2px);
+    }
+
+    .service-horizontal-item.selected {
+        background: linear-gradient(135deg, #f8f9ff 0%, #e3f2fd 100%);
+        border-color: #007bff;
+        box-shadow: 0 4px 16px rgba(0, 123, 255, 0.2);
+    }
+
+    .service-horizontal-content {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+    }
+
+    /* Nueva fila principal: checkbox + nombre + badge */
+    .service-main-row {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .service-check {
+        position: relative;
+        z-index: 10;
+        flex-shrink: 0;
+    }
+
+    .service-check input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        accent-color: #007bff;
+    }
+
+    .service-name-container {
+        flex-grow: 1;
+        min-width: 0;  /* Permite que el texto se trunque si es necesario */
+    }
+
+    .service-name {
+        color: #2c3e50;
+        font-weight: 600;
+        font-size: 0.95rem;
+        margin: 0;
+        line-height: 1.2;
+        word-wrap: break-word;
+    }
+
+    .service-badge {
+        flex-shrink: 0;
+        font-size: 1.1rem;
+        transition: all 0.3s ease;
+    }
+
+    .service-horizontal-item:hover .service-badge {
+        transform: scale(1.1);
+    }
+
+    /* Fila de descripción */
+    .service-description-row {
+        margin-left: 2.25rem;  /* Alineado con el texto del nombre */
+        margin-top: 0.25rem;
+    }
+
+    .service-description {
+        color: #6c757d;
+        font-size: 0.8rem;
+        line-height: 1.3;
+        margin: 0;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    /* Responsivo para móvil y tablet */
+    @@media (max-width: 768px) {
+        .services-horizontal-stack {
+            flex-direction: column; /* En móvil volvemos a vertical */
+            gap: 0.75rem;
+        }
+        
+        .service-horizontal-item {
+            flex: none;
+            min-width: auto;
+            max-width: none;
+            padding: 0.75rem;
+        }
+        
+        .service-main-row {
+            gap: 0.5rem;
+        }
+        
+        .service-name {
+            font-size: 0.9rem;
+        }
+        
+        .service-description {
+            font-size: 0.75rem;
+        }
+
+        .service-description-row {
+            margin-left: 1.75rem;  /* Ajustado para móvil */
+        }
+    }
+
+    /* Para tablets - mantener horizontal pero con menos elementos por fila */
+    @@media (min-width: 769px) and (max-width: 1024px) {
+        .service-horizontal-item {
+            min-width: 180px;
+            max-width: 220px;
+        }
+    }
+
+    /* Animación de selección */
+    .service-horizontal-item.selected .service-name {
+        color: #0056b3;
+    }
+
+    .service-horizontal-item.selected::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(45deg, transparent 0%, rgba(0, 123, 255, 0.05) 50%, transparent 100%);
+        border-radius: 10px;
+        pointer-events: none;
+    }
+
+    /* Efecto de pulso para tarjetas seleccionadas */
+    @@keyframes pulse-border {
+        0% { border-color: #007bff; }
+        50% { border-color: #0056b3; }
+        100% { border-color: #007bff; }
+    }
+
+    .service-horizontal-item.selected {
+        animation: pulse-border 2s ease-in-out infinite;
+    }
+
+    /* Tarjetas más compactas sin descripción */
+    .service-horizontal-item:not(:has(.service-description-row)) {
+        padding: 0.75rem 0.875rem;  /* Padding más pequeño para tarjetas sin descripción */
+    }
+
+    .service-horizontal-item:not(:has(.service-description-row)) .service-main-row {
+        margin-bottom: 0;  /* Sin margen inferior si no hay descripción */
+    }
+</style>
+
 @code {
     [Parameter] public int ProveedorId { get; set; }
 
     private Proveedor? proveedor;
     private Usuario? usuarioAsociado;
     private List<TipoServicio>? todosLosServicios;
+    private List<TipoServicio>? serviciosActualesProveedor;
     private Dictionary<int, bool> serviciosSeleccionados = new();
     private bool cargando = true;
     private bool cargandoServicios = true;
@@ -298,18 +503,32 @@ else
             cargandoServicios = true;
             StateHasChanged();
 
-            var resultado = await ServicioTipoServicio.Obtener_todos();
-            
-            if (resultado.Correcto && resultado.Datos != null)
+            // Cargar todos los servicios disponibles
+            var resultadoTodos = await ServicioTipoServicio.Obtener_todos();
+            if (resultadoTodos.Correcto && resultadoTodos.Datos != null)
             {
-                todosLosServicios = resultado.Datos.ToList();
-                
-                // Inicializar diccionario de servicios seleccionados
-                serviciosSeleccionados.Clear();
+                todosLosServicios = resultadoTodos.Datos.ToList();
+            }
+
+            // Cargar servicios actuales del proveedor
+            var resultadoActuales = await ServicioProveedor.Obtener_servicios_proveedor(ProveedorId);
+            if (resultadoActuales.Correcto && resultadoActuales.Datos != null)
+            {
+                serviciosActualesProveedor = resultadoActuales.Datos.ToList();
+            }
+            else
+            {
+                serviciosActualesProveedor = new List<TipoServicio>();
+            }
+
+            // Inicializar diccionario de servicios seleccionados
+            serviciosSeleccionados.Clear();
+            if (todosLosServicios != null)
+            {
                 foreach (var servicio in todosLosServicios)
                 {
-                    // TODO: Cargar servicios actuales del proveedor
-                    serviciosSeleccionados[servicio.Id] = false;
+                    // Marcar como seleccionado si está en los servicios actuales del proveedor
+                    serviciosSeleccionados[servicio.Id] = serviciosActualesProveedor?.Any(s => s.Id == servicio.Id) == true;
                 }
             }
         }
@@ -401,20 +620,30 @@ else
 
         try
         {
+            // Primero actualizar el proveedor
             var resultado = await ServicioProveedor.Actualizar(proveedor);
 
             if (resultado.Correcto)
             {
-                // TODO: Guardar servicios seleccionados
+                // Luego actualizar los servicios seleccionados
                 var serviciosSeleccionadosList = serviciosSeleccionados
                     .Where(kvp => kvp.Value)
                     .Select(kvp => kvp.Key)
                     .ToList();
 
-                await JSRuntime.InvokeVoidAsync("alert", 
-                    $"Proveedor actualizado correctamente.\n\n" +
-                    $"Servicios seleccionados: {serviciosSeleccionadosList.Count}\n" +
-                    "Nota: La funcionalidad de servicios está en desarrollo.");
+                var resultadoServicios = await ServicioProveedor.Actualizar_servicios_proveedor(ProveedorId, serviciosSeleccionadosList);
+
+                if (resultadoServicios.Correcto)
+                {
+                    await JSRuntime.InvokeVoidAsync("alert", 
+                        $"Proveedor actualizado correctamente.\n\n" +
+                        $"Servicios actualizados: {serviciosSeleccionadosList.Count} servicios asignados.");
+                }
+                else
+                {
+                    await JSRuntime.InvokeVoidAsync("alert", 
+                        $"Proveedor actualizado, pero hubo un error al actualizar servicios: {resultadoServicios.Mensaje}");
+                }
                     
                 Navigation.NavigateTo("/proveedores");
             }

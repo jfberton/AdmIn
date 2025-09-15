@@ -336,5 +336,177 @@ namespace AdmIn.Data.Repositorios
                 Mensaje = proveedor != null ? "Proveedor encontrado" : "Proveedor no encontrado"
             };
         }
+
+        // Métodos para gestión de servicios de proveedor
+        public async Task<DTO<IEnumerable<TipoServicio>>> Obtener_servicios_proveedor(int proveedorId)
+        {
+            using var conexion = new SqlConnection(InfoSQL.Conexion);
+            await conexion.OpenAsync();
+
+            var sql = @"SELECT 
+                            ts.TipoServicioID as Id, 
+                            ts.Nombre, 
+                            ts.Descripcion
+                        FROM ServicioProveedor sp
+                        INNER JOIN TipoServicio ts ON sp.ServicioId = ts.TipoServicioID
+                        WHERE sp.ProveedorId = @ProveedorId 
+                          AND sp.Activo = 1
+                        ORDER BY ts.Nombre;";
+
+            try
+            {
+                var servicios = await conexion.QueryAsync<TipoServicio>(sql, new { ProveedorId = proveedorId });
+
+                return new DTO<IEnumerable<TipoServicio>>
+                {
+                    Correcto = true,
+                    Datos = servicios,
+                    Mensaje = $"Servicios del proveedor {proveedorId} obtenidos correctamente"
+                };
+            }
+            catch (Exception ex)
+            {
+                return new DTO<IEnumerable<TipoServicio>>
+                {
+                    Correcto = false,
+                    Mensaje = $"Error al obtener servicios del proveedor: {ex.Message}"
+                };
+            }
+        }
+
+        public async Task<DTO<bool>> Actualizar_servicios_proveedor(int proveedorId, List<int> serviciosIds)
+        {
+            using var conexion = new SqlConnection(InfoSQL.Conexion);
+            await conexion.OpenAsync();
+            using var transaccion = conexion.BeginTransaction();
+
+            try
+            {
+                // Verificar que el proveedor existe
+                var sqlVerificarProveedor = @"SELECT COUNT(*) FROM Proveedor WHERE ProveedorID = @ProveedorId AND Activo = 1;";
+                var proveedorExiste = await conexion.QuerySingleAsync<int>(sqlVerificarProveedor, new { ProveedorId = proveedorId }, transaccion);
+
+                if (proveedorExiste == 0)
+                {
+                    return new DTO<bool>
+                    {
+                        Correcto = false,
+                        Mensaje = "El proveedor especificado no existe o no está activo."
+                    };
+                }
+
+                // 1. Desactivar todos los servicios actuales del proveedor
+                var sqlDesactivar = @"UPDATE ServicioProveedor 
+                                     SET Activo = 0, 
+                                         FechaModificacion = GETDATE(),
+                                         UsuarioModificadorId = @UsuarioModificadorId
+                                     WHERE ProveedorId = @ProveedorId;";
+
+                await conexion.ExecuteAsync(sqlDesactivar, new { 
+                    ProveedorId = proveedorId,
+                    UsuarioModificadorId = 1 // TODO: Obtener del contexto del usuario actual
+                }, transaccion);
+
+                // 2. Insertar o reactivar los servicios seleccionados
+                if (serviciosIds != null && serviciosIds.Any())
+                {
+                    foreach (var servicioId in serviciosIds)
+                    {
+                        // Verificar que el tipo de servicio existe (usando TipoServicioID)
+                        var sqlVerificarServicio = @"SELECT COUNT(*) FROM TipoServicio WHERE TipoServicioID = @ServiceId;";
+                        var servicioExiste = await conexion.QuerySingleAsync<int>(sqlVerificarServicio, new { ServiceId = servicioId }, transaccion);
+
+                        if (servicioExiste == 0)
+                        {
+                            transaccion.Rollback();
+                            return new DTO<bool>
+                            {
+                                Correcto = false,
+                                Mensaje = $"El tipo de servicio con ID {servicioId} no existe."
+                            };
+                        }
+
+                        // Insertar o reactivar el servicio (usando ServicioId en lugar de TipoServicioId)
+                        var sqlUpsert = @"
+                            IF EXISTS (SELECT 1 FROM ServicioProveedor WHERE ProveedorId = @ProveedorId AND ServicioId = @ServicioId)
+                            BEGIN
+                                UPDATE ServicioProveedor 
+                                SET Activo = 1,
+                                    FechaModificacion = GETDATE(),
+                                    UsuarioModificadorId = @UsuarioModificadorId
+                                WHERE ProveedorId = @ProveedorId AND ServicioId = @ServicioId
+                            END
+                            ELSE
+                            BEGIN
+                                INSERT INTO ServicioProveedor (ProveedorId, ServicioId, FechaAsignacion, Activo, UsuarioCreadorId, FechaCreacion)
+                                VALUES (@ProveedorId, @ServicioId, GETDATE(), 1, @UsuarioCreadorId, GETDATE())
+                            END";
+
+                        await conexion.ExecuteAsync(sqlUpsert, new
+                        {
+                            ProveedorId = proveedorId,
+                            ServicioId = servicioId, // Usar ServicioId en lugar de TipoServicioId
+                            UsuarioCreadorId = 1, // TODO: Obtener del contexto del usuario actual
+                            UsuarioModificadorId = 1 // TODO: Obtener del contexto del usuario actual
+                        }, transaccion);
+                    }
+                }
+
+                transaccion.Commit();
+
+                return new DTO<bool>
+                {
+                    Correcto = true,
+                    Datos = true,
+                    Mensaje = $"Servicios del proveedor actualizados correctamente. {serviciosIds?.Count ?? 0} servicios asignados."
+                };
+            }
+            catch (Exception ex)
+            {
+                transaccion.Rollback();
+                return new DTO<bool>
+                {
+                    Correcto = false,
+                    Mensaje = $"Error al actualizar servicios del proveedor: {ex.Message}"
+                };
+            }
+        }
+
+        public async Task<DTO<bool>> Eliminar_servicios_proveedor(int proveedorId)
+        {
+            using var conexion = new SqlConnection(InfoSQL.Conexion);
+            await conexion.OpenAsync();
+
+            try
+            {
+                var sql = @"UPDATE ServicioProveedor 
+                           SET Activo = 0, 
+                               FechaModificacion = GETDATE(),
+                               UsuarioModificadorId = @UsuarioModificadorId
+                           WHERE ProveedorId = @ProveedorId;";
+
+                var filasAfectadas = await conexion.ExecuteAsync(sql, new { 
+                    ProveedorId = proveedorId,
+                    UsuarioModificadorId = 1 // TODO: Obtener del contexto del usuario actual
+                });
+
+                return new DTO<bool>
+                {
+                    Correcto = true,
+                    Datos = filasAfectadas > 0,
+                    Mensaje = filasAfectadas > 0 ? 
+                        $"Servicios del proveedor {proveedorId} eliminados correctamente." : 
+                        $"No se encontraron servicios para el proveedor {proveedorId}."
+                };
+            }
+            catch (Exception ex)
+            {
+                return new DTO<bool>
+                {
+                    Correcto = false,
+                    Mensaje = $"Error al eliminar servicios del proveedor: {ex.Message}"
+                };
+            }
+        }
     }
 }

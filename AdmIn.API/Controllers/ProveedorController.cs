@@ -7,6 +7,13 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace AdmIn.API.Controllers
 {
+    // DTO para recibir datos de actualización de servicios
+    public class ActualizarServiciosRequest
+    {
+        public int ProveedorId { get; set; }
+        public List<int> ServiciosIds { get; set; } = new();
+    }
+
     [Route("api/[controller]")]
     [ApiController]
     public class ProveedorController : ControllerBase
@@ -130,6 +137,31 @@ namespace AdmIn.API.Controllers
         public async Task<DTO<bool>> Validar_email_unico(string email, [FromQuery] int? proveedorId = null)
         {
             return await _servicio.Validar_email_unico(email, proveedorId);
+        }
+
+        [HttpGet("obtener_servicios/{proveedorId}")]
+        [Authorize(Roles = "admin_usuario")]
+        public async Task<DTO<IEnumerable<TipoServicio>>> Obtener_servicios_proveedor(int proveedorId)
+        {
+            return await _servicio.Obtener_servicios_proveedor(proveedorId);
+        }
+
+        [HttpPost("actualizar_servicios")]
+        [Authorize(Roles = "admin_usuario")]
+        public async Task<DTO<bool>> Actualizar_servicios_proveedor([FromBody] ActualizarServiciosRequest request)
+        {
+            try
+            {
+                return await _servicio.Actualizar_servicios_proveedor(request.ProveedorId, request.ServiciosIds);
+            }
+            catch (Exception ex)
+            {
+                return new DTO<bool>
+                {
+                    Correcto = false,
+                    Mensaje = $"Error al actualizar servicios del proveedor: {ex.Message}"
+                };
+            }
         }
     }
 }

@@ -9,6 +9,7 @@
 @using Microsoft.AspNetCore.Components.Authorization
 
 @inject IServ_Proveedor ServicioProveedor
+@inject IServ_Usuario ServicioUsuario
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h3>Gestión de Proveedores</h3>
@@ -61,52 +62,288 @@
     </div>
 </div>
 
-<RadzenDataGrid class="rz-m-2" @ref="grilla" IsLoading=@isLoading Count="@count" Data="@items" EmptyText="No hay registros para mostrar"
+<RadzenDataGrid class="rz-m-2 modern-grid" @ref="grilla" IsLoading=@isLoading Count="@count" Data="@itemsConUsuarios" EmptyText="No hay registros para mostrar"
 LoadData="@LoadData" AllowSorting="false" AllowFiltering="false" AllowPaging="true" PageSize="@tamanioPagina"
-PagerHorizontalAlign="HorizontalAlign.Center" TItem="Proveedor">
+PagerHorizontalAlign="HorizontalAlign.Center" TItem="ProveedorConUsuario">
     <Columns>
-        <RadzenDataGridColumn TItem="Proveedor" Property="Nombre" Title="Nombre" MinWidth="150px" />
-        <RadzenDataGridColumn TItem="Proveedor" Property="RFC" Title="RFC" MinWidth="120px" />
-        <RadzenDataGridColumn TItem="Proveedor" Property="Email" Title="Email" MinWidth="200px" />
-        <RadzenDataGridColumn TItem="Proveedor" Property="Telefono" Title="Teléfono" MinWidth="120px" />
-        <RadzenDataGridColumn TItem="Proveedor" Title="Estado" MinWidth="100px" Filterable="false">
-            <Template Context="proveedor">
-                <span class="badge @(proveedor.Activo ? "bg-success" : "bg-secondary")">
-                    @(proveedor.Activo ? "Activo" : "Inactivo")
-                </span>
+        <RadzenDataGridColumn TItem="ProveedorConUsuario" Width="60px" Title="ID" MinWidth="60px" Sortable="false">
+            <Template Context="item">
+                <div class="id-cell">
+                    @item.Proveedor.Id
+                </div>
             </Template>
         </RadzenDataGridColumn>
-        <RadzenDataGridColumn TItem="Proveedor" Title="Fecha Creación" MinWidth="120px" Filterable="false">
-            <Template Context="proveedor">
-                @proveedor.FechaCreacion.ToString("dd/MM/yyyy")
+        
+        <RadzenDataGridColumn TItem="ProveedorConUsuario" Width="80px" Title="Foto" MinWidth="80px" Sortable="false">
+            <Template Context="item">
+                <div class="photo-cell">
+                    @if (item.Usuario?.ImagenPerfil != null)
+                    {
+                        <img src="@ObtenerUrlImagenPerfil(item.Usuario)" 
+                             alt="@item.Proveedor.Nombre" 
+                             class="profile-photo" />
+                    }
+                    else
+                    {
+                        <div class="profile-photo-placeholder">
+                            <i class="fas fa-user"></i>
+                        </div>
+                    }
+                </div>
             </Template>
         </RadzenDataGridColumn>
-        <RadzenDataGridColumn Width="250px" TItem="Proveedor" Context="proveedor" MinWidth="250px">
-            <Template>
-                <MiRadzenButton ButtonStyle="ButtonStyle.Primary" Variant="Variant.Outlined" Shade="Shade.Lighter" Title="Ver" Icon="visibility" Size="ButtonSize.ExtraSmall" OnClick=@(() => VerDetalle(proveedor)) />
-                <AuthorizeView Roles="admin_usuario">
-                    <Authorized>
-                        <MiRadzenButton ButtonStyle="ButtonStyle.Primary" Variant="Variant.Outlined" Shade="Shade.Lighter" Title="Editar" Icon="edit" Size="ButtonSize.ExtraSmall" OnClick=@(() => EditarProveedor(proveedor)) />
-                        <MiRadzenButton ButtonStyle="ButtonStyle.Danger" Variant="Variant.Outlined" Shade="Shade.Lighter" Title="Eliminar" Icon="delete" Size="ButtonSize.ExtraSmall" OnClick=@(() => EliminarProveedor(proveedor)) />
-                    </Authorized>
-                </AuthorizeView>
+        
+        <RadzenDataGridColumn TItem="ProveedorConUsuario" Title="Nombre" MinWidth="180px">
+            <Template Context="item">
+                <div class="name-cell">
+                    <strong>@item.Proveedor.Nombre</strong>
+                </div>
+            </Template>
+        </RadzenDataGridColumn>
+        
+        <RadzenDataGridColumn TItem="ProveedorConUsuario" Title="RFC" MinWidth="120px">
+            <Template Context="item">
+                <div class="rfc-cell">
+                    @item.Proveedor.RFC
+                </div>
+            </Template>
+        </RadzenDataGridColumn>
+        
+        <RadzenDataGridColumn TItem="ProveedorConUsuario" Title="Email" MinWidth="220px">
+            <Template Context="item">
+                <div class="email-cell">
+                    @if (!string.IsNullOrEmpty(item.Proveedor.Email))
+                    {
+                        <a href="mailto:@item.Proveedor.Email" class="email-link">@item.Proveedor.Email</a>
+                    }
+                    else
+                    {
+                        <span class="text-muted">No especificado</span>
+                    }
+                </div>
+            </Template>
+        </RadzenDataGridColumn>
+        
+        <RadzenDataGridColumn TItem="ProveedorConUsuario" Title="Teléfono" MinWidth="140px">
+            <Template Context="item">
+                <div class="phone-cell">
+                    @if (!string.IsNullOrEmpty(item.Proveedor.Telefono))
+                    {
+                        <a href="tel:@item.Proveedor.Telefono" class="phone-link">@item.Proveedor.Telefono</a>
+                    }
+                    else
+                    {
+                        <span class="text-muted">No especificado</span>
+                    }
+                </div>
+            </Template>
+        </RadzenDataGridColumn>
+        
+        <RadzenDataGridColumn TItem="ProveedorConUsuario" Title="Estado" MinWidth="100px" Sortable="false">
+            <Template Context="item">
+                <div class="status-cell">
+                    <span class="badge status-badge @(item.Proveedor.Activo ? "bg-success" : "bg-secondary")">
+                        @(item.Proveedor.Activo ? "Activo" : "Inactivo")
+                    </span>
+                </div>
+            </Template>
+        </RadzenDataGridColumn>
+        
+        <RadzenDataGridColumn TItem="ProveedorConUsuario" Title="Fecha Creación" MinWidth="130px" Sortable="false">
+            <Template Context="item">
+                <div class="date-cell">
+                    @item.Proveedor.FechaCreacion.ToString("dd/MM/yyyy")
+                </div>
+            </Template>
+        </RadzenDataGridColumn>
+        
+        <RadzenDataGridColumn Width="180px" TItem="ProveedorConUsuario" Title="Acciones" MinWidth="180px" Sortable="false">
+            <Template Context="item">
+                <div class="actions-cell">
+                    <MiRadzenButton ButtonStyle="ButtonStyle.Primary" Variant="Variant.Outlined" Shade="Shade.Lighter" 
+                                   Title="Ver" Icon="visibility" Size="ButtonSize.ExtraSmall" 
+                                   OnClick=@(() => VerDetalle(item.Proveedor)) />
+                    <AuthorizeView Roles="admin_usuario">
+                        <Authorized>
+                            <MiRadzenButton ButtonStyle="ButtonStyle.Primary" Variant="Variant.Outlined" Shade="Shade.Lighter" 
+                                           Title="Editar" Icon="edit" Size="ButtonSize.ExtraSmall" 
+                                           OnClick=@(() => EditarProveedor(item.Proveedor)) />
+                            <MiRadzenButton ButtonStyle="ButtonStyle.Danger" Variant="Variant.Outlined" Shade="Shade.Lighter" 
+                                           Title="Eliminar" Icon="delete" Size="ButtonSize.ExtraSmall" 
+                                           OnClick=@(() => EliminarProveedor(item.Proveedor)) />
+                        </Authorized>
+                    </AuthorizeView>
+                </div>
             </Template>
         </RadzenDataGridColumn>
     </Columns>
 </RadzenDataGrid>
 
+<style>
+    .modern-grid {
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .photo-cell {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 8px;
+    }
+
+    .profile-photo {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid #e9ecef;
+        transition: border-color 0.3s ease;
+    }
+
+    .profile-photo:hover {
+        border-color: #007bff;
+    }
+
+    .profile-photo-placeholder {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background-color: #f8f9fa;
+        border: 2px solid #e9ecef;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #6c757d;
+        font-size: 16px;
+    }
+
+    .id-cell {
+        font-weight: 600;
+        color: #6c757d;
+        font-size: 0.9rem;
+    }
+
+    .name-cell strong {
+        color: #2c3e50;
+        font-size: 0.95rem;
+    }
+
+    .rfc-cell {
+        font-family: 'Courier New', monospace;
+        font-size: 0.9rem;
+        color: #495057;
+    }
+
+    .email-cell .email-link {
+        color: #007bff;
+        text-decoration: none;
+        font-size: 0.9rem;
+    }
+
+    .email-cell .email-link:hover {
+        text-decoration: underline;
+    }
+
+    .phone-cell .phone-link {
+        color: #28a745;
+        text-decoration: none;
+        font-size: 0.9rem;
+    }
+
+    .phone-cell .phone-link:hover {
+        text-decoration: underline;
+    }
+
+    .status-cell {
+        display: flex;
+        justify-content: center;
+    }
+
+    .status-badge {
+        font-size: 0.8rem;
+        padding: 0.35rem 0.65rem;
+        border-radius: 1rem;
+    }
+
+    .date-cell {
+        color: #6c757d;
+        font-size: 0.9rem;
+    }
+
+    .actions-cell {
+        display: flex;
+        gap: 4px;
+        justify-content: center;
+        align-items: center;
+    }
+
+    /* Mejorar el estilo general de la grilla */
+    .modern-grid .rz-data-grid-header {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-bottom: 2px solid #dee2e6;
+    }
+
+    .modern-grid .rz-data-grid-header th {
+        font-weight: 600;
+        color: #495057;
+        font-size: 0.9rem;
+        padding: 1rem 0.75rem;
+    }
+
+    .modern-grid .rz-data-grid-data tr:nth-child(even) {
+        background-color: #f8f9fa;
+    }
+
+    .modern-grid .rz-data-grid-data tr:hover {
+        background-color: #e3f2fd !important;
+        transition: background-color 0.2s ease;
+    }
+
+    .modern-grid .rz-data-grid-data td {
+        padding: 0.75rem;
+        vertical-align: middle;
+        border-bottom: 1px solid #e9ecef;
+    }
+
+    /* Responsive adjustments */
+    @@media (max-width: 768px) {
+        .profile-photo, .profile-photo-placeholder {
+            width: 32px;
+            height: 32px;
+        }
+        
+        .profile-photo-placeholder i {
+            font-size: 14px;
+        }
+        
+        .actions-cell {
+            flex-direction: column;
+            gap: 2px;
+        }
+    }
+</style>
+
 @code {
-    RadzenDataGrid<Proveedor> grilla;
+    RadzenDataGrid<ProveedorConUsuario> grilla;
 
     bool isLoading = false;
     int count;
-    IEnumerable<Proveedor> items;
+    IEnumerable<ProveedorConUsuario> itemsConUsuarios = new List<ProveedorConUsuario>();
     
     // Filtros avanzados
     string filtroTexto = "";
     string ordenarPor = "Nombre";
-    string filtroEstado = "todos";
+    string filtroEstado = "activos"; // Cambiar por defecto a activos
     int tamanioPagina = 10;
+
+    // Clase auxiliar para combinar proveedor con usuario
+    public class ProveedorConUsuario
+    {
+        public Proveedor Proveedor { get; set; }
+        public Usuario? Usuario { get; set; }
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -173,7 +410,7 @@ PagerHorizontalAlign="HorizontalAlign.Center" TItem="Proveedor">
                     resultado = new DTO<Items_pagina<Proveedor>>
                     {
                         Correcto = false,
-                        Mensaje = activosResult.Mensaje
+                        Mensaje = activosResult?.Mensaje ?? "Error desconocido"
                     };
                 }
             }
@@ -200,6 +437,7 @@ PagerHorizontalAlign="HorizontalAlign.Center" TItem="Proveedor">
                     {
                         "RFC" => items.OrderBy(p => p.RFC).ToList(),
                         "Email" => items.OrderBy(p => p.Email).ToList(),
+                        "Nombre" => items.OrderBy(p => p.Nombre).ToList(),
                         _ => items.OrderBy(p => p.Nombre).ToList()
                     };
 
@@ -228,17 +466,51 @@ PagerHorizontalAlign="HorizontalAlign.Center" TItem="Proveedor">
 
             if (resultado.Correcto && resultado.Datos != null)
             {
-                items = resultado.Datos.Items;
+                // Cargar usuarios asociados para las fotos de perfil
+                var proveedoresConUsuarios = new List<ProveedorConUsuario>();
+                
+                foreach (var proveedor in resultado.Datos.Items)
+                {
+                    Usuario? usuario = null;
+                    
+                    if (proveedor.UsuarioId.HasValue)
+                    {
+                        try
+                        {
+                            var usuarioResult = await ServicioUsuario.Obtener_por_id(proveedor.UsuarioId.Value);
+                            if (usuarioResult.Correcto)
+                            {
+                                usuario = usuarioResult.Datos;
+                            }
+                        }
+                        catch
+                        {
+                            // Si hay error cargando el usuario, continúa sin él
+                        }
+                    }
+                    
+                    proveedoresConUsuarios.Add(new ProveedorConUsuario
+                    {
+                        Proveedor = proveedor,
+                        Usuario = usuario
+                    });
+                }
+                
+                itemsConUsuarios = proveedoresConUsuarios;
                 count = resultado.Datos.Total_items;
             }
             else
             {
                 base.MostrarNotificacion(NotificationSeverity.Error, "Error!", resultado.Mensaje);
+                itemsConUsuarios = new List<ProveedorConUsuario>();
+                count = 0;
             }
         }
         catch (Exception ex)
         {
             base.MostrarNotificacion(NotificationSeverity.Error, "Error!", $"Error al cargar proveedores: {ex.Message}");
+            itemsConUsuarios = new List<ProveedorConUsuario>();
+            count = 0;
         }
         finally
         {
@@ -246,11 +518,23 @@ PagerHorizontalAlign="HorizontalAlign.Center" TItem="Proveedor">
         }
     }
 
+    private string ObtenerUrlImagenPerfil(Usuario? usuario)
+    {
+        if (usuario?.ImagenPerfil?.Url != null)
+        {
+            if (usuario.ImagenPerfil.Url.StartsWith("http"))
+                return usuario.ImagenPerfil.Url;
+                
+            return $"/{usuario.ImagenPerfil.Url.TrimStart('/')}";
+        }
+        return "/img/default-user.png";
+    }
+
     async Task RecargarGrilla()
     {
         if (grilla != null)
         {
-            await grilla.FirstPage();
+            await grilla.Reload();
         }
     }
 

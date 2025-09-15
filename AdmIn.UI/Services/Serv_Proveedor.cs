@@ -52,5 +52,16 @@ namespace AdmIn.UI.Services
             }
             return await EjecutarPeticion<DTO<bool>>(HttpMethod.Get, url);
         }
+
+        public async Task<DTO<IEnumerable<TipoServicio>>> Obtener_servicios_proveedor(int proveedorId)
+        {
+            return await EjecutarPeticion<DTO<IEnumerable<TipoServicio>>>(HttpMethod.Get, $"obtener_servicios/{proveedorId}");
+        }
+
+        public async Task<DTO<bool>> Actualizar_servicios_proveedor(int proveedorId, List<int> serviciosIds)
+        {
+            var datos = new { ProveedorId = proveedorId, ServiciosIds = serviciosIds };
+            return await EjecutarPeticion<DTO<bool>>(HttpMethod.Post, "actualizar_servicios", datos);
+        }
     }
 }

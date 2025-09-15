@@ -198,8 +198,8 @@ namespace AdmIn.Business.Servicios
                 {
                     return new DTO<Proveedor>
                     {
-                        Correcto = false,
-                        Mensaje = "El formato del email no es válido."
+                    Correcto = false,
+                    Mensaje = "El formato del email no es válido."
                     };
                 }
             }
@@ -340,6 +340,83 @@ namespace AdmIn.Business.Servicios
 
             // Ya existe otro proveedor con ese email
             return new DTO<bool> { Correcto = false, Datos = false };
+        }
+
+        // Métodos para servicios de proveedor (implementación real con base de datos)
+        public async Task<DTO<IEnumerable<TipoServicio>>> Obtener_servicios_proveedor(int proveedorId)
+        {
+            if (proveedorId <= 0)
+            {
+                return new DTO<IEnumerable<TipoServicio>>
+                {
+                    Correcto = false,
+                    Mensaje = "ID de proveedor inválido."
+                };
+            }
+
+            try
+            {
+                // Usar implementación real del repositorio
+                var resultado = await _proveedorRepo.Obtener_servicios_proveedor(proveedorId);
+                
+                if (resultado.Correcto)
+                {
+                    return new DTO<IEnumerable<TipoServicio>>
+                    {
+                        Correcto = true,
+                        Datos = resultado.Datos,
+                        Mensaje = resultado.Mensaje
+                    };
+                }
+                else
+                {
+                    return new DTO<IEnumerable<TipoServicio>>
+                    {
+                        Correcto = true,
+                        Datos = new List<TipoServicio>(),
+                        Mensaje = "No se encontraron servicios para este proveedor."
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                return new DTO<IEnumerable<TipoServicio>>
+                {
+                    Correcto = false,
+                    Mensaje = $"Error al obtener servicios del proveedor: {ex.Message}"
+                };
+            }
+        }
+
+        public async Task<DTO<bool>> Actualizar_servicios_proveedor(int proveedorId, List<int> serviciosIds)
+        {
+            if (proveedorId <= 0)
+            {
+                return new DTO<bool>
+                {
+                    Correcto = false,
+                    Mensaje = "ID de proveedor inválido."
+                };
+            }
+
+            if (serviciosIds == null)
+            {
+                serviciosIds = new List<int>();
+            }
+
+            try
+            {
+                // Usar implementación real del repositorio
+                return await _proveedorRepo.Actualizar_servicios_proveedor(proveedorId, serviciosIds);
+            }
+            catch (Exception ex)
+            {
+                return new DTO<bool>
+                {
+                    Correcto = false,
+                    Mensaje = $"Error al actualizar servicios del proveedor: {ex.Message}"
+                };
+            }
         }
 
         private bool EsEmailValido(string email)

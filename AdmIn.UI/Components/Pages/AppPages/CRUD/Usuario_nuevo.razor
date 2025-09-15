@@ -6,10 +6,12 @@
 @using AdmIn.Common
 @using AdmIn.UI.Services
 @using AdmIn.UI.Services.UtilityServices
+@using AdmIn.UI.Components.Shared
 
 @inject IServ_Usuario serv_usuario;
 @inject IServ_Rol serv_rol;
 @inject IServ_Moneda serv_moneda;
+@inject IServ_Imagen serv_imagen;
 
 <RadzenTemplateForm @ref="form" TItem="Usuario" Data="@usuario">
     <RadzenRow class="rz-mx-2 rz-mb-8">
@@ -100,6 +102,71 @@
         </RadzenColumn>
     </RadzenRow>
 
+    <!-- Sección de Imagen de Perfil -->
+    <RadzenRow class="rz-mx-2 rz-mb-8">
+        <RadzenColumn>
+            <RadzenCard>
+                <RadzenStack Gap="1rem">
+                    <RadzenText TextStyle="TextStyle.H6" Text="Imagen de Perfil" />
+                    
+                    <div class="text-center">
+                        @if (imagenPerfilSeleccionada != null)
+                        {
+                            <img src="@imagenPerfilSeleccionada.UrlThumb" 
+                                 alt="Vista previa" 
+                                 class="img-fluid rounded-circle mb-3" 
+                                 style="width: 120px; height: 120px; object-fit: cover; border: 3px solid #e9ecef;" />
+                        }
+                        else
+                        {
+                            <div class="bg-light rounded-circle d-flex align-items-center justify-content-center mb-3 mx-auto" 
+                                 style="width: 120px; height: 120px; border: 3px solid #e9ecef;">
+                                <i class="fas fa-user-circle text-muted" style="font-size: 80px;"></i>
+                            </div>
+                        }
+                        
+                        <div class="text-muted small">
+                            @if (imagenPerfilSeleccionada != null)
+                            {
+                                <i class="fas fa-check-circle text-success me-1"></i>
+                                <span>Imagen seleccionada: @imagenPerfilSeleccionada.Nombre</span>
+                            }
+                            else
+                            {
+                                <i class="fas fa-info-circle me-1"></i>
+                                <span>Sin imagen seleccionada</span>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <ImageUploadComponent 
+                            PermitirMultiples="false"
+                            MostrarVistaPrevia="false"
+                            MostrarBotones="true"
+                            OnImagenesSubidas="@OnImagenPerfilSubida"
+                            OnError="@OnErrorSubida" />
+                    </div>
+
+                    @if (imagenPerfilSeleccionada != null)
+                    {
+                        <button type="button" 
+                                class="btn btn-outline-danger btn-sm w-100" 
+                                @onclick="EliminarImagenSeleccionada">
+                            <i class="fas fa-trash me-1"></i>
+                            Quitar Imagen Seleccionada
+                        </button>
+                    }
+
+                    <div class="alert alert-info mt-3 small">
+                        <i class="fas fa-lightbulb me-1"></i>
+                        <strong>Opcional:</strong> La imagen de perfil se mostrará en toda la aplicación. Puedes agregarla ahora o más tarde.
+                    </div>
+                </RadzenStack>
+            </RadzenCard>
+        </RadzenColumn>
+    </RadzenRow>
+
     <RadzenRow class="rz-mx-2 rz-mb-8" JustifyContent="JustifyContent.End">
         <RadzenColumn>
             <MiRadzenButton ButtonStyle="ButtonStyle.Primary" Text="Guardar" OnClick="@OnSubmit" />
@@ -114,6 +181,7 @@
 
     private List<Rol> roles { get; set; }
     private List<Moneda> monedas { get; set; }
+    private Imagen? imagenPerfilSeleccionada;
 
     IEnumerable<int> valuesPermisos;
     IEnumerable<int> valuesRoles;
@@ -180,6 +248,29 @@
         }
     }
 
+    private async Task OnImagenPerfilSubida(List<Imagen> imagenes)
+    {
+        if (imagenes.Any())
+        {
+            imagenPerfilSeleccionada = imagenes.First();
+            base.MostrarNotificacion(NotificationSeverity.Success, "Éxito", 
+                "Imagen seleccionada. Se asignará después de crear el usuario.");
+            StateHasChanged();
+        }
+    }
+
+    private async Task OnErrorSubida(string error)
+    {
+        base.MostrarNotificacion(NotificationSeverity.Error, "Error", error);
+    }
+
+    private void EliminarImagenSeleccionada()
+    {
+        imagenPerfilSeleccionada = null;
+        base.MostrarNotificacion(NotificationSeverity.Info, "Info", "Imagen removida");
+        StateHasChanged();
+    }
+
     async Task OnSubmit()
     {
         if (Is_valid())
@@ -197,16 +288,40 @@
                 DTO<Usuario> usuario_respuesta = await serv_usuario.Crear(usuario);
                 if (usuario_respuesta != null && usuario_respuesta.Correcto)
                 {
-                    base.MostrarNotificacion(NotificationSeverity.Success, "Alta correcta", "Se ha agregado un nuevo usuario al sistema", "/usuarios");
+                    // Si hay imagen seleccionada, asignarla al usuario creado
+                    if (imagenPerfilSeleccionada != null && usuario_respuesta.Datos != null)
+                    {
+                        try
+                        {
+                            var resultadoImagen = await serv_imagen.EstablecerImagenPerfil(
+                                imagenPerfilSeleccionada.Id, usuario_respuesta.Datos.Id);
+                                
+                            if (!resultadoImagen.Correcto)
+                            {
+                                base.MostrarNotificacion(NotificationSeverity.Warning, "Advertencia", 
+                                    "Usuario creado, pero no se pudo asignar la imagen de perfil.");
+                            }
+                        }
+                        catch (Exception imgEx)
+                        {
+                            base.MostrarNotificacion(NotificationSeverity.Warning, "Advertencia", 
+                                $"Usuario creado, pero error al asignar imagen: {imgEx.Message}");
+                        }
+                    }
+
+                    base.MostrarNotificacion(NotificationSeverity.Success, "Alta correcta", 
+                        "Se ha agregado un nuevo usuario al sistema", "/usuarios");
                 }
                 else
                 {
-                    base.MostrarNotificacion(NotificationSeverity.Error, "Error!", $"Error al agregar el usuario: {usuario_respuesta.Mensaje}");
+                    base.MostrarNotificacion(NotificationSeverity.Error, "Error!", 
+                        $"Error al agregar el usuario: {usuario_respuesta.Mensaje}");
                 }
             }
             catch (Exception ex)
             {
-                base.MostrarNotificacion(NotificationSeverity.Error, "Error!", $"Error al agregar el usuario: {ex.Message}");
+                base.MostrarNotificacion(NotificationSeverity.Error, "Error!", 
+                    $"Error al agregar el usuario: {ex.Message}");
             }
         }
     }

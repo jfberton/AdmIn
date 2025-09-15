@@ -73,7 +73,7 @@ namespace AdmIn.Data.Repositorios
                 }
 
                 // Obtener los roles del usuario creado para devolverlo completo
-                var sqlRoles = @"SELECT r.RolID as Id, r.Nombre FROM Rol r
+                var sqlRoles = @"SELECT r.RolID as Id, r.Nombre, r.Descripcion FROM Rol r
                                  INNER JOIN UsuarioRol ur ON ur.RolID = r.RolID
                                  WHERE ur.UsuarioID = @UsuarioID;";
                 
@@ -172,7 +172,7 @@ namespace AdmIn.Data.Repositorios
                 }
 
                 // Obtener los roles del usuario actualizado para devolverlo completo
-                var sqlRoles = @"SELECT r.RolID as Id, r.Nombre FROM Rol r
+                var sqlRoles = @"SELECT r.RolID as Id, r.Nombre, r.Descripcion FROM Rol r
                                  INNER JOIN UsuarioRol ur ON ur.RolID = r.RolID
                                  WHERE ur.UsuarioID = @UsuarioID;";
                 
@@ -269,7 +269,7 @@ namespace AdmIn.Data.Repositorios
                               LEFT JOIN Moneda m ON u.MonedaID = m.MonedaID
                               LEFT JOIN Imagen img ON u.ImagenPerfilId = img.Id
                               WHERE u.UsuarioID = @UsuarioID;";
-            var sqlRoles = @"SELECT r.RolID as Id, r.Nombre FROM Rol r
+            var sqlRoles = @"SELECT r.RolID as Id, r.Nombre, r.Descripcion FROM Rol r
                              INNER JOIN UsuarioRol ur ON ur.RolID = r.RolID
                              WHERE ur.UsuarioID = @UsuarioID;";
 
@@ -366,7 +366,7 @@ namespace AdmIn.Data.Repositorios
                               LEFT JOIN Moneda m ON u.MonedaID = m.MonedaID
                               LEFT JOIN Imagen img ON u.ImagenPerfilId = img.Id
                               WHERE u.Email = @Email;";
-            var sqlRoles = @"SELECT r.RolID as Id, r.Nombre FROM Rol r
+            var sqlRoles = @"SELECT r.RolID as Id, r.Nombre, r.Descripcion FROM Rol r
                              INNER JOIN UsuarioRol ur ON ur.RolID = r.RolID
                              WHERE ur.UsuarioID = @UsuarioID;";
 
@@ -454,7 +454,7 @@ namespace AdmIn.Data.Repositorios
                                  m.Nombre as Moneda_Nombre
                                FROM Usuario u
                                LEFT JOIN Moneda m ON u.MonedaID = m.MonedaID;";
-            var sqlTodosRoles = @"SELECT ur.UsuarioID, r.RolID as Id, r.Nombre 
+            var sqlTodosRoles = @"SELECT ur.UsuarioID, r.RolID as Id, r.Nombre, r.Descripcion 
                                   FROM UsuarioRol ur
                                   INNER JOIN Rol r ON ur.RolID = r.RolID;";
 
@@ -497,7 +497,7 @@ namespace AdmIn.Data.Repositorios
                 // Asociar roles al usuario
                 var rolesDelUsuario = usuarioRoles
                     .Where(ur => ur.UsuarioID == usuario.Id)
-                    .Select(ur => new Rol { Id = ur.Id, Nombre = ur.Nombre })
+                    .Select(ur => new Rol { Id = ur.Id, Nombre = ur.Nombre, Descripcion = ur.Descripcion })
                     .ToList();
 
                 usuario.Roles = rolesDelUsuario;
@@ -528,6 +528,7 @@ namespace AdmIn.Data.Repositorios
                             u.PersonaID,
                             u.EmpresaID,
                             u.MonedaID,
+                            u.ImagenPerfilId,
                             u.Activo,
                             u.FechaCreacion,
                             u.FechaModificacion,
@@ -535,14 +536,22 @@ namespace AdmIn.Data.Repositorios
                             u.UsuarioModificadorID,
                             m.MonedaID as Moneda_Id,
                             m.Codigo as Moneda_Codigo,
-                            m.Nombre as Moneda_Nombre
+                            m.Nombre as Moneda_Nombre,
+                            img.Id as ImagenPerfil_Id,
+                            img.Nombre as ImagenPerfil_Nombre,
+                            img.Descripcion as ImagenPerfil_Descripcion,
+                            img.Url as ImagenPerfil_Url,
+                            img.UrlThumb as ImagenPerfil_UrlThumb,
+                            img.FechaCreacion as ImagenPerfil_FechaCreacion
                         FROM Usuario u
                         LEFT JOIN Moneda m ON u.MonedaID = m.MonedaID
+                        LEFT JOIN Imagen img ON u.ImagenPerfilId = img.Id
                         WHERE 
                             (@FiltroBusqueda IS NULL OR u.Nombre LIKE '%' + @FiltroBusqueda + '%' OR u.Email LIKE '%' + @FiltroBusqueda + '%')
                         ORDER BY
                             CASE WHEN @OrdenarPor = 'Nombre' THEN u.Nombre END,
-                            CASE WHEN @OrdenarPor = 'Email' THEN u.Email END
+                            CASE WHEN @OrdenarPor = 'Email' THEN u.Email END,
+                            CASE WHEN @OrdenarPor = 'FechaCreacion' THEN u.FechaCreacion END
                         OFFSET @Skip ROWS FETCH NEXT @Top ROWS ONLY;";
 
             var lista = await conexion.QueryAsync<dynamic>(sql, new
@@ -571,6 +580,7 @@ namespace AdmIn.Data.Repositorios
                     PersonaId = row.PersonaID,
                     EmpresaId = row.EmpresaID,
                     MonedaId = row.MonedaID,
+                    ImagenPerfilId = row.ImagenPerfilId,
                     Activo = row.Activo,
                     FechaCreacion = row.FechaCreacion,
                     FechaModificacion = row.FechaModificacion,
@@ -589,6 +599,20 @@ namespace AdmIn.Data.Repositorios
                     };
                 }
 
+                // Mapear la imagen de perfil si existe
+                if (row.ImagenPerfil_Id != null)
+                {
+                    usuario.ImagenPerfil = new Imagen
+                    {
+                        Id = row.ImagenPerfil_Id,
+                        Nombre = row.ImagenPerfil_Nombre,
+                        Descripcion = row.ImagenPerfil_Descripcion,
+                        Url = row.ImagenPerfil_Url,
+                        UrlThumb = row.ImagenPerfil_UrlThumb,
+                        FechaCreacion = row.ImagenPerfil_FechaCreacion
+                    };
+                }
+
                 usuarios.Add(usuario);
             }
 
@@ -596,7 +620,7 @@ namespace AdmIn.Data.Repositorios
             if (usuarios.Any())
             {
                 var usuarioIds = usuarios.Select(u => u.Id).ToList();
-                var sqlRoles = @"SELECT ur.UsuarioID, r.RolID as Id, r.Nombre 
+                var sqlRoles = @"SELECT ur.UsuarioID, r.RolID as Id, r.Nombre, r.Descripcion 
                                  FROM UsuarioRol ur
                                  INNER JOIN Rol r ON ur.RolID = r.RolID
                                  WHERE ur.UsuarioID IN @UsuarioIds;";
@@ -608,7 +632,7 @@ namespace AdmIn.Data.Repositorios
                 {
                     var rolesDelUsuario = rolesData
                         .Where(r => r.UsuarioID == usuario.Id)
-                        .Select(r => new Rol { Id = r.Id, Nombre = r.Nombre })
+                        .Select(r => new Rol { Id = r.Id, Nombre = r.Nombre, Descripcion = r.Descripcion })
                         .ToList();
 
                     usuario.Roles = rolesDelUsuario;
