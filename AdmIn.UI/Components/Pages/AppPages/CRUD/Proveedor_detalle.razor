@@ -453,7 +453,8 @@ else
         {
             var resultado = await ServicioProveedor.Obtener_por_id(ProveedorId);
 
-            if (resultado.Correcto && resultado.Datos != null)
+            // Verificar si el resultado es null antes de acceder a sus propiedades
+            if (resultado != null && resultado.Correcto && resultado.Datos != null)
             {
                 proveedor = resultado.Datos;
                 base.EstablecerTituloPagina("Proveedores", $"Detalle: {proveedor.Nombre}");
@@ -462,7 +463,7 @@ else
                 if (proveedor.UsuarioId.HasValue)
                 {
                     var usuarioResult = await ServicioUsuario.Obtener_por_id(proveedor.UsuarioId.Value);
-                    if (usuarioResult.Correcto)
+                    if (usuarioResult != null && usuarioResult.Correcto)
                     {
                         usuarioAsociado = usuarioResult.Datos;
                     }
@@ -473,7 +474,8 @@ else
             }
             else
             {
-                base.MostrarNotificacion(NotificationSeverity.Error, "Error!", "No se pudo cargar el proveedor", "/proveedores");
+                var mensaje = resultado?.Mensaje ?? "Respuesta nula del servicio";
+                base.MostrarNotificacion(NotificationSeverity.Error, "Error!", $"No se pudo cargar el proveedor: {mensaje}", "/proveedores");
             }
         }
         catch (Exception ex)

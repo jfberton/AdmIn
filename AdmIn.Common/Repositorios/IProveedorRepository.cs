@@ -18,6 +18,9 @@ namespace AdmIn.Common.Repositorios
         Task<DTO<Proveedor>> Obtener_por_rfc(string rfc);
         Task<DTO<Proveedor>> Obtener_por_email(string email);
         
+        // Método para paginación con filtro de estado
+        Task<DTO<Items_pagina<Proveedor>>> Obtener_paginado_por_estado(Filtros_paginado filtros, bool? soloActivos = null);
+        
         // Métodos para gestión de servicios de proveedor
         Task<DTO<IEnumerable<TipoServicio>>> Obtener_servicios_proveedor(int proveedorId);
         Task<DTO<bool>> Actualizar_servicios_proveedor(int proveedorId, List<int> serviciosIds);

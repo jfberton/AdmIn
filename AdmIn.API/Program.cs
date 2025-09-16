@@ -40,6 +40,14 @@ builder.Services.AddCors(options =>
     });
 });
 
+// Logging Configuration
+builder.Services.AddLogging(logging =>
+{
+    logging.ClearProviders();
+    logging.AddConsole();
+    logging.AddDebug();
+});
+
 // Register application services
 builder.Services.AddScoped<IServ_Usuario, Serv_Usuario>();
 builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
@@ -77,6 +85,9 @@ builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
 builder.Services.AddScoped<IServ_ImagenUpload, Serv_ImagenUpload>();
 builder.Services.AddScoped<IImagenRepository, ImagenRepository>();
 
+// Password Service with bcrypt
+builder.Services.AddScoped<IPasswordService, PasswordService>();
+
 // Static Files and File Content Type Provider
 builder.Services.AddSingleton<IContentTypeProvider, FileExtensionContentTypeProvider>();
 
@@ -86,15 +97,26 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     InfoSQL.Conexion = app.Configuration.GetConnectionString("DevCS");
+    Console.WriteLine($"[PROGRAM] ===== CONFIGURACIÓN DE CONEXIÓN =====");
+    Console.WriteLine($"[PROGRAM] Entorno: Development");
+    Console.WriteLine($"[PROGRAM] Connection String configurado: {InfoSQL.Conexion?.Substring(0, Math.Min(80, InfoSQL.Conexion?.Length ?? 0)) + "..."}");
 }
 else if (builder.Environment.IsEnvironment("Test"))
 {
     InfoSQL.Conexion = builder.Configuration.GetConnectionString("TestCS");
+    Console.WriteLine($"[PROGRAM] Entorno: Test");
+    Console.WriteLine($"[PROGRAM] Connection String configurado: {InfoSQL.Conexion?.Substring(0, Math.Min(80, InfoSQL.Conexion?.Length ?? 0)) + "..."}");
 }
 else
 {
     InfoSQL.Conexion = builder.Configuration.GetConnectionString("ProdCS");
+    Console.WriteLine($"[PROGRAM] Entorno: Production");
+    Console.WriteLine($"[PROGRAM] Connection String configurado: {InfoSQL.Conexion?.Substring(0, Math.Min(80, InfoSQL.Conexion?.Length ?? 0)) + "..."}");
 }
+
+Console.WriteLine($"[PROGRAM] ===== APLICACIÓN INICIADA =====");
+Console.WriteLine($"[PROGRAM] API iniciada correctamente");
+Console.WriteLine($"[PROGRAM] Logging habilitado en consola");
 
 // Enable static files serving
 app.UseStaticFiles();

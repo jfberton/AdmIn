@@ -12,18 +12,15 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-
 builder.Services.AddRadzenComponents();
 builder.Services.AddHttpClient();
 
-//Autenticacion 
+//Authentication 
 builder.Services.AddAuthenticationCore();
 builder.Services.AddScoped<ProtectedSessionStorage>();
 builder.Services.AddScoped<AuthenticationStateProvider, CustomAuthenticationStateProvider>();
 
-
-
-//Mis servicios
+//UI Services - These make HTTP calls to the API
 builder.Services.AddScoped<IServ_Auth, Serv_Auth>();
 builder.Services.AddScoped<IServ_Usuario, Serv_Usuario>();
 builder.Services.AddScoped<IServ_Rol, Serv_Rol>();
@@ -35,22 +32,12 @@ builder.Services.AddScoped<IServ_TipoServicio, Serv_TipoServicio>();
 builder.Services.AddScoped<IServ_Proveedor, Serv_Proveedor>();
 builder.Services.AddScoped<IServ_Imagen, Serv_Imagen>();
 
-//Servicio de mock
-// builder.Services.AddScoped<IServ_Mock, MockData>(); // Removed
-//builder.Services.AddSingleton<AdmIn.UI.Services.Mock.IPersonaService, AdmIn.UI.Services.Mock.MockPersonaService>();
-//builder.Services.AddSingleton<AdmIn.UI.Services.Mock.IInmuebleService, AdmIn.UI.Services.Mock.MockInmuebleService>();
-//builder.Services.AddSingleton<AdmIn.UI.Services.Mock.IEmpleadoService, AdmIn.UI.Services.Mock.MockEmpleadoService>();
-//builder.Services.AddSingleton<AdmIn.UI.Services.Mock.IUsuarioService, AdmIn.UI.Services.Mock.MockUsuarioService>();
-//builder.Services.AddSingleton<AdmIn.UI.Services.Mock.IContratoService, AdmIn.UI.Services.Mock.MockContratoService>();
-//builder.Services.AddSingleton<AdmIn.UI.Services.Mock.IReparacionService, AdmIn.UI.Services.Mock.MockReparacionService>();
-
-//Mis Servicios Utiles
+//Utility Services
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<PageTitleService>();
 builder.Services.AddScoped<DeviceService>();
 builder.Services.AddScoped<LogHelper>();
 builder.Services.AddScoped<ITokenService, TokenService>();
-
 
 var app = builder.Build();
 
@@ -63,7 +50,6 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-
 app.UseStaticFiles();
 app.UseAntiforgery();
 

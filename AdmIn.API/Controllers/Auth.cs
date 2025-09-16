@@ -76,7 +76,7 @@ namespace AdmIn.API.Controllers
                 {
                     return new DTO<Usuario>()
                     {
-                        Correcto = true,
+                        Correcto = false, // Changed from true to false for consistency
                         Mensaje = respuesta.Mensaje,
                         Datos = null
                     };
@@ -87,7 +87,7 @@ namespace AdmIn.API.Controllers
             {
                 return new DTO<Usuario>()
                 {
-                    Correcto = true,
+                    Correcto = false, // Changed from true to false for consistency  
                     Mensaje = $"Error al validar las credenciales. Error: {ex.Message}",
                     Datos = null
                 };
@@ -118,7 +118,7 @@ namespace AdmIn.API.Controllers
 
 
         [HttpGet("protectedwithscope")]
-        [Authorize(Roles = "user, mod, adm")]
+        [Authorize(Roles = "admin_usuario")]
         public IActionResult GetUserWithScope()
         {
             var claims = User.Identity as ClaimsIdentity;
@@ -128,7 +128,7 @@ namespace AdmIn.API.Controllers
         }
 
         [HttpGet("protectedwithscope2")]
-        [Authorize(Roles = "usuario, mod, admin")]
+        [Authorize(Roles = "admin_usuario")]
         public IActionResult GetUserWithScope2()
         {
             var claims = User.Identity as ClaimsIdentity;

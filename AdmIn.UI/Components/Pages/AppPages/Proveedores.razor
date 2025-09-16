@@ -62,9 +62,22 @@
     </div>
 </div>
 
-<RadzenDataGrid class="rz-m-2 modern-grid" @ref="grilla" IsLoading=@isLoading Count="@count" Data="@itemsConUsuarios" EmptyText="No hay registros para mostrar"
-LoadData="@LoadData" AllowSorting="false" AllowFiltering="false" AllowPaging="true" PageSize="@tamanioPagina"
-PagerHorizontalAlign="HorizontalAlign.Center" TItem="ProveedorConUsuario">
+<RadzenDataGrid class="rz-m-2 modern-grid" @ref="grilla" 
+                IsLoading=@isLoading 
+                Count="@count" 
+                Data="@itemsConUsuarios"
+                EmptyText="No hay registros para mostrar"
+                LoadData="@LoadData" 
+                AllowSorting="false" 
+                AllowFiltering="false" 
+                AllowPaging="true" 
+                PageSize="@tamanioPagina"
+                PagerHorizontalAlign="HorizontalAlign.Center" 
+                TItem="ProveedorConUsuario"
+                ShowPagingSummary="true"
+                PagingSummaryFormat="Mostrando página {0} de {1} (total {2} registros)"
+                PageSizeOptions="@(new int[] {5, 10, 25, 50})"
+                AllowVirtualization="false">
     <Columns>
         <RadzenDataGridColumn TItem="ProveedorConUsuario" Width="60px" Title="ID" MinWidth="60px" Sortable="false">
             <Template Context="item">
@@ -330,13 +343,17 @@ PagerHorizontalAlign="HorizontalAlign.Center" TItem="ProveedorConUsuario">
 
     bool isLoading = false;
     int count;
-    IEnumerable<ProveedorConUsuario> itemsConUsuarios = new List<ProveedorConUsuario>();
+    IEnumerable<ProveedorConUsuario> itemsConUsuarios = null;
     
     // Filtros avanzados
     string filtroTexto = "";
     string ordenarPor = "Nombre";
-    string filtroEstado = "activos"; // Cambiar por defecto a activos
+    string filtroEstado = "todos";
     int tamanioPagina = 10;
+
+    // Flag para controlar la primera carga
+    private bool firstLoad = true;
+    private bool isLoadingData = false;
 
     // Clase auxiliar para combinar proveedor con usuario
     public class ProveedorConUsuario
@@ -351,9 +368,30 @@ PagerHorizontalAlign="HorizontalAlign.Center" TItem="ProveedorConUsuario">
         base.EstablecerTituloPagina("Proveedores", "Listado");
     }
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && firstLoad)
+        {
+            firstLoad = false;
+            
+            await Task.Delay(100);
+        }
+        
+        await base.OnAfterRenderAsync(firstRender);
+    }
+
     async Task LoadData(LoadDataArgs args)
     {
+        // Evitar ejecuciones paralelas de LoadData
+        if (isLoadingData)
+        {
+            return;
+        }
+
+        isLoadingData = true;
+        
         isLoading = true;
+        StateHasChanged();
 
         try
         {
@@ -365,108 +403,17 @@ PagerHorizontalAlign="HorizontalAlign.Center" TItem="ProveedorConUsuario">
                 Filter = filtroTexto
             };
 
-            DTO<Items_pagina<Proveedor>> resultado;
-
-            if (filtroEstado == "activos")
+            bool? soloActivos = filtroEstado switch
             {
-                var activosResult = await ServicioProveedor.Obtener_activos();
-                if (activosResult.Correcto && activosResult.Datos != null)
-                {
-                    var items = activosResult.Datos.ToList();
-                    
-                    // Aplicar filtro de búsqueda si existe
-                    if (!string.IsNullOrEmpty(filtros.Filter))
-                    {
-                        items = items.Where(p => 
-                            p.Nombre.Contains(filtros.Filter, StringComparison.OrdinalIgnoreCase) ||
-                            p.RFC.Contains(filtros.Filter, StringComparison.OrdinalIgnoreCase) ||
-                            (!string.IsNullOrEmpty(p.Email) && p.Email.Contains(filtros.Filter, StringComparison.OrdinalIgnoreCase))
-                        ).ToList();
-                    }
-
-                    // Aplicar ordenamiento
-                    items = filtros.OrderBy switch
-                    {
-                        "RFC" => items.OrderBy(p => p.RFC).ToList(),
-                        "Email" => items.OrderBy(p => p.Email).ToList(),
-                        _ => items.OrderBy(p => p.Nombre).ToList()
-                    };
-
-                    // Aplicar paginación manual
-                    var itemsPaginados = items.Skip(filtros.Skip).Take(filtros.Top).ToList();
-
-                    resultado = new DTO<Items_pagina<Proveedor>>
-                    {
-                        Correcto = true,
-                        Datos = new Items_pagina<Proveedor>
-                        {
-                            Items = itemsPaginados,
-                            Total_items = items.Count
-                        }
-                    };
-                }
-                else
-                {
-                    resultado = new DTO<Items_pagina<Proveedor>>
-                    {
-                        Correcto = false,
-                        Mensaje = activosResult?.Mensaje ?? "Error desconocido"
-                    };
-                }
-            }
-            else if (filtroEstado == "inactivos")
-            {
-                // Para inactivos, necesitamos obtener todos y filtrar
-                var todosResult = await ServicioProveedor.Obtener_paginado(new Filtros_paginado { Skip = 0, Top = int.MaxValue });
-                if (todosResult.Correcto && todosResult.Datos != null)
-                {
-                    var items = todosResult.Datos.Items.Where(p => !p.Activo).ToList();
-                    
-                    // Aplicar filtro de búsqueda si existe
-                    if (!string.IsNullOrEmpty(filtros.Filter))
-                    {
-                        items = items.Where(p => 
-                            p.Nombre.Contains(filtros.Filter, StringComparison.OrdinalIgnoreCase) ||
-                            p.RFC.Contains(filtros.Filter, StringComparison.OrdinalIgnoreCase) ||
-                            (!string.IsNullOrEmpty(p.Email) && p.Email.Contains(filtros.Filter, StringComparison.OrdinalIgnoreCase))
-                        ).ToList();
-                    }
-
-                    // Aplicar ordenamiento
-                    items = filtros.OrderBy switch
-                    {
-                        "RFC" => items.OrderBy(p => p.RFC).ToList(),
-                        "Email" => items.OrderBy(p => p.Email).ToList(),
-                        "Nombre" => items.OrderBy(p => p.Nombre).ToList(),
-                        _ => items.OrderBy(p => p.Nombre).ToList()
-                    };
-
-                    // Aplicar paginación manual
-                    var itemsPaginados = items.Skip(filtros.Skip).Take(filtros.Top).ToList();
-
-                    resultado = new DTO<Items_pagina<Proveedor>>
-                    {
-                        Correcto = true,
-                        Datos = new Items_pagina<Proveedor>
-                        {
-                            Items = itemsPaginados,
-                            Total_items = items.Count
-                        }
-                    };
-                }
-                else
-                {
-                    resultado = todosResult;
-                }
-            }
-            else
-            {
-                resultado = await ServicioProveedor.Obtener_paginado(filtros);
-            }
-
+                "activos" => true,
+                "inactivos" => false,
+                _ => null
+            };
+            
+            var resultado = await ServicioProveedor.Obtener_paginado_por_estado(filtros, soloActivos);
+            
             if (resultado.Correcto && resultado.Datos != null)
             {
-                // Cargar usuarios asociados para las fotos de perfil
                 var proveedoresConUsuarios = new List<ProveedorConUsuario>();
                 
                 foreach (var proveedor in resultado.Datos.Items)
@@ -483,9 +430,9 @@ PagerHorizontalAlign="HorizontalAlign.Center" TItem="ProveedorConUsuario">
                                 usuario = usuarioResult.Datos;
                             }
                         }
-                        catch
+                        catch (Exception ex)
                         {
-                            // Si hay error cargando el usuario, continúa sin él
+                            Console.WriteLine($"[BLAZOR] Error cargando usuario: {ex.Message}");
                         }
                     }
                     
@@ -501,20 +448,20 @@ PagerHorizontalAlign="HorizontalAlign.Center" TItem="ProveedorConUsuario">
             }
             else
             {
-                base.MostrarNotificacion(NotificationSeverity.Error, "Error!", resultado.Mensaje);
                 itemsConUsuarios = new List<ProveedorConUsuario>();
                 count = 0;
             }
         }
         catch (Exception ex)
         {
-            base.MostrarNotificacion(NotificationSeverity.Error, "Error!", $"Error al cargar proveedores: {ex.Message}");
             itemsConUsuarios = new List<ProveedorConUsuario>();
             count = 0;
         }
         finally
         {
             isLoading = false;
+            isLoadingData = false;
+            StateHasChanged();
         }
     }
 
@@ -534,7 +481,7 @@ PagerHorizontalAlign="HorizontalAlign.Center" TItem="ProveedorConUsuario">
     {
         if (grilla != null)
         {
-            await grilla.Reload();
+            await grilla.FirstPage();
         }
     }
 

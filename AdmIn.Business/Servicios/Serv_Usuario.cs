@@ -16,8 +16,8 @@ namespace AdmIn.Business.Servicios
 
         public async Task<DTO<Usuario>> Crear(Usuario usuarioNuevo)
         {
-            // Encripto la contraseña antes de guardar
-            usuarioNuevo.Password = MiHash.GenerarHash(usuarioNuevo.Password);
+            // Usar bcrypt para encriptar la contraseña de usuarios nuevos
+            usuarioNuevo.Password = MiHash.GenerarHashBcrypt(usuarioNuevo.Password);
 
             var resultado = await _usuarioRepo.Crear(usuarioNuevo);
 
@@ -66,8 +66,28 @@ namespace AdmIn.Business.Servicios
                 };
             }
 
-            string passwordHasheado = MiHash.GenerarHash(login.Password);
-            if (usuarioResult.Datos.Password == passwordHasheado)
+            // Verificar si la contraseña almacenada es bcrypt o SHA512
+            bool passwordCorrecta = false;
+
+            if (MiHash.EsHashBcrypt(usuarioResult.Datos.Password))
+            {
+                // Usar verificación bcrypt
+                passwordCorrecta = MiHash.VerificarHashBcrypt(login.Password, usuarioResult.Datos.Password);
+            }
+            else
+            {
+                // Compatibilidad con SHA512 existente
+                string passwordHasheado = MiHash.GenerarHash(login.Password);
+                passwordCorrecta = usuarioResult.Datos.Password == passwordHasheado;
+                
+                // Si la contraseña es correcta pero está en SHA512, migrar a bcrypt
+                if (passwordCorrecta)
+                {
+                    await MigrarPasswordABcrypt(usuarioResult.Datos, login.Password);
+                }
+            }
+
+            if (passwordCorrecta)
             {
                 return new DTO<Usuario>
                 {
@@ -98,9 +118,20 @@ namespace AdmIn.Business.Servicios
             if (!usuarioResult.Correcto || usuarioResult.Datos == null)
                 return new DTO<bool> { Correcto = false, Mensaje = "Usuario no encontrado." };
 
-            string passwordActualHasheada = MiHash.GenerarHash(datos.Password);
+            // Verificar contraseña actual (compatible con ambos formatos)
+            bool passwordActualCorrecta = false;
 
-            if (usuarioResult.Datos.Password != passwordActualHasheada)
+            if (MiHash.EsHashBcrypt(usuarioResult.Datos.Password))
+            {
+                passwordActualCorrecta = MiHash.VerificarHashBcrypt(datos.Password, usuarioResult.Datos.Password);
+            }
+            else
+            {
+                string passwordActualHasheada = MiHash.GenerarHash(datos.Password);
+                passwordActualCorrecta = usuarioResult.Datos.Password == passwordActualHasheada;
+            }
+
+            if (!passwordActualCorrecta)
             {
                 return new DTO<bool>
                 {
@@ -110,7 +141,8 @@ namespace AdmIn.Business.Servicios
                 };
             }
 
-            usuarioResult.Datos.Password = MiHash.GenerarHash(datos.NuevaPassword);
+            // Siempre usar bcrypt para la nueva contraseña
+            usuarioResult.Datos.Password = MiHash.GenerarHashBcrypt(datos.NuevaPassword);
 
             var actualizado = await _usuarioRepo.Actualizar(usuarioResult.Datos);
 
@@ -122,6 +154,23 @@ namespace AdmIn.Business.Servicios
                     ? "Contraseña actualizada correctamente."
                     : actualizado.Mensaje
             };
+        }
+
+        /// <summary>
+        /// Migra una contraseña de SHA512 a bcrypt de forma transparente
+        /// </summary>
+        private async Task MigrarPasswordABcrypt(Usuario usuario, string passwordTextoPlano)
+        {
+            try
+            {
+                usuario.Password = MiHash.GenerarHashBcrypt(passwordTextoPlano);
+                await _usuarioRepo.Actualizar(usuario);
+            }
+            catch (Exception)
+            {
+                // Si falla la migración, no afectar el login
+                // Se puede loggear el error si se desea
+            }
         }
     }
 }
