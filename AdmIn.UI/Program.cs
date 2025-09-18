@@ -8,12 +8,24 @@ using Radzen;
 
 var builder = WebApplication.CreateBuilder(args);
 
+Console.WriteLine("[UI PROGRAM] ===== CONFIGURACIÓN DE UI =====");
+Console.WriteLine($"[UI PROGRAM] Environment: {builder.Environment.EnvironmentName}");
+Console.WriteLine($"[UI PROGRAM] Is Development: {builder.Environment.IsDevelopment()}");
+
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
 builder.Services.AddRadzenComponents();
 builder.Services.AddHttpClient();
+
+// Logging Configuration for UI
+builder.Services.AddLogging(logging =>
+{
+    logging.ClearProviders();
+    logging.AddConsole();
+    logging.AddDebug();
+});
 
 //Authentication 
 builder.Services.AddAuthenticationCore();
@@ -39,7 +51,18 @@ builder.Services.AddScoped<DeviceService>();
 builder.Services.AddScoped<LogHelper>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 
+Console.WriteLine("[UI PROGRAM] ? Servicios registrados correctamente");
+
+// Check API configuration
+var pathApiDev = builder.Configuration["Path_api_dev"];
+var pathApiProd = builder.Configuration["Path_api_prod"];
+Console.WriteLine($"[UI PROGRAM] ? Path API Dev configurado: {pathApiDev ?? "NO CONFIGURADO"}");
+Console.WriteLine($"[UI PROGRAM] ? Path API Prod configurado: {pathApiProd ?? "NO CONFIGURADO"}");
+
 var app = builder.Build();
+
+Console.WriteLine("[UI PROGRAM] ===== APLICACIÓN UI =====");
+Console.WriteLine($"[UI PROGRAM] ? Aplicación construida correctamente");
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
@@ -47,6 +70,11 @@ if (!app.Environment.IsDevelopment())
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
     // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
+    Console.WriteLine($"[UI PROGRAM] ? Configuración de producción aplicada");
+}
+else
+{
+    Console.WriteLine($"[UI PROGRAM] ? Modo desarrollo - sin HSTS");
 }
 
 app.UseHttpsRedirection();
@@ -55,5 +83,10 @@ app.UseAntiforgery();
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
+
+Console.WriteLine("[UI PROGRAM] ? Pipeline configurado correctamente");
+Console.WriteLine("[UI PROGRAM] ? Componentes Razor mapeados");
+Console.WriteLine("[UI PROGRAM] ? Logging habilitado en consola");
+Console.WriteLine("[UI PROGRAM] ===== UI INICIADA =====");
 
 app.Run();

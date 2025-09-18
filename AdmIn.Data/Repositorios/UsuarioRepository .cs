@@ -334,99 +334,184 @@ namespace AdmIn.Data.Repositorios
 
         public async Task<DTO<Usuario>> Obtener_por_email(string email)
         {
-            using var conexion = new SqlConnection(InfoSQL.Conexion);
-            await conexion.OpenAsync();
-
-            var sqlUsuario = @"SELECT 
-                                u.UsuarioID as Id,
-                                u.Nombre,
-                                u.Email,
-                                u.Password,
-                                u.Pais,
-                                u.Telefono,
-                                u.PersonaID,
-                                u.EmpresaID,
-                                u.MonedaID,
-                                u.ImagenPerfilId,
-                                u.Activo,
-                                u.FechaCreacion,
-                                u.FechaModificacion,
-                                u.UsuarioCreadorID,
-                                u.UsuarioModificadorID,
-                                m.MonedaID as Moneda_Id,
-                                m.Codigo as Moneda_Codigo,
-                                m.Nombre as Moneda_Nombre,
-                                img.Id as ImagenPerfil_Id,
-                                img.Nombre as ImagenPerfil_Nombre,
-                                img.Descripcion as ImagenPerfil_Descripcion,
-                                img.Url as ImagenPerfil_Url,
-                                img.UrlThumb as ImagenPerfil_UrlThumb,
-                                img.FechaCreacion as ImagenPerfil_FechaCreacion
-                              FROM Usuario u
-                              LEFT JOIN Moneda m ON u.MonedaID = m.MonedaID
-                              LEFT JOIN Imagen img ON u.ImagenPerfilId = img.Id
-                              WHERE u.Email = @Email;";
-            var sqlRoles = @"SELECT r.RolID as Id, r.Nombre, r.Descripcion FROM Rol r
-                             INNER JOIN UsuarioRol ur ON ur.RolID = r.RolID
-                             WHERE ur.UsuarioID = @UsuarioID;";
-
-            var usuarioData = await conexion.QuerySingleOrDefaultAsync(sqlUsuario, new { Email = email });
-            if (usuarioData == null)
-                return new DTO<Usuario> { Correcto = false, Mensaje = "Usuario no encontrado" };
-
-            var usuarioEncontrado = new Usuario
+            Console.WriteLine($"[DATA] ========== UsuarioRepository.Obtener_por_email ==========");
+            Console.WriteLine($"[DATA] Email parámetro: {email ?? "null"}");
+            Console.WriteLine($"[DATA] Connection String length: {InfoSQL.Conexion?.Length ?? 0}");
+            
+            try
             {
-                Id = usuarioData.Id,
-                Nombre = usuarioData.Nombre,
-                Email = usuarioData.Email,
-                Password = usuarioData.Password,
-                Pais = usuarioData.Pais,
-                Telefono = usuarioData.Telefono,
-                PersonaId = usuarioData.PersonaID,
-                EmpresaId = usuarioData.EmpresaID,
-                MonedaId = usuarioData.MonedaID,
-                ImagenPerfilId = usuarioData.ImagenPerfilId,
-                Activo = usuarioData.Activo,
-                FechaCreacion = usuarioData.FechaCreacion,
-                FechaModificacion = usuarioData.FechaModificacion,
-                UsuarioCreador = usuarioData.UsuarioCreadorID,
-                UsuarioModificador = usuarioData.UsuarioModificadorID
-            };
+                Console.WriteLine($"[DATA] ✓ Conexión a la base de datos configurada");
+                Console.WriteLine($"[DATA] Abriendo conexión a base de datos...");
+                
+                using var conexion = new SqlConnection(InfoSQL.Conexion);
+                await conexion.OpenAsync();
+                
+                Console.WriteLine($"[DATA] ✓ Conexión a la base de datos abierta correctamente");
 
-            // Mapear la moneda si existe
-            if (usuarioData.Moneda_Id != null)
-            {
-                usuarioEncontrado.Moneda = new Moneda
+                var sqlUsuario = @"SELECT 
+                                    u.UsuarioID as Id,
+                                    u.Nombre,
+                                    u.Email,
+                                    u.Password,
+                                    u.Pais,
+                                    u.Telefono,
+                                    u.PersonaID,
+                                    u.EmpresaID,
+                                    u.MonedaID,
+                                    u.ImagenPerfilId,
+                                    u.Activo,
+                                    u.FechaCreacion,
+                                    u.FechaModificacion,
+                                    u.UsuarioCreadorID,
+                                    u.UsuarioModificadorID,
+                                    m.MonedaID as Moneda_Id,
+                                    m.Codigo as Moneda_Codigo,
+                                    m.Nombre as Moneda_Nombre,
+                                    img.Id as ImagenPerfil_Id,
+                                    img.Nombre as ImagenPerfil_Nombre,
+                                    img.Descripcion as ImagenPerfil_Descripcion,
+                                    img.Url as ImagenPerfil_Url,
+                                    img.UrlThumb as ImagenPerfil_UrlThumb,
+                                    img.FechaCreacion as ImagenPerfil_FechaCreacion
+                                  FROM Usuario u
+                                  LEFT JOIN Moneda m ON u.MonedaID = m.MonedaID
+                                  LEFT JOIN Imagen img ON u.ImagenPerfilId = img.Id
+                                  WHERE u.Email = @Email;";
+                
+                var sqlRoles = @"SELECT r.RolID as Id, r.Nombre, r.Descripcion FROM Rol r
+                                 INNER JOIN UsuarioRol ur ON ur.RolID = r.RolID
+                                 WHERE ur.UsuarioID = @UsuarioID;";
+
+                Console.WriteLine($"[DATA] ✓ Query para obtener usuario preparada");
+                Console.WriteLine($"[DATA] SQL Query: {sqlUsuario.Replace("\r\n", " ").Replace("  ", " ").Trim()}");
+                Console.WriteLine($"[DATA] Parámetro @Email: {email}");
+                Console.WriteLine($"[DATA] Ejecutando query de usuario...");
+
+                var usuarioData = await conexion.QuerySingleOrDefaultAsync(sqlUsuario, new { Email = email });
+                
+                Console.WriteLine($"[DATA] ✓ Query de usuario ejecutada");
+                Console.WriteLine($"[DATA] ✓ Usuario encontrado: {usuarioData != null}");
+                
+                if (usuarioData == null)
                 {
-                    Id = usuarioData.Moneda_Id,
-                    Codigo = usuarioData.Moneda_Codigo,
-                    Nombre = usuarioData.Moneda_Nombre
+                    Console.WriteLine($"[DATA] ✗ No se encontró usuario con email: {email}");
+                    return new DTO<Usuario> { Correcto = false, Mensaje = "Usuario no encontrado" };
+                }
+
+                Console.WriteLine($"[DATA] ✓ Usuario encontrado - ID: {usuarioData.Id}");
+                Console.WriteLine($"[DATA] ✓ Usuario encontrado - Nombre: {usuarioData.Nombre ?? "null"}");
+                Console.WriteLine($"[DATA] ✓ Usuario encontrado - Email: {usuarioData.Email ?? "null"}");
+                Console.WriteLine($"[DATA] ✓ Usuario encontrado - Activo: {usuarioData.Activo}");
+                Console.WriteLine($"[DATA] ✓ Password hash length: {((string)usuarioData.Password)?.Length ?? 0}");
+
+                var usuarioEncontrado = new Usuario
+                {
+                    Id = usuarioData.Id,
+                    Nombre = usuarioData.Nombre,
+                    Email = usuarioData.Email,
+                    Password = usuarioData.Password,
+                    Pais = usuarioData.Pais,
+                    Telefono = usuarioData.Telefono,
+                    PersonaId = usuarioData.PersonaID,
+                    EmpresaId = usuarioData.EmpresaID,
+                    MonedaId = usuarioData.MonedaID,
+                    ImagenPerfilId = usuarioData.ImagenPerfilId,
+                    Activo = usuarioData.Activo,
+                    FechaCreacion = usuarioData.FechaCreacion,
+                    FechaModificacion = usuarioData.FechaModificacion,
+                    UsuarioCreador = usuarioData.UsuarioCreadorID,
+                    UsuarioModificador = usuarioData.UsuarioModificadorID
+                };
+
+                // Mapear la moneda si existe
+                if (usuarioData.Moneda_Id != null)
+                {
+                    usuarioEncontrado.Moneda = new Moneda
+                    {
+                        Id = usuarioData.Moneda_Id,
+                        Codigo = usuarioData.Moneda_Codigo,
+                        Nombre = usuarioData.Moneda_Nombre
+                    };
+                    Console.WriteLine($"[DATA] ✓ Moneda mapeada: {usuarioData.Moneda_Codigo} - {usuarioData.Moneda_Nombre}");
+                }
+
+                // Mapear la imagen de perfil si existe
+                if (usuarioData.ImagenPerfil_Id != null)
+                {
+                    usuarioEncontrado.ImagenPerfil = new Imagen
+                    {
+                        Id = usuarioData.ImagenPerfil_Id,
+                        Nombre = usuarioData.ImagenPerfil_Nombre,
+                        Descripcion = usuarioData.ImagenPerfil_Descripcion,
+                        Url = usuarioData.ImagenPerfil_Url,
+                        UrlThumb = usuarioData.ImagenPerfil_UrlThumb,
+                        FechaCreacion = usuarioData.ImagenPerfil_FechaCreacion
+                    };
+                    Console.WriteLine($"[DATA] ✓ Imagen de perfil mapeada: {usuarioData.ImagenPerfil_Nombre}");
+                }
+
+                Console.WriteLine($"[DATA] ✓ Query para obtener roles preparada");
+                Console.WriteLine($"[DATA] SQL Roles Query: {sqlRoles.Replace("\r\n", " ").Replace("  ", " ").Trim()}");
+                Console.WriteLine($"[DATA] Parámetro @UsuarioID: {usuarioEncontrado.Id}");
+                Console.WriteLine($"[DATA] Ejecutando query de roles...");
+
+                var roles = await conexion.QueryAsync<Rol>(sqlRoles, new { UsuarioID = usuarioEncontrado.Id });
+                usuarioEncontrado.Roles = roles.ToList();
+
+                Console.WriteLine($"[DATA] ✓ Query de roles ejecutada");
+                Console.WriteLine($"[DATA] ✓ Roles encontrados: {usuarioEncontrado.Roles?.Count ?? 0}");
+                
+                if (usuarioEncontrado.Roles?.Any() == true)
+                {
+                    foreach (var rol in usuarioEncontrado.Roles)
+                    {
+                        Console.WriteLine($"[DATA]   - Rol cargado: ID={rol.Id}, Nombre={rol.Nombre}");
+                    }
+                }
+
+                Console.WriteLine($"[DATA] ✓ Usuario completo con roles retornado exitosamente");
+
+                return new DTO<Usuario>
+                {
+                    Correcto = true,
+                    Datos = usuarioEncontrado,
+                    Mensaje = "Usuario obtenido correctamente"
                 };
             }
-
-            // Mapear la imagen de perfil si existe
-            if (usuarioData.ImagenPerfil_Id != null)
+            catch (SqlException sqlEx)
             {
-                usuarioEncontrado.ImagenPerfil = new Imagen
+                Console.WriteLine($"[DATA] ✗ ERROR SQL en Obtener_por_email");
+                Console.WriteLine($"[DATA] ✗ SQL Error Number: {sqlEx.Number}");
+                Console.WriteLine($"[DATA] ✗ SQL Error Severity: {sqlEx.Class}");
+                Console.WriteLine($"[DATA] ✗ SQL Error State: {sqlEx.State}");
+                Console.WriteLine($"[DATA] ✗ SQL Error Message: {sqlEx.Message}");
+                Console.WriteLine($"[DATA] ✗ SQL Error Procedure: {sqlEx.Procedure ?? "N/A"}");
+                Console.WriteLine($"[DATA] ✗ SQL Error LineNumber: {sqlEx.LineNumber}");
+                
+                return new DTO<Usuario>
                 {
-                    Id = usuarioData.ImagenPerfil_Id,
-                    Nombre = usuarioData.ImagenPerfil_Nombre,
-                    Descripcion = usuarioData.ImagenPerfil_Descripcion,
-                    Url = usuarioData.ImagenPerfil_Url,
-                    UrlThumb = usuarioData.ImagenPerfil_UrlThumb,
-                    FechaCreacion = usuarioData.ImagenPerfil_FechaCreacion
+                    Correcto = false,
+                    Mensaje = $"Error de base de datos: {sqlEx.Message}"
                 };
             }
-
-            var roles = await conexion.QueryAsync<Rol>(sqlRoles, new { UsuarioID = usuarioEncontrado.Id });
-            usuarioEncontrado.Roles = roles.ToList();
-
-            return new DTO<Usuario>
+            catch (Exception ex)
             {
-                Correcto = true,
-                Datos = usuarioEncontrado,
-                Mensaje = "Usuario obtenido correctamente"
-            };
+                Console.WriteLine($"[DATA] ✗ ERROR GENERAL en Obtener_por_email");
+                Console.WriteLine($"[DATA] ✗ Exception: {ex.GetType().Name}");
+                Console.WriteLine($"[DATA] ✗ Message: {ex.Message}");
+                Console.WriteLine($"[DATA] ✗ Stack trace: {ex.StackTrace}");
+                
+                if (ex.InnerException != null)
+                {
+                    Console.WriteLine($"[DATA] ✗ Inner exception: {ex.InnerException.Message}");
+                }
+                
+                return new DTO<Usuario>
+                {
+                    Correcto = false,
+                    Mensaje = $"Error al obtener usuario: {ex.Message}"
+                };
+            }
         }
 
         public async Task<DTO<IEnumerable<Usuario>>> Obtener_todos()

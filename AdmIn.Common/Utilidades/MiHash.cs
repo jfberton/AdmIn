@@ -48,7 +48,17 @@ namespace AdmIn.Common.Utilidades
             if (string.IsNullOrEmpty(password))
                 throw new ArgumentException("La contraseña no puede estar vacía", nameof(password));
 
-            return BCrypt.Net.BCrypt.HashPassword(password, workFactor);
+            try
+            {
+                Console.WriteLine($"[MIHASH] ✓ Generando hash BCrypt con work factor {workFactor}");
+                return BCrypt.Net.BCrypt.HashPassword(password, workFactor);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[MIHASH] ❌ Error generando hash BCrypt: {ex.Message}");
+                Console.WriteLine($"[MIHASH] ⚠️ Fallback a SHA512 por error en BCrypt");
+                return GenerarHash(password);
+            }
         }
 
         /// <summary>
@@ -64,11 +74,17 @@ namespace AdmIn.Common.Utilidades
 
             try
             {
+                Console.WriteLine($"[MIHASH] ✓ Verificando password con BCrypt");
                 return BCrypt.Net.BCrypt.Verify(password, hash);
             }
-            catch
+            catch (Exception ex)
             {
-                return false;
+                Console.WriteLine($"[MIHASH] ❌ Error verificando con BCrypt: {ex.Message}");
+                Console.WriteLine($"[MIHASH] ⚠️ Fallback a SHA512 por error en BCrypt");
+                
+                // Fallback a SHA512 si hay error con BCrypt
+                string passwordHashSHA512 = GenerarHash(password);
+                return passwordHashSHA512 == hash;
             }
         }
 
@@ -82,9 +98,20 @@ namespace AdmIn.Common.Utilidades
             if (string.IsNullOrEmpty(hash))
                 return false;
 
-            // Los hashes bcrypt empiezan con $2a$, $2b$, $2x$, o $2y$
-            return hash.StartsWith("$2a$") || hash.StartsWith("$2b$") || 
-                   hash.StartsWith("$2x$") || hash.StartsWith("$2y$");
+            try
+            {
+                // Los hashes bcrypt empiezan con $2a$, $2b$, $2x$, o $2y$
+                bool esBcrypt = hash.StartsWith("$2a$") || hash.StartsWith("$2b$") || 
+                               hash.StartsWith("$2x$") || hash.StartsWith("$2y$");
+                
+                Console.WriteLine($"[MIHASH] ✓ Hash detectado como: {(esBcrypt ? "BCrypt" : "SHA512/Legacy")}");
+                return esBcrypt;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[MIHASH] ❌ Error detectando tipo de hash: {ex.Message}");
+                return false;
+            }
         }
     }
 }

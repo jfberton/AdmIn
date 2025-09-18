@@ -5,6 +5,7 @@ using AdmIn.Common.Repositorios;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Microsoft.AspNetCore.StaticFiles;
+using AdmIn.API.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -40,13 +41,41 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Logging Configuration
+// Enhanced Logging Configuration for IIS
 builder.Services.AddLogging(logging =>
 {
     logging.ClearProviders();
-    logging.AddConsole();
+    
+    // Console logging (para desarrollo y debug en IIS)
+    logging.AddConsole(options =>
+    {
+        options.IncludeScopes = true;
+        options.TimestampFormat = "yyyy-MM-dd HH:mm:ss.fff ";
+    });
+    
+    // Debug logging
     logging.AddDebug();
+    
+    // Event Log (para producción en Windows Server)
+    if (OperatingSystem.IsWindows())
+    {
+        try
+        {
+            logging.AddEventLog(settings =>
+            {
+                settings.SourceName = "AdmIn.API";
+                settings.LogName = "Application";
+            });
+        }
+        catch
+        {
+            // Ignore if Event Log is not available
+        }
+    }
 });
+
+// Register centralized logging service
+builder.Services.AddScoped<IApiLoggerService, ApiLoggerService>();
 
 // Register application services
 builder.Services.AddScoped<IServ_Usuario, Serv_Usuario>();
@@ -93,30 +122,100 @@ builder.Services.AddSingleton<IContentTypeProvider, FileExtensionContentTypeProv
 
 var app = builder.Build();
 
+// Helper method for file logging optimizado para IIS usando el servicio centralizado
+static async void WriteToLogFile(string message)
+{
+    try
+    {
+        // En IIS, usar una ruta fija accesible
+        var serverLogsPath = @"C:\inetpub\logs\AdmIn";
+        
+        // Si no tenemos permisos en C:\inetpub, usar la carpeta de la aplicación
+        if (!Directory.Exists(serverLogsPath))
+        {
+            try
+            {
+                Directory.CreateDirectory(serverLogsPath);
+            }
+            catch
+            {
+                // Fallback: usar carpeta de la aplicación
+                serverLogsPath = Path.Combine(AppContext.BaseDirectory, "Logs");
+                if (!Directory.Exists(serverLogsPath))
+                {
+                    Directory.CreateDirectory(serverLogsPath);
+                }
+            }
+        }
+        
+        var logFile = Path.Combine(serverLogsPath, $"AdmIn-API-{DateTime.Now:yyyy-MM-dd}.log");
+        var logMessage = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [INFO] [STARTUP] {message}{Environment.NewLine}";
+        await File.AppendAllTextAsync(logFile, logMessage);
+    }
+    catch
+    {
+        // Ignore logging errors to prevent breaking the application
+    }
+}
+
 // Configure the HTTP request pipeline.
+var environmentName = app.Environment.EnvironmentName;
+var machineName = Environment.MachineName;
+var processId = Environment.ProcessId;
+
+WriteToLogFile($"===== API STARTUP ===== Environment: {environmentName}, Machine: {machineName}, PID: {processId}");
+
+// Configure connection string based on environment
 if (app.Environment.IsDevelopment())
 {
     InfoSQL.Conexion = app.Configuration.GetConnectionString("DevCS");
-    Console.WriteLine($"[PROGRAM] ===== CONFIGURACIÓN DE CONEXIÓN =====");
-    Console.WriteLine($"[PROGRAM] Entorno: Development");
-    Console.WriteLine($"[PROGRAM] Connection String configurado: {InfoSQL.Conexion?.Substring(0, Math.Min(80, InfoSQL.Conexion?.Length ?? 0)) + "..."}");
+    WriteToLogFile("Entorno: Development, Connection String Key: DevCS");
 }
 else if (builder.Environment.IsEnvironment("Test"))
 {
     InfoSQL.Conexion = builder.Configuration.GetConnectionString("TestCS");
-    Console.WriteLine($"[PROGRAM] Entorno: Test");
-    Console.WriteLine($"[PROGRAM] Connection String configurado: {InfoSQL.Conexion?.Substring(0, Math.Min(80, InfoSQL.Conexion?.Length ?? 0)) + "..."}");
+    WriteToLogFile("Entorno: Test, Connection String Key: TestCS");
 }
 else
 {
     InfoSQL.Conexion = builder.Configuration.GetConnectionString("ProdCS");
-    Console.WriteLine($"[PROGRAM] Entorno: Production");
-    Console.WriteLine($"[PROGRAM] Connection String configurado: {InfoSQL.Conexion?.Substring(0, Math.Min(80, InfoSQL.Conexion?.Length ?? 0)) + "..."}");
+    WriteToLogFile("Entorno: Production, Connection String Key: ProdCS");
 }
 
-Console.WriteLine($"[PROGRAM] ===== APLICACIÓN INICIADA =====");
-Console.WriteLine($"[PROGRAM] API iniciada correctamente");
-Console.WriteLine($"[PROGRAM] Logging habilitado en consola");
+WriteToLogFile($"Connection String configurado, length: {InfoSQL.Conexion?.Length ?? 0}");
+
+// Verify JWT configuration
+var jwtKey = app.Configuration["Jwt:Key"];
+WriteToLogFile($"JWT Key configurado: {(!string.IsNullOrEmpty(jwtKey) ? "SÍ" : "NO")} (length: {jwtKey?.Length ?? 0})");
+
+// Test connection at startup (for all environments in server)
+try
+{
+    using var connection = new Microsoft.Data.SqlClient.SqlConnection(InfoSQL.Conexion);
+    await connection.OpenAsync();
+    WriteToLogFile("DATABASE CONNECTION SUCCESS");
+    
+    var cmd = connection.CreateCommand();
+    cmd.CommandText = "SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'Usuario'";
+    var userTableExists = (int)await cmd.ExecuteScalarAsync();
+    WriteToLogFile($"Usuario table exists: {userTableExists > 0}");
+    
+    if (userTableExists > 0)
+    {
+        cmd.CommandText = "SELECT COUNT(*) FROM Usuario";
+        var userCount = (int)await cmd.ExecuteScalarAsync();
+        WriteToLogFile($"Total users in database: {userCount}");
+    }
+    
+    connection.Close();
+}
+catch (Exception ex)
+{
+    WriteToLogFile($"DATABASE CONNECTION ERROR: {ex.Message}");
+}
+
+WriteToLogFile($"API STARTED SUCCESSFULLY - Machine: {machineName}, PID: {processId}");
+WriteToLogFile("Centralized logging service registered and ready");
 
 // Enable static files serving
 app.UseStaticFiles();

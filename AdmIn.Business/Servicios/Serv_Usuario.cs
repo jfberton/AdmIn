@@ -56,52 +56,119 @@ namespace AdmIn.Business.Servicios
 
         public async Task<DTO<Usuario>> Validar_credenciales(LoginModel login)
         {
-            var usuarioResult = await _usuarioRepo.Obtener_por_email(login.Email);
-            if (!usuarioResult.Correcto || usuarioResult.Datos == null)
+            Console.WriteLine($"[BUSINESS] ========== Serv_Usuario.Validar_credenciales ==========");
+            Console.WriteLine($"[BUSINESS] Email recibido: {login?.Email ?? "null"}");
+            // NUNCA MOSTRAR LA CONTRASEÑA - Solo indicar si está presente
+            Console.WriteLine($"[BUSINESS] Password: {(string.IsNullOrWhiteSpace(login?.Password) ? "NO PROPORCIONADO" : "PROPORCIONADO")}");
+            
+            try
             {
-                return new DTO<Usuario>
-                {
-                    Correcto = false,
-                    Mensaje = "Usuario no encontrado"
-                };
-            }
-
-            // Verificar si la contraseña almacenada es bcrypt o SHA512
-            bool passwordCorrecta = false;
-
-            if (MiHash.EsHashBcrypt(usuarioResult.Datos.Password))
-            {
-                // Usar verificación bcrypt
-                passwordCorrecta = MiHash.VerificarHashBcrypt(login.Password, usuarioResult.Datos.Password);
-            }
-            else
-            {
-                // Compatibilidad con SHA512 existente
-                string passwordHasheado = MiHash.GenerarHash(login.Password);
-                passwordCorrecta = usuarioResult.Datos.Password == passwordHasheado;
+                Console.WriteLine($"[BUSINESS] Llamando a _usuarioRepo.Obtener_por_email...");
+                var usuarioResult = await _usuarioRepo.Obtener_por_email(login.Email);
                 
-                // Si la contraseña es correcta pero está en SHA512, migrar a bcrypt
+                Console.WriteLine($"[BUSINESS] ✓ Respuesta del repositorio recibida");
+                Console.WriteLine($"[BUSINESS] ✓ Operación correcta: {usuarioResult?.Correcto == true}");
+                Console.WriteLine($"[BUSINESS] ✓ Usuario encontrado: {usuarioResult?.Datos != null}");
+                
+                if (!usuarioResult.Correcto || usuarioResult.Datos == null)
+                {
+                    Console.WriteLine($"[BUSINESS] ✗ Usuario no encontrado en base de datos");
+                    Console.WriteLine($"[BUSINESS] ✗ Mensaje del repositorio: {usuarioResult?.Mensaje ?? "null"}");
+                    
+                    return new DTO<Usuario>
+                    {
+                        Correcto = false,
+                        Mensaje = "Usuario no encontrado"
+                    };
+                }
+
+                Console.WriteLine($"[BUSINESS] ✓ Usuario encontrado - ID: {usuarioResult.Datos.Id}");
+                Console.WriteLine($"[BUSINESS] ✓ Usuario encontrado - Nombre: {usuarioResult.Datos.Nombre}");
+                Console.WriteLine($"[BUSINESS] ✓ Usuario encontrado - Email: {usuarioResult.Datos.Email}");
+                Console.WriteLine($"[BUSINESS] ✓ Usuario encontrado - Activo: {usuarioResult.Datos.Activo}");
+                Console.WriteLine($"[BUSINESS] ✓ Usuario encontrado - Roles count: {usuarioResult.Datos.Roles?.Count ?? 0}");
+
+                if (usuarioResult.Datos.Roles?.Any() == true)
+                {
+                    foreach (var rol in usuarioResult.Datos.Roles)
+                    {
+                        Console.WriteLine($"[BUSINESS]   - Usuario tiene rol: {rol.Nombre}");
+                    }
+                }
+
+                // Verificar si la contraseña almacenada es bcrypt o SHA512
+                bool passwordCorrecta = false;
+                Console.WriteLine($"[BUSINESS] Iniciando verificación de contraseña...");
+                Console.WriteLine($"[BUSINESS] Hash almacenado length: {usuarioResult.Datos.Password?.Length ?? 0}");
+
+                if (MiHash.EsHashBcrypt(usuarioResult.Datos.Password))
+                {
+                    Console.WriteLine($"[BUSINESS] ✓ Password almacenado es formato BCrypt");
+                    Console.WriteLine($"[BUSINESS] Verificando con BCrypt...");
+                    
+                    // Usar verificación bcrypt
+                    passwordCorrecta = MiHash.VerificarHashBcrypt(login.Password, usuarioResult.Datos.Password);
+                    Console.WriteLine($"[BUSINESS] ✓ Verificación BCrypt completada - Resultado: {passwordCorrecta}");
+                }
+                else
+                {
+                    Console.WriteLine($"[BUSINESS] ✓ Password almacenado es formato SHA512 (legacy)");
+                    Console.WriteLine($"[BUSINESS] Verificando con SHA512...");
+                    
+                    // Compatibilidad con SHA512 existente
+                    string passwordHasheado = MiHash.GenerarHash(login.Password);
+                    passwordCorrecta = usuarioResult.Datos.Password == passwordHasheado;
+                    Console.WriteLine($"[BUSINESS] ✓ Verificación SHA512 completada - Resultado: {passwordCorrecta}");
+                    
+                    // Si la contraseña es correcta pero está en SHA512, migrar a bcrypt
+                    if (passwordCorrecta)
+                    {
+                        Console.WriteLine($"[BUSINESS] Password correcto, iniciando migración a BCrypt...");
+                        await MigrarPasswordABcrypt(usuarioResult.Datos, login.Password);
+                        Console.WriteLine($"[BUSINESS] ✓ Migración a BCrypt completada");
+                    }
+                }
+
                 if (passwordCorrecta)
                 {
-                    await MigrarPasswordABcrypt(usuarioResult.Datos, login.Password);
+                    Console.WriteLine($"[BUSINESS] ✓ CREDENCIALES VALIDADAS CORRECTAMENTE");
+                    Console.WriteLine($"[BUSINESS] ✓ Retornando usuario completo con roles");
+                    
+                    return new DTO<Usuario>
+                    {
+                        Correcto = true,
+                        Datos = usuarioResult.Datos,
+                        Mensaje = "Credenciales validadas correctamente."
+                    };
+                }
+                else
+                {
+                    Console.WriteLine($"[BUSINESS] ✗ PASSWORD INCORRECTO");
+                    Console.WriteLine($"[BUSINESS] ✗ La contraseña no coincide con la almacenada");
+                    
+                    return new DTO<Usuario>
+                    {
+                        Correcto = false,
+                        Mensaje = "Contraseña incorrecta."
+                    };
                 }
             }
-
-            if (passwordCorrecta)
+            catch (Exception ex)
             {
-                return new DTO<Usuario>
+                Console.WriteLine($"[BUSINESS] ✗ ERROR en Validar_credenciales");
+                Console.WriteLine($"[BUSINESS] ✗ Exception: {ex.GetType().Name}");
+                Console.WriteLine($"[BUSINESS] ✗ Message: {ex.Message}");
+                Console.WriteLine($"[BUSINESS] ✗ Stack trace: {ex.StackTrace}");
+                
+                if (ex.InnerException != null)
                 {
-                    Correcto = true,
-                    Datos = usuarioResult.Datos,
-                    Mensaje = "Credenciales validadas correctamente."
-                };
-            }
-            else
-            {
+                    Console.WriteLine($"[BUSINESS] ✗ Inner exception: {ex.InnerException.Message}");
+                }
+                
                 return new DTO<Usuario>
                 {
                     Correcto = false,
-                    Mensaje = "Contraseña incorrecta."
+                    Mensaje = $"Error interno al validar credenciales: {ex.Message}"
                 };
             }
         }
@@ -163,11 +230,14 @@ namespace AdmIn.Business.Servicios
         {
             try
             {
+                Console.WriteLine($"[BUSINESS] Iniciando migración de password para usuario {usuario.Id}");
                 usuario.Password = MiHash.GenerarHashBcrypt(passwordTextoPlano);
                 await _usuarioRepo.Actualizar(usuario);
+                Console.WriteLine($"[BUSINESS] ✓ Password migrado exitosamente a BCrypt");
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                Console.WriteLine($"[BUSINESS] ✗ Error en migración de password: {ex.Message}");
                 // Si falla la migración, no afectar el login
                 // Se puede loggear el error si se desea
             }
