@@ -1,0 +1,601 @@
+@page "/proveedores/detalle/{ProveedorId:int}"
+
+@inherits BaseComponent
+
+@using AdmIn.Common
+@using AdmIn.Common.Entidades
+@using AdmIn.UI.Services
+@using AdmIn.UI.Components.Shared
+@using Microsoft.AspNetCore.Components.Authorization
+
+@inject IServ_Proveedor ServicioProveedor
+@inject IServ_Usuario ServicioUsuario
+@inject IServ_TipoServicio ServicioTipoServicio
+@inject DialogService dialogService
+
+@if (cargando)
+{
+    <RadzenProgressBarCircular ProgressBarStyle="ProgressBarStyle.Primary" 
+                              Value="100" 
+                              ShowValue="false" 
+                              Mode="ProgressBarMode.Indeterminate" />
+    <p>Cargando proveedor...</p>
+}
+else if (proveedor == null)
+{
+    <div class="alert alert-danger">
+        <h5>Error</h5>
+        <p>No se pudo cargar la información del proveedor.</p>
+    </div>
+}
+else
+{
+    <RadzenStack Gap="2rem" Class="p-4">
+        <!-- Header -->
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem">
+            <RadzenButton ButtonStyle="ButtonStyle.Light" 
+                         Icon="arrow_back" 
+                         Click="@(() => IrA("/proveedores"))"
+                         Size="ButtonSize.Medium" />
+            <RadzenText TextStyle="TextStyle.H4" Text="@($"Proveedor: {proveedor.Nombre}")" />
+        </RadzenStack>
+
+        <!-- Breadcrumb -->
+        <RadzenBreadCrumb>
+            <RadzenBreadCrumbItem Path="/proveedores" Text="Proveedores" Icon="business" />
+            <RadzenBreadCrumbItem Text="@proveedor.Nombre" Icon="person" />
+        </RadzenBreadCrumb>
+
+        <!-- Información Principal -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-info-circle"></i> Información General
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Nombre:</label>
+                        <p class="form-control-plaintext">@proveedor.Nombre</p>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">RFC:</label>
+                        <p class="form-control-plaintext">@proveedor.RFC</p>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Email:</label>
+                        <p class="form-control-plaintext">
+                            @if (!string.IsNullOrEmpty(proveedor.Email))
+                            {
+                                <a href="mailto:@proveedor.Email">@proveedor.Email</a>
+                            }
+                            else
+                            {
+                                <span class="text-muted">No especificado</span>
+                            }
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Teléfono:</label>
+                        <p class="form-control-plaintext">
+                            @if (!string.IsNullOrEmpty(proveedor.Telefono))
+                            {
+                                <a href="tel:@proveedor.Telefono">@proveedor.Telefono</a>
+                            }
+                            else
+                            {
+                                <span class="text-muted">No especificado</span>
+                            }
+                        </p>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-bold">Dirección:</label>
+                        <p class="form-control-plaintext">
+                            @if (!string.IsNullOrEmpty(proveedor.Direccion))
+                            {
+                                @proveedor.Direccion
+                            }
+                            else
+                            {
+                                <span class="text-muted">No especificada</span>
+                            }
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Estado:</label>
+                        <div>
+                            <span class="badge @(proveedor.Activo ? "bg-success" : "bg-secondary") fs-6">
+                                @(proveedor.Activo ? "Activo" : "Inactivo")
+                            </span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Fecha de Creación:</label>
+                        <p class="form-control-plaintext">@proveedor.FechaCreacion.ToString("dd/MM/yyyy")</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Imagen de Perfil del Proveedor -->
+        @if (proveedor.UsuarioId.HasValue && usuarioAsociado != null)
+        {
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-camera"></i> Imagen de Perfil
+                    </h5>
+                    <RadzenButton ButtonStyle="ButtonStyle.Primary" 
+                                 Icon="camera" 
+                                 Text="Cambiar Foto" 
+                                 Size="ButtonSize.Small"
+                                 Click="@CambiarImagenPerfil" />
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 text-center">
+                            @if (usuarioAsociado?.ImagenPerfil != null)
+                            {
+                                <img src="@ObtenerUrlImagenPerfil()" 
+                                     alt="Imagen de perfil" 
+                                     class="img-fluid rounded-circle mb-3" 
+                                     style="width: 120px; height: 120px; object-fit: cover; border: 3px solid #e9ecef;" />
+                            }
+                            else
+                            {
+                                <div class="bg-light rounded-circle d-flex align-items-center justify-content-center mb-3 mx-auto" 
+                                     style="width: 120px; height: 120px; border: 3px solid #e9ecef;">
+                                    <i class="fas fa-user-circle text-muted" style="font-size: 80px;"></i>
+                                </div>
+                            }
+                        </div>
+                        <div class="col-md-9">
+                            <div class="row g-3">
+                                <div class="col-12">
+                                    <p class="mb-2">
+                                        @if (usuarioAsociado?.ImagenPerfil != null)
+                                        {
+                                            <span class="text-success">
+                                                <i class="fas fa-check-circle me-1"></i>
+                                                Imagen de perfil configurada
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">
+                                                <i class="fas fa-info-circle me-1"></i>
+                                                Sin imagen de perfil personalizada
+                                            </span>
+                                        }
+                                    </p>
+                                    <p class="text-muted small mb-0">
+                                        La imagen de perfil es compartida con la cuenta de usuario asociada. 
+                                        Puedes cambiarla haciendo clic en "Cambiar Foto".
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- Servicios que ofrece -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-tools"></i> Servicios que Ofrece
+                </h5>
+                @if (serviciosProveedor?.Count > 0)
+                {
+                    <span class="badge bg-secondary text-white">@serviciosProveedor.Count servicios</span>
+                }
+            </div>
+            <div class="card-body">
+                @if (serviciosProveedor?.Any() == true)
+                {
+                    <div class="services-horizontal-stack">
+                        @foreach (var servicio in serviciosProveedor)
+                        {
+                            <div class="service-horizontal-item-detail">
+                                <div class="service-horizontal-content">
+                                    <div class="service-simple-main">
+                                        <span class="service-simple-name">@servicio.Nombre</span>
+                                        <i class="fas fa-check-circle service-simple-check"></i>
+                                    </div>
+                                    @if (!string.IsNullOrEmpty(servicio.Descripcion))
+                                    {
+                                        <div class="service-simple-description">
+                                            @servicio.Descripcion
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="alert alert-light border d-flex align-items-center">
+                        <i class="fas fa-info-circle text-muted me-3"></i>
+                        <div>
+                            <strong>Sin servicios asignados</strong>
+                            <p class="mb-0 text-muted">Este proveedor no tiene servicios asignados actualmente. Puede gestionar los servicios desde las opciones de edición.</p>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Información de Usuario Asociado -->
+        @if (proveedor.UsuarioId.HasValue && usuarioAsociado != null)
+        {
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-user"></i> Usuario Asociado
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">ID:</label>
+                            <p class="form-control-plaintext">@usuarioAsociado.Id</p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Nombre:</label>
+                            <p class="form-control-plaintext">@usuarioAsociado.Nombre</p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Email:</label>
+                            <p class="form-control-plaintext">@usuarioAsociado.Email</p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Estado:</label>
+                            <div>
+                                <span class="badge @(usuarioAsociado.Activo ? "bg-success" : "bg-secondary") fs-6">
+                                    @(usuarioAsociado.Activo ? "Activo" : "Inactivo")
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- Acciones -->
+        <RadzenCard Class="actions-card">
+            <RadzenStack Orientation="Orientation.Horizontal" Gap="1rem" JustifyContent="JustifyContent.End">
+                <RadzenButton ButtonStyle="ButtonStyle.Secondary" 
+                             Icon="list" 
+                             Text="Volver al Listado" 
+                             Click="@(() => IrA("/proveedores"))" />
+                <AuthorizeView Roles="admin_usuario">
+                    <Authorized>
+                        <RadzenButton ButtonStyle="ButtonStyle.Primary" 
+                                     Icon="edit" 
+                                     Text="Modificar" 
+                                     Click="@(() => IrA($"/proveedores/modificar/{proveedor.Id}"))" />
+                        <RadzenButton ButtonStyle="ButtonStyle.Danger" 
+                                     Icon="delete" 
+                                     Text="Eliminar" 
+                                     Click="@EliminarProveedor" />
+                    </Authorized>
+                </AuthorizeView>
+            </RadzenStack>
+        </RadzenCard>
+    </RadzenStack>
+}
+
+<style>
+    .detail-card {
+        background: var(--rz-panel-background-color, #fff);
+        border: 1px solid var(--rz-border-color, #e0e0e0);
+        border-radius: 8px;
+        padding: 1.5rem;
+    }
+
+    .actions-card {
+        background: #f8fafc;
+        border: 1px solid var(--rz-border-color, #e0e0e0);
+        border-radius: 8px;
+        padding: 1rem;
+    }
+
+    .detail-field {
+        margin-bottom: 1rem;
+    }
+
+    .detail-field .rz-text:first-child {
+        color: #6b7280;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.25rem;
+    }
+
+    /* Estilos para la lista simple de servicios */
+    .services-simple-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .service-simple-item {
+        background: #fafafa;
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+        padding: 1rem;
+        transition: all 0.2s ease;
+    }
+
+    .service-simple-item:hover {
+        background: #f5f5f5;
+        border-color: #dee2e6;
+    }
+
+    .service-simple-content {
+        width: 100%;
+    }
+
+    .service-simple-main {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.25rem;
+    }
+
+    .service-simple-name {
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: #495057;
+        margin: 0;
+    }
+
+    .service-simple-check {
+        color: #28a745;
+        font-size: 0.9rem;
+        opacity: 0.8;
+    }
+
+    .service-simple-description {
+        font-size: 0.8rem;
+        color: #6c757d;
+        line-height: 1.4;
+        margin-top: 0.25rem;
+        padding-left: 0;
+    }
+
+    /* Estilos para la lista horizontal de servicios */
+    .services-horizontal-stack {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+    }
+
+    .service-horizontal-item-detail {
+        flex: 1;
+        min-width: 200px; /* Ancho mínimo para evitar que se compriman demasiado */
+        max-width: 250px; /* Ancho máximo para mantener consistencia */
+        background: #fafafa;
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+        padding: 1rem;
+        transition: all 0.2s ease;
+    }
+
+    .service-horizontal-item-detail:hover {
+        background: #f5f5f5;
+        border-color: #dee2e6;
+    }
+
+    .service-horizontal-content {
+        width: 100%;
+    }
+
+    /* Responsivo */
+    @@media (max-width: 768px) {
+        .services-horizontal-stack {
+            flex-direction: column; /* En móvil volvemos a vertical */
+        }
+        
+        .service-horizontal-item-detail {
+            flex: none;
+            min-width: auto;
+            max-width: none;
+            padding: 0.75rem;
+        }
+        
+        .service-simple-name {
+            font-size: 0.85rem;
+        }
+        
+        .service-simple-description {
+            font-size: 0.75rem;
+        }
+    }
+
+    /* Para tablets */
+    @@media (min-width: 769px) and (max-width: 1024px) {
+        .service-horizontal-item-detail {
+            min-width: 180px;
+            max-width: 220px;
+        }
+    }
+
+    /* Estado de sin servicios mejorado */
+    .alert-light {
+        background-color: #fafafa;
+        border-color: #e9ecef;
+    }
+</style>
+
+@code {
+    [Parameter] public int ProveedorId { get; set; }
+
+    private Proveedor? proveedor;
+    private Usuario? usuarioAsociado;
+    private List<TipoServicio>? serviciosProveedor;
+    private bool cargando = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        await CargarProveedor();
+    }
+
+    private async Task CargarProveedor()
+    {
+        cargando = true;
+        StateHasChanged();
+
+        try
+        {
+            var resultado = await ServicioProveedor.Obtener_por_id(ProveedorId);
+
+            // Verificar si el resultado es null antes de acceder a sus propiedades
+            if (resultado != null && resultado.Correcto && resultado.Datos != null)
+            {
+                proveedor = resultado.Datos;
+                base.EstablecerTituloPagina("Proveedores", $"Detalle: {proveedor.Nombre}");
+
+                // Cargar usuario asociado si existe
+                if (proveedor.UsuarioId.HasValue)
+                {
+                    var usuarioResult = await ServicioUsuario.Obtener_por_id(proveedor.UsuarioId.Value);
+                    if (usuarioResult != null && usuarioResult.Correcto)
+                    {
+                        usuarioAsociado = usuarioResult.Datos;
+                    }
+                }
+
+                // Cargar servicios del proveedor
+                await CargarServiciosProveedor();
+            }
+            else
+            {
+                var mensaje = resultado?.Mensaje ?? "Respuesta nula del servicio";
+                base.MostrarNotificacion(NotificationSeverity.Error, "Error!", $"No se pudo cargar el proveedor: {mensaje}", "/proveedores");
+            }
+        }
+        catch (Exception ex)
+        {
+            base.MostrarNotificacion(NotificationSeverity.Error, "Error!", $"Error al cargar proveedor: {ex.Message}", "/proveedores");
+        }
+        finally
+        {
+            cargando = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task CargarServiciosProveedor()
+    {
+        try
+        {
+            // Cargar servicios reales del proveedor desde base de datos
+            var resultadoServicios = await ServicioProveedor.Obtener_servicios_proveedor(ProveedorId);
+            if (resultadoServicios.Correcto && resultadoServicios.Datos != null)
+            {
+                serviciosProveedor = resultadoServicios.Datos.ToList();
+                await LogHelper.Info($"Cargados {serviciosProveedor.Count} servicios reales para el proveedor {ProveedorId}");
+            }
+            else
+            {
+                serviciosProveedor = new List<TipoServicio>();
+                await LogHelper.Info($"No se encontraron servicios para el proveedor {ProveedorId}");
+            }
+        }
+        catch (Exception ex)
+        {
+            base.MostrarNotificacion(NotificationSeverity.Error, "Error!", $"Error al cargar servicios: {ex.Message}");
+            serviciosProveedor = new List<TipoServicio>();
+        }
+    }
+
+    private string ObtenerUrlImagenPerfil()
+    {
+        if (usuarioAsociado?.ImagenPerfil?.Url != null)
+        {
+            if (usuarioAsociado.ImagenPerfil.Url.StartsWith("http"))
+                return usuarioAsociado.ImagenPerfil.Url;
+                
+            return $"/{usuarioAsociado.ImagenPerfil.Url.TrimStart('/')}";
+        }
+        return "/img/default-user.png";
+    }
+
+    private async Task CambiarImagenPerfil()
+    {
+        if (usuarioAsociado == null) return;
+
+        try
+        {
+            var resultado = await DialogService.OpenAsync<CambiarFotoDialog>("Cambiar Imagen de Perfil",
+                new Dictionary<string, object>
+                {
+                    { "Usuario", usuarioAsociado }
+                },
+                new DialogOptions { 
+                    Width = "600px", 
+                    Height = "500px",
+                    Resizable = true,
+                    Draggable = true,
+                    CloseDialogOnOverlayClick = false
+                });
+
+            if (resultado is bool cambiado && cambiado)
+            {
+                // Recargar el proveedor para mostrar la nueva imagen
+                await CargarProveedor();
+                base.MostrarNotificacion(NotificationSeverity.Success, "Éxito!", 
+                    "Imagen de perfil actualizada correctamente");
+            }
+        }
+        catch (Exception ex)
+        {
+            base.MostrarNotificacion(NotificationSeverity.Error, "Error!", 
+                $"Error al cambiar imagen: {ex.Message}");
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (proveedor?.Id != ProveedorId)
+        {
+            await OnInitializedAsync();
+        }
+    }
+
+    private async Task EliminarProveedor()
+    {
+        if (proveedor == null) return;
+
+        try
+        {
+            var confirmResult = await base.MostrarConfirmacion(
+                $"¿Está seguro de eliminar el proveedor '{proveedor.Nombre}'?", 
+                "Confirmar eliminación");
+
+            if (confirmResult == true)
+            {
+                var resultado = await ServicioProveedor.Eliminar(proveedor.Id);
+
+                if (resultado.Correcto)
+                {
+                    base.MostrarNotificacion(NotificationSeverity.Success, "Éxito!", 
+                        "Proveedor eliminado correctamente", "/proveedores");
+                }
+                else
+                {
+                    base.MostrarNotificacion(NotificationSeverity.Error, "Error!", resultado.Mensaje);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            base.MostrarNotificacion(NotificationSeverity.Error, "Error!", 
+                $"Error al eliminar proveedor: {ex.Message}");
+        }
+    }
+}

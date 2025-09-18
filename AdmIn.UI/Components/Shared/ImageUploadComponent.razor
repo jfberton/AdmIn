@@ -1,0 +1,415 @@
+@using Microsoft.AspNetCore.Components.Forms
+@using AdmIn.Common.Entidades
+@using AdmIn.Common
+@using AdmIn.UI.Services
+
+@inject IServ_Imagen servImagen
+@inject IJSRuntime JSRuntime
+
+<div class="image-upload-container">
+    @if (MostrarVistaPrevia && imagenPrevia != null)
+    {
+        <div class="image-preview">
+            <img src="@imagenPrevia" alt="Vista previa" class="preview-image" />
+            <RadzenButton ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small" 
+                         Icon="close" Click="@LimpiarPrevia" 
+                         class="remove-preview-btn" />
+        </div>
+    }
+
+    <div class="upload-area @(IsDragOver ? "drag-over" : "")" 
+         @ondragover="@OnDragOver" 
+         @ondragover:preventDefault="true"
+         @ondragleave="@OnDragLeave" 
+         @ondrop="@OnDrop" 
+         @ondrop:preventDefault="true">
+        
+        <InputFile id="@InputId" 
+                   OnChange="@OnInputFileChange" 
+                   accept="@AcceptedTypes"
+                   multiple="@PermitirMultiples"
+                   class="file-input" />
+        
+        <label for="@InputId" class="upload-label">
+            <RadzenIcon Icon="@(IsDragOver ? "file_download" : "cloud_upload")" 
+                       Style="font-size: 48px; color: var(--rz-primary);" />
+            <p class="upload-text">
+                @if (IsDragOver)
+                {
+                    <text>Suelta las imágenes aquí</text>
+                }
+                else
+                {
+                    <text>Haz clic para seleccionar o arrastra imágenes aquí</text>
+                }
+            </p>
+            <small class="upload-hint">
+                Formatos: JPG, PNG, GIF, WEBP | Máximo: 10MB
+            </small>
+        </label>
+    </div>
+
+    @if (ArchivosSeleccionados.Any())
+    {
+        <div class="selected-files">
+            <h4>Archivos seleccionados:</h4>
+            @foreach (var archivo in ArchivosSeleccionados)
+            {
+                <div class="file-item">
+                    <RadzenIcon Icon="image" />
+                    <span>@archivo.Name (@(FormatearTamaño(archivo.Size)))</span>
+                    <RadzenButton ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.ExtraSmall" 
+                                 Icon="delete" Click="@(() => EliminarArchivo(archivo))" />
+                </div>
+            }
+        </div>
+    }
+
+    @if (MostrarProgreso && ProgresoSubida >= 0)
+    {
+        <div class="upload-progress">
+            <RadzenProgressBar Value="@ProgresoSubida" Max="100" 
+                              ShowValue="true" class="mb-2" />
+            <small>@MensajeProgreso</small>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(MensajeError))
+    {
+        <RadzenAlert AlertStyle="AlertStyle.Danger" Variant="Variant.Flat" 
+                    ShowIcon="true" AllowClose="true" Close="@(() => MensajeError = string.Empty)">
+            @MensajeError
+        </RadzenAlert>
+    }
+
+    @if (MostrarBotones && ArchivosSeleccionados.Any())
+    {
+        <div class="upload-actions">
+            <RadzenButton ButtonStyle="ButtonStyle.Primary" 
+                         Icon="cloud_upload" 
+                         Text="Subir Imágenes"
+                         Click="@SubirArchivos"
+                         Disabled="@EstaSubiendo" />
+            
+            <RadzenButton ButtonStyle="ButtonStyle.Secondary" 
+                         Icon="clear" 
+                         Text="Limpiar"
+                         Click="@LimpiarSeleccion" />
+        </div>
+    }
+</div>
+
+<style>
+    .image-upload-container {
+        max-width: 600px;
+        margin: 0 auto;
+    }
+
+    .image-preview {
+        position: relative;
+        margin-bottom: 1rem;
+        display: inline-block;
+    }
+
+    .preview-image {
+        max-width: 200px;
+        max-height: 150px;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .remove-preview-btn {
+        position: absolute;
+        top: -8px;
+        right: -8px;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+    }
+
+    .upload-area {
+        border: 2px dashed #d1d5db;
+        border-radius: 12px;
+        padding: 2rem;
+        text-align: center;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        background: #f9fafb;
+    }
+
+    .upload-area:hover,
+    .upload-area.drag-over {
+        border-color: var(--rz-primary);
+        background: var(--rz-primary-lighter);
+    }
+
+    .file-input {
+        display: none;
+    }
+
+    .upload-label {
+        cursor: pointer;
+        display: block;
+        width: 100%;
+    }
+
+    .upload-text {
+        font-size: 1.1rem;
+        margin: 1rem 0 0.5rem 0;
+        color: #374151;
+    }
+
+    .upload-hint {
+        color: #6b7280;
+    }
+
+    .selected-files {
+        margin-top: 1rem;
+        padding: 1rem;
+        background: #f3f4f6;
+        border-radius: 8px;
+    }
+
+    .file-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem;
+        background: white;
+        border-radius: 4px;
+        margin-bottom: 0.5rem;
+    }
+
+    .file-item:last-child {
+        margin-bottom: 0;
+    }
+
+    .upload-progress {
+        margin-top: 1rem;
+    }
+
+    .upload-actions {
+        margin-top: 1rem;
+        display: flex;
+        gap: 0.5rem;
+        justify-content: center;
+    }
+</style>
+
+@code {
+    [Parameter] public bool PermitirMultiples { get; set; } = true;
+    [Parameter] public bool MostrarVistaPrevia { get; set; } = true;
+    [Parameter] public bool MostrarBotones { get; set; } = true;
+    [Parameter] public bool MostrarProgreso { get; set; } = true;
+    [Parameter] public int? InmuebleId { get; set; }
+    [Parameter] public bool EstablecerComoPrincipal { get; set; } = false;
+    [Parameter] public EventCallback<List<Imagen>> OnImagenesSubidas { get; set; }
+    [Parameter] public EventCallback<string> OnError { get; set; }
+    
+    private string InputId = $"file-input-{Guid.NewGuid()}";
+    private string AcceptedTypes = ".jpg,.jpeg,.png,.gif,.webp";
+    
+    private List<IBrowserFile> ArchivosSeleccionados = new();
+    private bool IsDragOver = false;
+    private bool EstaSubiendo = false;
+    private int ProgresoSubida = -1;
+    private string MensajeProgreso = string.Empty;
+    private string MensajeError = string.Empty;
+    private string? imagenPrevia = null;
+
+    private async Task OnInputFileChange(InputFileChangeEventArgs e)
+    {
+        await ProcesarArchivos(e.GetMultipleFiles(PermitirMultiples ? 10 : 1));
+    }
+
+    private async Task OnDrop(DragEventArgs e)
+    {
+        IsDragOver = false;
+        
+        // En Blazor, el drag and drop no proporciona IBrowserFile directamente
+        // Por ahora, mostramos un mensaje al usuario para que use el InputFile
+        MensajeError = "Por favor, utiliza el botón de selección de archivos o arrastra archivos directamente sobre él.";
+        StateHasChanged();
+    }
+
+    private void OnDragOver(DragEventArgs e)
+    {
+        IsDragOver = true;
+    }
+
+    private void OnDragLeave(DragEventArgs e)
+    {
+        IsDragOver = false;
+    }
+
+    private async Task ProcesarArchivos(IEnumerable<IBrowserFile> archivos)
+    {
+        MensajeError = string.Empty;
+        
+        foreach (var archivo in archivos)
+        {
+            // Validaciones
+            if (archivo.Size > 10 * 1024 * 1024) // 10MB
+            {
+                MensajeError = $"El archivo {archivo.Name} es demasiado grande (máximo 10MB)";
+                continue;
+            }
+
+            var extensionValida = new[] { "jpg", "jpeg", "png", "gif", "webp" }
+                .Contains(Path.GetExtension(archivo.Name).TrimStart('.').ToLowerInvariant());
+            
+            if (!extensionValida)
+            {
+                MensajeError = $"El archivo {archivo.Name} no es un formato de imagen válido";
+                continue;
+            }
+
+            if (!PermitirMultiples)
+            {
+                ArchivosSeleccionados.Clear();
+            }
+            
+            ArchivosSeleccionados.Add(archivo);
+        }
+
+        // Generar vista previa para el primer archivo
+        if (MostrarVistaPrevia && ArchivosSeleccionados.Any())
+        {
+            await GenerarVistaPrevia(ArchivosSeleccionados.First());
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task GenerarVistaPrevia(IBrowserFile archivo)
+    {
+        try
+        {
+            var resizedFile = await archivo.RequestImageFileAsync("image/jpeg", 300, 200);
+            using var stream = resizedFile.OpenReadStream();
+            using var memoryStream = new MemoryStream();
+            await stream.CopyToAsync(memoryStream);
+            var base64 = Convert.ToBase64String(memoryStream.ToArray());
+            imagenPrevia = $"data:image/jpeg;base64,{base64}";
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error generando vista previa: {ex.Message}");
+        }
+    }
+
+    private async Task SubirArchivos()
+    {
+        if (!ArchivosSeleccionados.Any())
+            return;
+
+        EstaSubiendo = true;
+        ProgresoSubida = 0;
+        MensajeError = string.Empty;
+        var imagenesSubidas = new List<Imagen>();
+
+        try
+        {
+            for (int i = 0; i < ArchivosSeleccionados.Count; i++)
+            {
+                var archivo = ArchivosSeleccionados[i];
+                MensajeProgreso = $"Subiendo {archivo.Name}... ({i + 1}/{ArchivosSeleccionados.Count})";
+                
+                using var stream = archivo.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024);
+                
+                DTO<Imagen> resultado;
+                if (InmuebleId.HasValue)
+                {
+                    resultado = await servImagen.SubirImagenParaInmueble(
+                        stream, 
+                        archivo.Name, 
+                        InmuebleId.Value, 
+                        null, 
+                        EstablecerComoPrincipal && i == 0); // Solo la primera como principal
+                }
+                else
+                {
+                    resultado = await servImagen.SubirImagen(stream, archivo.Name);
+                }
+
+                if (resultado.Correcto)
+                {
+                    imagenesSubidas.Add(resultado.Datos);
+                }
+                else
+                {
+                    MensajeError = $"Error subiendo {archivo.Name}: {resultado.Mensaje}";
+                    break;
+                }
+
+                ProgresoSubida = (int)((double)(i + 1) / ArchivosSeleccionados.Count * 100);
+                StateHasChanged();
+                await Task.Delay(100); // Para mostrar progreso
+            }
+
+            if (imagenesSubidas.Any())
+            {
+                await OnImagenesSubidas.InvokeAsync(imagenesSubidas);
+                LimpiarSeleccion();
+                MensajeProgreso = $"¡{imagenesSubidas.Count} imagen(es) subida(s) correctamente!";
+            }
+        }
+        catch (Exception ex)
+        {
+            MensajeError = $"Error durante la subida: {ex.Message}";
+            await OnError.InvokeAsync(MensajeError);
+        }
+        finally
+        {
+            EstaSubiendo = false;
+            if (string.IsNullOrEmpty(MensajeError))
+            {
+                ProgresoSubida = -1;
+            }
+        }
+    }
+
+    private void EliminarArchivo(IBrowserFile archivo)
+    {
+        ArchivosSeleccionados.Remove(archivo);
+        
+        if (!ArchivosSeleccionados.Any())
+        {
+            LimpiarPrevia();
+        }
+        else if (MostrarVistaPrevia)
+        {
+            _ = GenerarVistaPrevia(ArchivosSeleccionados.First());
+        }
+        
+        StateHasChanged();
+    }
+
+    private void LimpiarSeleccion()
+    {
+        ArchivosSeleccionados.Clear();
+        LimpiarPrevia();
+        ProgresoSubida = -1;
+        MensajeProgreso = string.Empty;
+        StateHasChanged();
+    }
+
+    private void LimpiarPrevia()
+    {
+        imagenPrevia = null;
+        StateHasChanged();
+    }
+
+    private string FormatearTamaño(long bytes)
+    {
+        string[] suffixes = { "B", "KB", "MB", "GB" };
+        int counter = 0;
+        decimal number = bytes;
+        while (Math.Round(number / 1024) >= 1)
+        {
+            number /= 1024;
+            counter++;
+        }
+        return $"{number:n1} {suffixes[counter]}";
+    }
+}

@@ -1,0 +1,168 @@
+@using AdmIn.Common.Entidades
+@using AdmIn.Common
+@using AdmIn.UI.Services
+
+@inject IServ_Inmueble serv_inmueble
+@inject IServ_Caracteristica serv_caracteristica
+@inject NotificationService notificationService
+
+<RadzenTemplateForm TItem="CaracteristicaInmueble" Data="@nuevaCaracteristica" Submit="@OnSubmit">
+    <RadzenStack Gap="1rem">
+        <RadzenFormField Text="Característica" Variant="Variant.Outlined">
+            <RadzenDropDown @bind-Value="@nuevaCaracteristica.CaracteristicaID" 
+                           Data="@caracteristicasDisponibles" 
+                           TextProperty="Nombre" 
+                           ValueProperty="Id"
+                           Placeholder="Seleccione una característica"
+                           Name="caracteristica"
+                           Change="@OnCaracteristicaSelected" />
+            <RadzenRequiredValidator Component="caracteristica" Text="La característica es requerida" />
+        </RadzenFormField>
+
+        @if (caracteristicaSeleccionada != null)
+        {
+            <RadzenAlert AlertStyle="AlertStyle.Info" ShowIcon="true">
+                <RadzenStack Gap="0.25rem">
+                    <RadzenText TextStyle="TextStyle.Body2" Text="@($"Tipo: {caracteristicaSeleccionada.Tipo}")" />
+                    @if (!string.IsNullOrEmpty(caracteristicaSeleccionada.Descripcion))
+                    {
+                        <RadzenText TextStyle="TextStyle.Body2" Text="@caracteristicaSeleccionada.Descripcion" />
+                    }
+                </RadzenStack>
+            </RadzenAlert>
+        }
+
+        <RadzenFormField Text="Valor" Variant="Variant.Outlined">
+            @if (caracteristicaSeleccionada?.Tipo == "Booleano")
+            {
+                <RadzenDropDown @bind-Value="@nuevaCaracteristica.Valor" 
+                               Data="@opcionesBooleanas" 
+                               TextProperty="Text" 
+                               ValueProperty="Value"
+                               Placeholder="Seleccione Sí o No"
+                               Name="valor" />
+            }
+            else if (caracteristicaSeleccionada?.Tipo == "Número")
+            {
+                <RadzenNumeric @bind-Value="@valorNumerico" 
+                              Format="N0" 
+                              Name="valor" />
+            }
+            else if (caracteristicaSeleccionada?.Tipo == "Decimal")
+            {
+                <RadzenNumeric @bind-Value="@valorDecimal" 
+                              Format="N2" 
+                              Name="valor" />
+            }
+            else
+            {
+                <RadzenTextBox @bind-Value="@nuevaCaracteristica.Valor" 
+                              MaxLength="255" 
+                              Name="valor"
+                              Placeholder="Ingrese el valor" />
+            }
+            <RadzenRequiredValidator Component="valor" Text="El valor es requerido" />
+        </RadzenFormField>
+        
+        <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" JustifyContent="JustifyContent.End">
+            <RadzenButton ButtonStyle="ButtonStyle.Success" 
+                         Text="Agregar" 
+                         ButtonType="ButtonType.Submit" />
+            <RadzenButton ButtonStyle="ButtonStyle.Secondary" 
+                         Text="Cancelar" 
+                         Click="@CerrarDialog" />
+        </RadzenStack>
+    </RadzenStack>
+</RadzenTemplateForm>
+
+@code {
+    [Parameter] public int InmuebleId { get; set; }
+    [Inject] DialogService dialogService { get; set; } = default!;
+
+    private CaracteristicaInmueble nuevaCaracteristica = new();
+    private List<Caracteristica> caracteristicasDisponibles = new();
+    private Caracteristica? caracteristicaSeleccionada;
+    private decimal valorNumerico = 0;
+    private decimal valorDecimal = 0;
+
+    private List<DropDownItem> opcionesBooleanas = new()
+    {
+        new() { Text = "Sí", Value = "Sí" },
+        new() { Text = "No", Value = "No" }
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        nuevaCaracteristica.InmuebleID = InmuebleId;
+        await CargarCaracteristicas();
+    }
+
+    private async Task CargarCaracteristicas()
+    {
+        try
+        {
+            var resultado = await serv_caracteristica.Obtener_todos();
+            if (resultado.Correcto && resultado.Datos != null)
+            {
+                caracteristicasDisponibles = resultado.Datos.ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            notificationService.Notify(NotificationSeverity.Error, "Error", $"Error al cargar características: {ex.Message}");
+        }
+    }
+
+    private void OnCaracteristicaSelected(object value)
+    {
+        if (value != null && int.TryParse(value.ToString(), out int caracteristicaId))
+        {
+            caracteristicaSeleccionada = caracteristicasDisponibles.FirstOrDefault(c => c.Id == caracteristicaId);
+            nuevaCaracteristica.Valor = ""; // Reset valor
+            valorNumerico = 0;
+            valorDecimal = 0;
+        }
+    }
+
+    private async Task OnSubmit(CaracteristicaInmueble caracteristica)
+    {
+        try
+        {
+            // Actualizar el valor basado en el tipo
+            if (caracteristicaSeleccionada?.Tipo == "Número")
+            {
+                caracteristica.Valor = valorNumerico.ToString("N0");
+            }
+            else if (caracteristicaSeleccionada?.Tipo == "Decimal")
+            {
+                caracteristica.Valor = valorDecimal.ToString("N2");
+            }
+
+            var resultado = await serv_inmueble.AgregarCaracteristica(InmuebleId, caracteristica);
+            if (resultado.Correcto)
+            {
+                notificationService.Notify(NotificationSeverity.Success, "Éxito", "Característica agregada correctamente");
+                dialogService.Close(true);
+            }
+            else
+            {
+                notificationService.Notify(NotificationSeverity.Error, "Error", resultado.Mensaje);
+            }
+        }
+        catch (Exception ex)
+        {
+            notificationService.Notify(NotificationSeverity.Error, "Error", $"Error al agregar característica: {ex.Message}");
+        }
+    }
+
+    private void CerrarDialog()
+    {
+        dialogService.Close(false);
+    }
+
+    public class DropDownItem
+    {
+        public string Text { get; set; } = "";
+        public string Value { get; set; } = "";
+    }
+}

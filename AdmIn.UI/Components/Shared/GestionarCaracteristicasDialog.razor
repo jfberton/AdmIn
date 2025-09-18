@@ -1,0 +1,41 @@
+@using AdmIn.Common.Entidades
+@using AdmIn.UI.Services
+@using Radzen.Blazor
+
+@inject DialogService dialogService
+@inject IServ_Inmueble serv_inmueble
+
+<RadzenStack Gap="1rem">
+    <RadzenText TextStyle="TextStyle.H6" Text="Gestionar Características" />
+    <RadzenText TextStyle="TextStyle.Body2" Text="@($"Inmueble: {Inmueble?.Nombre}")" />
+    
+    <RadzenSeparator />
+    
+    <div style="max-height: 500px; overflow-y: auto;">
+        <CaracteristicasManager InmuebleId="@Inmueble.Id" 
+                               OnCaracteristicaChanged="@OnCaracteristicaChanged" />
+    </div>
+    
+    <RadzenSeparator />
+    
+    <RadzenStack Orientation="Orientation.Horizontal" Gap="1rem" JustifyContent="JustifyContent.End">
+        <RadzenButton Text="Cerrar" 
+                     ButtonStyle="ButtonStyle.Secondary" 
+                     Click="@CerrarDialog" />
+    </RadzenStack>
+</RadzenStack>
+
+@code {
+    [Parameter] public Inmueble Inmueble { get; set; } = null!;
+
+    private void CerrarDialog()
+    {
+        dialogService.Close(true);
+    }
+
+    private async Task OnCaracteristicaChanged()
+    {
+        // Notificar que las características han cambiado
+        await Task.CompletedTask;
+    }
+}

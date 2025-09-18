@@ -8,13 +8,16 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="CloudinaryDotNet" Version="1.27.7" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.0" />
+    <PackageReference Include="Serilog.Extensions.Logging.File" Version="3.0.0" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\AdmIn.Business\AdmIn.Business.csproj" />
     <ProjectReference Include="..\AdmIn.Common\AdmIn.Common.csproj" />
+    <ProjectReference Include="..\AdmIn.Data\AdmIn.Data.csproj" />
   </ItemGroup>
 
 </Project>

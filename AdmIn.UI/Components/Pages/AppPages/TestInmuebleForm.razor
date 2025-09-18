@@ -1,0 +1,173 @@
+@page "/test-inmueble-form"
+@using AdmIn.Common.Entidades
+@using AdmIn.Common
+@using AdmIn.UI.Services
+
+@inject IServ_Inmueble serv_inmueble
+@inject NotificationService notificationService
+@inject NavigationManager navManager
+
+<PageTitle>Test - Formulario de Inmueble</PageTitle>
+
+<RadzenStack Gap="2rem" Class="p-4">
+    <RadzenText TextStyle="TextStyle.H3" Text="Test del Formulario de Inmueble" />
+    
+    <RadzenCard>
+        <RadzenText TextStyle="TextStyle.H5" Text="Modo Creación" Class="mb-3" />
+        
+        <InmuebleFormComponent Model="@inmuebleNuevo"
+                              IsEditMode="false"
+                              OnValidSubmit="@CrearInmueble"
+                              OnCancel="@Cancelar" />
+    </RadzenCard>
+
+    @if (inmuebleCreado != null)
+    {
+        <RadzenCard>
+            <RadzenText TextStyle="TextStyle.H5" Text="Inmueble Creado" Class="mb-3" />
+            
+            <RadzenStack Gap="1rem">
+                <div><strong>ID:</strong> @inmuebleCreado.Id</div>
+                <div><strong>Nombre:</strong> @inmuebleCreado.Nombre</div>
+                <div><strong>Dirección:</strong> @inmuebleCreado.Direccion</div>
+                <div><strong>Ubicación:</strong> @inmuebleCreado.Ciudad, @inmuebleCreado.Estado, @inmuebleCreado.Pais</div>
+                <div><strong>Valor:</strong> @inmuebleCreado.Valor.ToString("C")</div>
+                <div><strong>Activo:</strong> @(inmuebleCreado.Activo ? "Sí" : "No")</div>
+            </RadzenStack>
+            
+            <RadzenStack Orientation="Orientation.Horizontal" Gap="1rem" Class="mt-3">
+                <RadzenButton ButtonStyle="ButtonStyle.Primary" 
+                             Text="Editar" 
+                             Click="@(() => EditarInmueble(inmuebleCreado))" />
+                <RadzenButton ButtonStyle="ButtonStyle.Secondary" 
+                             Text="Crear Nuevo" 
+                             Click="@CrearNuevo" />
+            </RadzenStack>
+        </RadzenCard>
+    }
+
+    @if (modoEdicion)
+    {
+        <RadzenCard>
+            <RadzenText TextStyle="TextStyle.H5" Text="Modo Edición" Class="mb-3" />
+            
+            <InmuebleFormComponent Model="@inmuebleEditando"
+                                  IsEditMode="true"
+                                  OnValidSubmit="@ActualizarInmueble"
+                                  OnCancel="@CancelarEdicion" />
+        </RadzenCard>
+    }
+</RadzenStack>
+
+@code {
+    private Inmueble inmuebleNuevo = new();
+    private Inmueble? inmuebleCreado;
+    private Inmueble inmuebleEditando = new();
+    private bool modoEdicion = false;
+
+    protected override void OnInitialized()
+    {
+        InicializarInmuebleNuevo();
+    }
+
+    private void InicializarInmuebleNuevo()
+    {
+        inmuebleNuevo = new Inmueble
+        {
+            Activo = true,
+            FechaCreacion = DateTime.Now,
+            FechaModificacion = DateTime.Now
+        };
+    }
+
+    private async Task CrearInmueble(Inmueble inmueble)
+    {
+        try
+        {
+            var resultado = await serv_inmueble.Crear(inmueble);
+            
+            if (resultado.Correcto)
+            {
+                inmuebleCreado = resultado.Datos;
+                notificationService.Notify(NotificationSeverity.Success, "Éxito", "Inmueble creado correctamente");
+                InicializarInmuebleNuevo(); // Reset para crear otro
+            }
+            else
+            {
+                notificationService.Notify(NotificationSeverity.Error, "Error", resultado.Mensaje);
+            }
+        }
+        catch (Exception ex)
+        {
+            notificationService.Notify(NotificationSeverity.Error, "Error", $"Error al crear inmueble: {ex.Message}");
+        }
+    }
+
+    private async Task ActualizarInmueble(Inmueble inmueble)
+    {
+        try
+        {
+            var resultado = await serv_inmueble.Actualizar(inmueble);
+            
+            if (resultado.Correcto)
+            {
+                inmuebleCreado = resultado.Datos;
+                modoEdicion = false;
+                notificationService.Notify(NotificationSeverity.Success, "Éxito", "Inmueble actualizado correctamente");
+            }
+            else
+            {
+                notificationService.Notify(NotificationSeverity.Error, "Error", resultado.Mensaje);
+            }
+        }
+        catch (Exception ex)
+        {
+            notificationService.Notify(NotificationSeverity.Error, "Error", $"Error al actualizar inmueble: {ex.Message}");
+        }
+    }
+
+    private void EditarInmueble(Inmueble inmueble)
+    {
+        inmuebleEditando = new Inmueble
+        {
+            Id = inmueble.Id,
+            Nombre = inmueble.Nombre,
+            Direccion = inmueble.Direccion,
+            Pais = inmueble.Pais,
+            Estado = inmueble.Estado,
+            Ciudad = inmueble.Ciudad,
+            CodigoPostal = inmueble.CodigoPostal,
+            Latitud = inmueble.Latitud,
+            Longitud = inmueble.Longitud,
+            Valor = inmueble.Valor,
+            ConstruccionM2 = inmueble.ConstruccionM2,
+            RentaMensual = inmueble.RentaMensual,
+            AdministradorId = inmueble.AdministradorId,
+            Descripcion = inmueble.Descripcion,
+            MonedaId = inmueble.MonedaId,
+            Activo = inmueble.Activo,
+            FechaCreacion = inmueble.FechaCreacion,
+            FechaModificacion = inmueble.FechaModificacion
+        };
+        
+        modoEdicion = true;
+    }
+
+    private void CrearNuevo()
+    {
+        inmuebleCreado = null;
+        modoEdicion = false;
+        InicializarInmuebleNuevo();
+    }
+
+    private void Cancelar()
+    {
+        notificationService.Notify(NotificationSeverity.Info, "Información", "Operación cancelada");
+    }
+
+    private void CancelarEdicion()
+    {
+        modoEdicion = false;
+        notificationService.Notify(NotificationSeverity.Info, "Información", "Edición cancelada");
+    }
+}

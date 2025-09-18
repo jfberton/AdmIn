@@ -1,0 +1,214 @@
+@page "/tipos-servicio/detalle/{id:int}"
+
+@inherits BaseComponent
+
+@using AdmIn.Common.Entidades
+@using AdmIn.Common
+@using AdmIn.UI.Services
+@using Microsoft.AspNetCore.Components.Authorization
+
+@inject IServ_TipoServicio serv_tipoServicio;
+
+@if (tipoServicio == null)
+{
+    <RadzenProgressBarCircular ProgressBarStyle="ProgressBarStyle.Primary" 
+                              Value="100" 
+                              ShowValue="false" 
+                              Mode="ProgressBarMode.Indeterminate" />
+    <p>Cargando tipo de servicio...</p>
+}
+else
+{
+    <RadzenStack Gap="2rem" Class="p-4">
+        <!-- Header -->
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem">
+            <RadzenButton ButtonStyle="ButtonStyle.Light" 
+                         Icon="arrow_back" 
+                         Click="@(() => IrA("/tipos-servicio"))"
+                         Size="ButtonSize.Medium" />
+            <RadzenText TextStyle="TextStyle.H4" Text="@($"Tipo de Servicio: {tipoServicio.Nombre}")" />
+        </RadzenStack>
+
+        <!-- Breadcrumb -->
+        <RadzenBreadCrumb>
+            <RadzenBreadCrumbItem Path="/tipos-servicio" Text="Tipos de Servicio" Icon="construction" />
+            <RadzenBreadCrumbItem Text="@tipoServicio.Nombre" Icon="build" />
+        </RadzenBreadCrumb>
+
+        <!-- Información Principal con estilo Bootstrap -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-info-circle"></i> Información General
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">ID:</label>
+                        <p class="form-control-plaintext">@tipoServicio.Id</p>
+                    </div>
+                    <div class="col-md-8">
+                        <label class="form-label fw-bold">Nombre:</label>
+                        <p class="form-control-plaintext">@tipoServicio.Nombre</p>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-bold">Descripción:</label>
+                        <p class="form-control-plaintext">
+                            @if (!string.IsNullOrWhiteSpace(tipoServicio.Descripcion))
+                            {
+                                @tipoServicio.Descripcion
+                            }
+                            else
+                            {
+                                <span class="text-muted">Sin descripción</span>
+                            }
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Información Técnica -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-cogs"></i> Información del Sistema
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-12">
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Este tipo de servicio puede ser asignado a proveedores para definir los servicios que ofrecen.
+                            Los proveedores podrán gestionar y ofrecer servicios de este tipo a través del sistema.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Acciones -->
+        <RadzenCard Class="actions-card">
+            <RadzenStack Orientation="Orientation.Horizontal" Gap="1rem" JustifyContent="JustifyContent.End">
+                <RadzenButton ButtonStyle="ButtonStyle.Secondary" 
+                             Icon="list" 
+                             Text="Volver al Listado" 
+                             Click="@(() => IrA("/tipos-servicio"))" />
+                <AuthorizeView Roles="admin_usuario">
+                    <Authorized>
+                        <RadzenButton ButtonStyle="ButtonStyle.Primary" 
+                                     Icon="edit" 
+                                     Text="Modificar" 
+                                     Click="@(() => IrA($"/tipos-servicio/modificar/{tipoServicio.Id}"))" />
+                        <RadzenButton ButtonStyle="ButtonStyle.Danger" 
+                                     Icon="delete" 
+                                     Text="Eliminar" 
+                                     Click="@Eliminar" />
+                    </Authorized>
+                </AuthorizeView>
+            </RadzenStack>
+        </RadzenCard>
+    </RadzenStack>
+}
+
+<style>
+    .detail-card {
+        background: var(--rz-panel-background-color, #fff);
+        border: 1px solid var(--rz-border-color, #e0e0e0);
+        border-radius: 8px;
+        padding: 1.5rem;
+    }
+
+    .actions-card {
+        background: #f8fafc;
+        border: 1px solid var(--rz-border-color, #e0e0e0);
+        border-radius: 8px;
+        padding: 1rem;
+    }
+
+    .detail-field {
+        margin-bottom: 1rem;
+    }
+
+    .detail-field .rz-text:first-child {
+        color: #6b7280;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.25rem;
+    }
+</style>
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private TipoServicio? tipoServicio;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        await CargarTipoServicio();
+    }
+
+    private async Task CargarTipoServicio()
+    {
+        try
+        {
+            var rta = await serv_tipoServicio.Obtener_por_id(Id);
+            if (rta.Correcto && rta.Datos != null)
+            {
+                tipoServicio = rta.Datos;
+                base.EstablecerTituloPagina("Tipos de Servicio", $"Detalle: {tipoServicio.Nombre}");
+            }
+            else
+            {
+                base.MostrarNotificacion(NotificationSeverity.Error, "Error!", "No se pudo cargar el tipo de servicio", "/tipos-servicio");
+            }
+        }
+        catch (Exception ex)
+        {
+            base.MostrarNotificacion(NotificationSeverity.Error, "Error!", $"Error al cargar el tipo de servicio: {ex.Message}", "/tipos-servicio");
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (tipoServicio?.Id != Id)
+        {
+            await OnInitializedAsync();
+        }
+    }
+
+    async Task Eliminar()
+    {
+        if (tipoServicio == null) return;
+
+        try
+        {
+            var confirmResult = await base.MostrarConfirmacion(
+                $"¿Está seguro de eliminar el tipo de servicio '{tipoServicio.Nombre}'?", 
+                "Confirmar eliminación");
+
+            if (confirmResult == true)
+            {
+                var rta = await serv_tipoServicio.Eliminar(tipoServicio.Id);
+
+                if (rta.Correcto)
+                {
+                    base.MostrarNotificacion(NotificationSeverity.Success, "Éxito!", 
+                        "Tipo de servicio eliminado correctamente", "/tipos-servicio");
+                }
+                else
+                {
+                    base.MostrarNotificacion(NotificationSeverity.Error, "Error!", rta.Mensaje);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            base.MostrarNotificacion(NotificationSeverity.Error, "Error!", 
+                $"Error al eliminar tipo de servicio: {ex.Message}");
+        }
+    }
+}

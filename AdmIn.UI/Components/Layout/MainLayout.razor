@@ -1,10 +1,12 @@
-﻿@using AdmIn.Business.Entidades
+﻿@using AdmIn.Common.Entidades
 @using AdmIn.UI.Authentication
 @using AdmIn.UI.Services;
 @using AdmIn.UI.Services.UtilityServices;
 @using Microsoft.AspNetCore.Components.Authorization
+@using Radzen
 
 @inherits LayoutComponentBase
+@implements IDisposable
 
 @inject NavigationManager navManager
 @inject AuthenticationStateProvider authStateProvider
@@ -23,26 +25,27 @@
 
 <RadzenComponents @rendermode="InteractiveServer" />
 
-
 <RadzenLayout>
     @if (DeviceService.IsMobileDevice())
     {
         <RadzenHeader>
             <RadzenRow>
                 <RadzenColumn Size="12">
-                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center">
-                        <RadzenSidebarToggle Click="@(() => sidebar1Expanded = !sidebar1Expanded)" />
-                        <RadzenImage Style="height:40px; margin-left:10px;"
-                                     Path="@GetLogoPath()" />
-                        @* <RadzenLabel Text="AdmIn" /> *@
-                    </RadzenStack>
-                    <RadzenText TextStyle="TextStyle.Body1" Style="display:flex; justify-content:center; align-items:center; width:100%;" class="rz-color-white">
-                        <strong>@PageTitleService.Titulo</strong>
-                        @if (!string.IsNullOrEmpty(PageTitleService.Subtitulo))
-                        {
-                            <span>&nbsp;- @PageTitleService.Subtitulo</span>
-                        }
-                    </RadzenText>
+                    <div class="header-content">
+                        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                            <RadzenSidebarToggle Click="@(() => sidebar1Expanded = !sidebar1Expanded)" />
+                            <RadzenImage class="header-logo"
+                                         Path="@GetLogoPath()"
+                                         Style="max-height: 40px; max-width: 120px; height: 40px; width: auto; object-fit: contain;" />
+                        </RadzenStack>
+                        <div class="header-title">
+                            <strong>@PageTitleService.Titulo</strong>
+                            @if (!string.IsNullOrEmpty(PageTitleService.Subtitulo))
+                            {
+                                <span>&nbsp;- @PageTitleService.Subtitulo</span>
+                            }
+                        </div>
+                    </div>
                 </RadzenColumn>
             </RadzenRow>
         </RadzenHeader>
@@ -52,34 +55,53 @@
         <RadzenHeader>
             <RadzenRow>
                 <RadzenColumn Size="11">
-                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center">
-                        <RadzenSidebarToggle Click="@(() => sidebar1Expanded = !sidebar1Expanded)" />
-                        <RadzenImage Style="height:40px; margin-left:10px;"
-                                     Path="@GetLogoPath()" />
-                       @*  <RadzenLabel Text="AdmIn" /> *@
-                    </RadzenStack>
-                    <RadzenText TextStyle="TextStyle.Body1" Style="display:flex; justify-content:center; align-items:center; width:100%;" class="rz-color-white">
-                        <strong>@PageTitleService.Titulo</strong>
-                        @if (!string.IsNullOrEmpty(PageTitleService.Subtitulo))
-                        {
-                            <span>&nbsp;- @PageTitleService.Subtitulo</span>
-                        }
-
-                    </RadzenText>
+                    <div class="header-content">
+                        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                            <RadzenSidebarToggle Click="@(() => sidebar1Expanded = !sidebar1Expanded)" />
+                            <RadzenImage class="header-logo"
+                                         Path="@GetLogoPath()"
+                                         Style="max-height: 35px; max-width: 100px; height: 35px; width: auto; object-fit: contain;" />
+                        </RadzenStack>
+                        <div class="header-title">
+                            <strong>@PageTitleService.Titulo</strong>
+                            @if (!string.IsNullOrEmpty(PageTitleService.Subtitulo))
+                            {
+                                <span>&nbsp;- @PageTitleService.Subtitulo</span>
+                            }
+                        </div>
+                    </div>
                 </RadzenColumn>
                 <RadzenColumn>
                     <AuthorizeView>
                         <Authorized>
                             <RadzenProfileMenu>
                                 <Template>
-                                    <RadzenImage class="rz-gravatar" Path="img/usuario.png"></RadzenImage>
+                                    @* Mostrar placeholder temporalmente si no hay imagen *@
+                                    @if (usuarioActual?.ObtenerUrlImagenPerfil() != null)
+                                    {
+                                        <ProfilePhotoComponent Usuario="@usuarioActual" Tamaño="32" />
+                                    }
+                                    else
+                                    {
+                                        <div style="width: 32px; height: 32px; border-radius: 50%; background: #f3f4f6; display: flex; align-items: center; justify-content: center; border: 2px solid #e5e7eb;">
+                                            <RadzenIcon Icon="account_circle" Style="font-size: 20px; color: #6b7280;" />
+                                        </div>
+                                    }
                                 </Template>
                                 <ChildContent>
                                     <RadzenStack Gap="0" Orientation="Orientation.Vertical" AlignItems="AlignItems.Center" class="rz-p-2">
+                                        <!-- Avatar más grande en el menú -->
+                                        <ProfilePhotoComponent Usuario="@usuarioActual" Tamaño="64" ClasesAdicionales="mb-2" />
+                                        
                                         <RadzenText TextStyle="TextStyle.Overline">Bienvenido</RadzenText>
                                         <RadzenText TextStyle="TextStyle.Body1"><b>@userName</b></RadzenText>
-                                        <RadzenButton Icon="password" Variant="Variant.Text" Size="ButtonSize.Small" Click="@(() => CambiarPassword())">Cambiar contraseña</RadzenButton>
-                                        <RadzenButton Icon="logout" Variant="Variant.Text" Size="ButtonSize.Small" Click="@(() => Logout())">Cerrar sesión</RadzenButton>
+                                        
+                                        <RadzenButton Icon="person" Variant="Variant.Text" Size="ButtonSize.Small" 
+                                                     Click="@(() => IrAPerfil())">Ver mi perfil</RadzenButton>
+                                        <RadzenButton Icon="lock_reset" Variant="Variant.Text" Size="ButtonSize.Small" 
+                                                     Click="@(() => CambiarPassword())">Cambiar contraseña</RadzenButton>
+                                        <RadzenButton Icon="logout" Variant="Variant.Text" Size="ButtonSize.Small" 
+                                                     Click="@(() => Logout())">Cerrar sesión</RadzenButton>
                                     </RadzenStack>
                                 </ChildContent>
                             </RadzenProfileMenu>
@@ -90,23 +112,16 @@
         </RadzenHeader>
     }
 
-
     <RadzenSidebar @bind-Expanded="@sidebar1Expanded">
         <RadzenPanelMenu>
-
-            <MenuItem Text="Usuarios" Icon="groups" Path="/usuarios" Roles="admin_usuario" OnMenuItemClick="@OnMenuItemClick" />
-            <MenuItem Text="Inmuebles" Icon="store" Path="/m/inmuebles" Roles="admin_propiedad" OnMenuItemClick="@OnMenuItemClick" />
-            <MenuItem Text="Reparaciones" Icon="store" Path="/m/reparaciones" Roles="add_reparacion, admin_reparacion" OnMenuItemClick="@OnMenuItemClick" />
-
-            @if (DeviceService.IsMobileDevice())
-            {
-                <RadzenPanelMenuItem Text="Sesión" Icon="account_circle">
-                    <RadzenPanelMenuItem TextStyle="TextStyle.Subtitle2" Text="@userName" Click="@(() => OnMenuItemClick())"></RadzenPanelMenuItem>
-                    <RadzenPanelMenuItem Text="Cambiar contraseña" Icon="password" Click="@(() => CambiarPassword())"></RadzenPanelMenuItem>
-                    <RadzenPanelMenuItem Text="Cerrar sesión" Icon="logout" Click="@(() => Logout())"></RadzenPanelMenuItem>
-                </RadzenPanelMenuItem>
-            }
-
+            <MenuItem Text="Mi Perfil" Icon="person" Path="/mi-perfil" Roles="admin_usuario" OnMenuItemClick="@OnMenuItemClick" />
+            <MenuItem Text="Usuarios" Icon="person_outline" Path="/usuarios" Roles="admin_usuario" OnMenuItemClick="@OnMenuItemClick" />
+            <MenuItem Text="Características" Icon="category" Path="/caracteristicas" Roles="admin_usuario" OnMenuItemClick="@OnMenuItemClick" />
+            <MenuItem Text="Tipos de Servicio" Icon="construction" Path="/tipos-servicio" Roles="admin_usuario" OnMenuItemClick="@OnMenuItemClick" />
+            <MenuItem Text="Proveedores" Icon="business" Path="/proveedores" Roles="admin_usuario" OnMenuItemClick="@OnMenuItemClick" />
+            <MenuItem Text="Monedas" Icon="currency_exchange" Path="/monedas" Roles="admin_usuario" OnMenuItemClick="@OnMenuItemClick" />
+            <MenuItem Text="Inmuebles" Icon="apartment" Path="/inmuebles" Roles="admin_propiedad" OnMenuItemClick="@OnMenuItemClick" />
+            <MenuItem Text="Reparaciones" Icon="build" Path="/m/reparaciones" Roles="add_reparacion, admin_reparacion" OnMenuItemClick="@OnMenuItemClick" />
         </RadzenPanelMenu>
     </RadzenSidebar>
 
@@ -134,23 +149,67 @@
     <a class="dismiss">🗙</a>
 </div>
 
-@code {
+<style>
+    .mb-2 {
+        margin-bottom: 0.5rem;
+    }
+</style>
 
+@code {
     bool sidebar1Expanded = true;
     string footerText = $"Sistema de administración de inmuebles - {DateTime.Now.Year}";
-
     private string userName;
+    private Usuario? usuarioActual;
 
     protected override async Task OnInitializedAsync()
     {
         var authState = await authStateProvider.GetAuthenticationStateAsync();
         var user = authState.User;
         userName = user.FindFirst("Nombre")?.Value ?? "Invitado";
+        
+        // Cargar datos completos del usuario incluyendo imagen de perfil
+        await CargarUsuarioCompleto();
+    }
+
+    private async Task CargarUsuarioCompleto()
+    {
+        try
+        {
+            var authState = await authStateProvider.GetAuthenticationStateAsync();
+            var userEmail = authState.User.Identity?.Name;
+            
+            if (!string.IsNullOrEmpty(userEmail))
+            {
+                var resultado = await serv_Usuario.Obtener_usuario_por_email(userEmail);
+                if (resultado.Correcto)
+                {
+                    usuarioActual = resultado.Datos;
+                    StateHasChanged();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            // Manejar error silenciosamente para no afectar la carga de la página
+            Console.WriteLine($"[MainLayout] Error cargando usuario completo: {ex.Message}");
+        }
     }
 
     protected override void OnInitialized()
     {
         PageTitleService.Register(async () => await InvokeAsync(StateHasChanged));
+        
+        // Suscribirse a cambios de navegación para recargar usuario
+        navManager.LocationChanged += OnLocationChanged;
+    }
+
+    private async void OnLocationChanged(object sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        // Recargar usuario cuando se navega a mi-perfil (por si cambió la foto)
+        if (e.Location.Contains("/mi-perfil"))
+        {
+            await CargarUsuarioCompleto();
+        }
     }
 
     protected override void OnParametersSet()
@@ -158,12 +217,17 @@
         PageTitleService.ResetTitle();
     }
 
+    public void Dispose()
+    {
+        navManager.LocationChanged -= OnLocationChanged;
+    }
+
     private async Task Logout()
     {
         if (authStateProvider is CustomAuthenticationStateProvider customAuthStateProvider)
         {
             await customAuthStateProvider.Logout();
-            navManager.NavigateTo("/", true); 
+            navManager.NavigateTo("/", true);
         }
     }
 
@@ -178,6 +242,11 @@
     private string GetLogoPath()
     {
         return sidebar1Expanded ? "img/AdmIn.png" : "img/Admin.png";
+    }
+
+    private void IrAPerfil()
+    {
+        navManager.NavigateTo("/mi-perfil");
     }
 
     private async Task CambiarPassword()

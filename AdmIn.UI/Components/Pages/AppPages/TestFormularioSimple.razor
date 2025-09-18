@@ -1,0 +1,104 @@
+@page "/test-formulario-simple"
+@using AdmIn.Common.Entidades
+
+<PageTitle>Test Formulario Simple</PageTitle>
+
+<RadzenStack Gap="2rem" Class="p-4">
+    <RadzenText TextStyle="TextStyle.H4" Text="Test Formulario Inmueble - Versión Simple" />
+    
+    <RadzenCard>
+        <RadzenTemplateForm TItem="Inmueble" Data="@inmueble" Submit="@OnSubmit">
+            <RadzenFieldset Text="Información Básica">
+                <RadzenRow class="mb-3">
+                    <RadzenColumn>
+                        <RadzenFormField Text="Nombre del Inmueble" Variant="Variant.Outlined">
+                            <RadzenTextBox @bind-Value="@inmueble.Nombre" 
+                                          MaxLength="255" 
+                                          Name="nombre" 
+                                          Placeholder="Ej: Casa en Palermo" />
+                            <RadzenRequiredValidator Component="nombre" Text="El nombre es requerido" />
+                        </RadzenFormField>
+                    </RadzenColumn>
+                </RadzenRow>
+                
+                <RadzenRow class="mb-3">
+                    <RadzenColumn>
+                        <RadzenFormField Text="Dirección" Variant="Variant.Outlined">
+                            <RadzenTextBox @bind-Value="@inmueble.Direccion" 
+                                          MaxLength="500" 
+                                          Name="direccion"
+                                          Placeholder="Ej: Av. Corrientes 1234" />
+                            <RadzenRequiredValidator Component="direccion" Text="La dirección es requerida" />
+                        </RadzenFormField>
+                    </RadzenColumn>
+                </RadzenRow>
+                
+                <RadzenRow class="mb-3">
+                    <RadzenColumn Size="6">
+                        <RadzenFormField Text="Valor" Variant="Variant.Outlined">
+                            <RadzenNumeric @bind-Value="@inmueble.Valor" 
+                                          Format="C2" 
+                                          Min="0"
+                                          Name="valor"
+                                          Placeholder="0.00" />
+                            <RadzenRequiredValidator Component="valor" Text="El valor es requerido" />
+                        </RadzenFormField>
+                    </RadzenColumn>
+                    <RadzenColumn Size="6">
+                        <RadzenFormField Text="Estado" Variant="Variant.Outlined">
+                            <RadzenCheckBox @bind-Value="@inmueble.Activo" Name="activo" />
+                            <RadzenLabel Text="Activo" Component="activo" Style="margin-left: 8px;" />
+                        </RadzenFormField>
+                    </RadzenColumn>
+                </RadzenRow>
+            </RadzenFieldset>
+            
+            <RadzenStack Orientation="Orientation.Horizontal" Gap="1rem" JustifyContent="JustifyContent.End" class="mt-4">
+                <RadzenButton ButtonStyle="ButtonStyle.Secondary" 
+                             Text="Cancelar" 
+                             Click="@(() => navManager.NavigateTo("/inmuebles"))" />
+                <RadzenButton ButtonStyle="ButtonStyle.Primary" 
+                             Text="Crear" 
+                             ButtonType="ButtonType.Submit" />
+            </RadzenStack>
+        </RadzenTemplateForm>
+    </RadzenCard>
+    
+    @if (resultado != null)
+    {
+        <RadzenCard>
+            <RadzenText TextStyle="TextStyle.H6" Text="Resultado:" />
+            <pre>@resultado</pre>
+        </RadzenCard>
+    }
+</RadzenStack>
+
+@code {
+    @inject NavigationManager navManager
+    
+    private Inmueble inmueble = new();
+    private string? resultado = null;
+    
+    protected override void OnInitialized()
+    {
+        inmueble = new Inmueble
+        {
+            Activo = true,
+            FechaCreacion = DateTime.Now,
+            FechaModificacion = DateTime.Now,
+            MonedaId = 1 // Valor por defecto
+        };
+    }
+    
+    private void OnSubmit(Inmueble inmuebleData)
+    {
+        resultado = $@"
+Formulario enviado correctamente:
+- Nombre: {inmuebleData.Nombre}
+- Dirección: {inmuebleData.Direccion}
+- Valor: {inmuebleData.Valor:C}
+- Activo: {inmuebleData.Activo}
+- Fecha: {DateTime.Now}
+";
+    }
+}

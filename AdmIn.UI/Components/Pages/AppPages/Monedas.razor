@@ -1,0 +1,178 @@
+@page "/monedas"
+
+@inherits BaseComponent
+
+@using AdmIn.Common.Entidades
+@using AdmIn.Common
+@using AdmIn.UI.Services
+@using AdmIn.UI.Services.UtilityServices
+@using Microsoft.AspNetCore.Components.Authorization
+
+@inject IServ_Moneda Serv_moneda;
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3>Gestión de Monedas</h3>
+    <button class="btn btn-primary" @onclick="NuevaMoneda">
+        <i class="fas fa-plus"></i> Nueva Moneda
+    </button>
+</div>
+
+<!-- Filtros Avanzados -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label">Buscar:</label>
+                <input type="text" class="form-control" @bind="filtroTexto" 
+                       @onkeypress="@(async (e) => { if (e.Key == "Enter") await RecargarGrilla(); })"
+                       placeholder="Código o nombre..." />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Ordenar por:</label>
+                <select class="form-select" @bind="ordenarPor" @bind:after="RecargarGrilla">
+                    <option value="Nombre">Nombre</option>
+                    <option value="Codigo">Código</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Por página:</label>
+                <select class="form-select" @bind="tamanioPagina" @bind:after="RecargarGrilla">
+                    <option value="5">5</option>
+                    <option value="10">10</option>
+                    <option value="25">25</option>
+                    <option value="50">50</option>
+                </select>
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+                <button class="btn btn-outline-primary w-100" @onclick="RecargarGrilla">
+                    <i class="fas fa-search"></i> Buscar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<RadzenDataGrid class="rz-m-2" @ref="grilla" IsLoading=@isLoading Count="@count" Data="@items" EmptyText="No hay registros para mostrar"
+LoadData="@LoadData" AllowSorting="false" AllowFiltering="false" AllowPaging="true" PageSize="@tamanioPagina"
+PagerHorizontalAlign="HorizontalAlign.Center" TItem="Moneda">
+    <Columns>
+        <RadzenDataGridColumn TItem="Moneda" Property="Codigo" Title="Código" MinWidth="120px" />
+        <RadzenDataGridColumn TItem="Moneda" Property="Nombre" Title="Nombre" MinWidth="200px" />
+        <RadzenDataGridColumn Width="250px" TItem="Moneda" Context="moneda" MinWidth="250px">
+            <Template>
+                <MiRadzenButton ButtonStyle="ButtonStyle.Primary" Variant="Variant.Outlined" Shade="Shade.Lighter" Title="Ver" Icon="visibility" Size="ButtonSize.ExtraSmall" OnClick=@(() => Ver(moneda)) />
+                <AuthorizeView Roles="admin_usuario">
+                    <Authorized>
+                        <MiRadzenButton ButtonStyle="ButtonStyle.Primary" Variant="Variant.Outlined" Shade="Shade.Lighter" Title="Editar" Icon="edit" Size="ButtonSize.ExtraSmall" OnClick=@(() => Editar(moneda)) />
+                        <MiRadzenButton ButtonStyle="ButtonStyle.Danger" Variant="Variant.Outlined" Shade="Shade.Lighter" Title="Eliminar" Icon="delete" Size="ButtonSize.ExtraSmall" OnClick=@(() => Eliminar(moneda)) />
+                    </Authorized>
+                </AuthorizeView>
+            </Template>
+        </RadzenDataGridColumn>
+    </Columns>
+</RadzenDataGrid>
+
+@code {
+    RadzenDataGrid<Moneda> grilla;
+
+    bool isLoading = false;
+    int count;
+    IEnumerable<Moneda> items;
+    
+    // Filtros avanzados
+    string filtroTexto = "";
+    string ordenarPor = "Nombre";
+    int tamanioPagina = 10;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        base.EstablecerTituloPagina("Monedas", "Listado");
+    }
+
+    async Task LoadData(LoadDataArgs args)
+    {
+        isLoading = true;
+
+        try
+        {
+            Filtros_paginado filtros = new Filtros_paginado
+            {
+                Skip = args.Skip.HasValue ? args.Skip.Value : 0,
+                Top = args.Top.HasValue ? args.Top.Value : tamanioPagina,
+                OrderBy = ordenarPor,
+                Filter = filtroTexto
+            };
+
+            var rta = await Serv_moneda.Obtener_paginado(filtros);
+
+            if (rta.Correcto)
+            {
+                items = rta.Datos.Items;
+                count = rta.Datos.Total_items;
+            }
+            else
+            {
+                base.MostrarNotificacion(NotificationSeverity.Error, "Error!", rta.Mensaje);
+            }
+        }
+        catch (Exception ex)
+        {
+            base.MostrarNotificacion(NotificationSeverity.Error, "Error!", $"Error al cargar monedas: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    async Task RecargarGrilla()
+    {
+        if (grilla != null)
+        {
+            await grilla.FirstPage();
+        }
+    }
+
+    void NuevaMoneda()
+    {
+        base.IrA("/monedas/nuevo");
+    }
+
+    void Ver(Moneda moneda)
+    {
+        base.IrA($"/monedas/detalle/{moneda.Id}");
+    }
+
+    void Editar(Moneda moneda)
+    {
+        base.IrA($"/monedas/modificar/{moneda.Id}");
+    }
+
+    async Task Eliminar(Moneda moneda)
+    {
+        try
+        {
+            var confirmResult = await base.MostrarConfirmacion("¿Está seguro de eliminar la moneda '" + moneda.Nombre + "'?", "Confirmar eliminación");
+
+            if (confirmResult == true)
+            {
+                var rta = await Serv_moneda.Eliminar(moneda.Id);
+
+                if (rta.Correcto)
+                {
+                    base.MostrarNotificacion(NotificationSeverity.Success, "Éxito!", "Moneda eliminada correctamente");
+                    await grilla.Reload();
+                }
+                else
+                {
+                    base.MostrarNotificacion(NotificationSeverity.Error, "Error!", rta.Mensaje);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            base.MostrarNotificacion(NotificationSeverity.Error, "Error!", $"Error al eliminar moneda: {ex.Message}");
+        }
+    }
+}

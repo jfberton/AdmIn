@@ -1,0 +1,126 @@
+@using AdmIn.Common.Entidades
+@using AdmIn.Common
+@using AdmIn.UI.Services
+
+@inject IServ_Inmueble serv_inmueble
+@inject NotificationService notificationService
+
+<RadzenTemplateForm TItem="CaracteristicaInmueble" Data="@Caracteristica" Submit="@OnSubmit">
+    <RadzenStack Gap="1rem">
+        <RadzenFormField Text="Característica" Variant="Variant.Outlined">
+            <RadzenTextBox Value="@Caracteristica.Caracteristica?.Nombre" ReadOnly="true" />
+        </RadzenFormField>
+
+        <RadzenFormField Text="Tipo" Variant="Variant.Outlined">
+            <RadzenTextBox Value="@Caracteristica.Caracteristica?.Tipo" ReadOnly="true" />
+        </RadzenFormField>
+
+        <RadzenFormField Text="Valor" Variant="Variant.Outlined">
+            @if (Caracteristica.Caracteristica?.Tipo == "Booleano")
+            {
+                <RadzenDropDown @bind-Value="@Caracteristica.Valor" 
+                               Data="@opcionesBooleanas" 
+                               TextProperty="Text" 
+                               ValueProperty="Value"
+                               Name="valor" />
+            }
+            else if (Caracteristica.Caracteristica?.Tipo == "Número")
+            {
+                <RadzenNumeric @bind-Value="@valorNumerico" 
+                              Format="N0" 
+                              Name="valor" />
+            }
+            else if (Caracteristica.Caracteristica?.Tipo == "Decimal")
+            {
+                <RadzenNumeric @bind-Value="@valorDecimal" 
+                              Format="N2" 
+                              Name="valor" />
+            }
+            else
+            {
+                <RadzenTextBox @bind-Value="@Caracteristica.Valor" 
+                              MaxLength="255" 
+                              Name="valor" />
+            }
+            <RadzenRequiredValidator Component="valor" Text="El valor es requerido" />
+        </RadzenFormField>
+        
+        <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" JustifyContent="JustifyContent.End">
+            <RadzenButton ButtonStyle="ButtonStyle.Success" 
+                         Text="Actualizar" 
+                         ButtonType="ButtonType.Submit" />
+            <RadzenButton ButtonStyle="ButtonStyle.Secondary" 
+                         Text="Cancelar" 
+                         Click="@CerrarDialog" />
+        </RadzenStack>
+    </RadzenStack>
+</RadzenTemplateForm>
+
+@code {
+    [Parameter] public CaracteristicaInmueble Caracteristica { get; set; } = new();
+    [Inject] DialogService dialogService { get; set; } = default!;
+
+    private decimal valorNumerico = 0;
+    private decimal valorDecimal = 0;
+
+    private List<DropDownItem> opcionesBooleanas = new()
+    {
+        new() { Text = "Sí", Value = "Sí" },
+        new() { Text = "No", Value = "No" }
+    };
+
+    protected override void OnInitialized()
+    {
+        // Inicializar valores numéricos si corresponde
+        if (Caracteristica.Caracteristica?.Tipo == "Número" && decimal.TryParse(Caracteristica.Valor, out decimal num))
+        {
+            valorNumerico = num;
+        }
+        else if (Caracteristica.Caracteristica?.Tipo == "Decimal" && decimal.TryParse(Caracteristica.Valor, out decimal dec))
+        {
+            valorDecimal = dec;
+        }
+    }
+
+    private async Task OnSubmit(CaracteristicaInmueble caracteristica)
+    {
+        try
+        {
+            // Actualizar el valor basado en el tipo
+            if (caracteristica.Caracteristica?.Tipo == "Número")
+            {
+                caracteristica.Valor = valorNumerico.ToString("N0");
+            }
+            else if (caracteristica.Caracteristica?.Tipo == "Decimal")
+            {
+                caracteristica.Valor = valorDecimal.ToString("N2");
+            }
+
+            var resultado = await serv_inmueble.ActualizarCaracteristica(caracteristica);
+            if (resultado.Correcto)
+            {
+                notificationService.Notify(NotificationSeverity.Success, "Éxito", "Característica actualizada correctamente");
+                dialogService.Close(true);
+            }
+            else
+            {
+                notificationService.Notify(NotificationSeverity.Error, "Error", resultado.Mensaje);
+            }
+        }
+        catch (Exception ex)
+        {
+            notificationService.Notify(NotificationSeverity.Error, "Error", $"Error al actualizar característica: {ex.Message}");
+        }
+    }
+
+    private void CerrarDialog()
+    {
+        dialogService.Close(false);
+    }
+
+    public class DropDownItem
+    {
+        public string Text { get; set; } = "";
+        public string Value { get; set; } = "";
+    }
+}

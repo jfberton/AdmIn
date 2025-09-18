@@ -1,89 +1,364 @@
 ﻿@page "/usuarios/view/{id}"
+
 @inherits BaseComponent
 
-@using AdmIn.Business.Entidades
+@using AdmIn.Common.Entidades
 @using AdmIn.Common
 @using AdmIn.UI.Services
 @using AdmIn.UI.Services.UtilityServices
+@using AdmIn.UI.Components.Shared
+@using Microsoft.AspNetCore.Components.Authorization
 
 @inject IServ_Usuario serv_usuario;
 @inject IServ_Rol serv_rol;
-@inject IServ_Permiso serv_permiso;
+@inject DialogService dialogService;
 
-<RadzenCard>
-    <RadzenRow class="rz-mx-2 rz-mb-8">
-        <RadzenColumn>
-            <RadzenFormField Text="Nombre" Variant="Variant.Outlined" Style="width:100%">
-                <ChildContent>
-                    <RadzenTextBox @bind-Value=usuario.Nombre MaxLength="50" ReadOnly="true" TValue="string" />
-                </ChildContent>
-            </RadzenFormField>
-        </RadzenColumn>
-    </RadzenRow>
+@if (usuario == null)
+{
+    <RadzenProgressBarCircular ProgressBarStyle="ProgressBarStyle.Primary" 
+                              Value="100" 
+                              ShowValue="false" 
+                              Mode="ProgressBarMode.Indeterminate" />
+    <p>Cargando usuario...</p>
+}
+else
+{
+    <RadzenStack Gap="2rem" Class="p-4">
+        <!-- Header -->
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem">
+            <RadzenButton ButtonStyle="ButtonStyle.Light" 
+                         Icon="arrow_back" 
+                         Click="@(() => IrA("/usuarios"))"
+                         Size="ButtonSize.Medium" />
+            <RadzenText TextStyle="TextStyle.H4" Text="@($"Usuario: {usuario.Nombre}")" />
+        </RadzenStack>
 
-    <RadzenRow class="rz-mx-2 rz-mb-8">
-        <RadzenColumn>
-            <RadzenFormField Text="E-mail" Variant="Variant.Outlined" Style="width:100%">
-                <ChildContent>
-                    <RadzenTextBox @bind-Value=usuario.Email MaxLength="50" ReadOnly="true" TValue="string" />
-                </ChildContent>
-            </RadzenFormField>
-        </RadzenColumn>
-    </RadzenRow>
+        <!-- Breadcrumb -->
+        <RadzenBreadCrumb>
+            <RadzenBreadCrumbItem Path="/usuarios" Text="Usuarios" Icon="people" />
+            <RadzenBreadCrumbItem Text="@usuario.Nombre" Icon="person" />
+        </RadzenBreadCrumb>
 
-    <!-- Nuevo campo Activo -->
-    <RadzenRow class="rz-mx-2 rz-mb-8">
-        <RadzenColumn>
-            <RadzenFormField Text="Estado">
-                <Start>
-                    <RadzenCheckBox @bind-Value="usuario.Activo" ReadOnly="true" Name="componente_activo" />
-                </Start>
-                <ChildContent>
-                    <RadzenLabel Text="Activo" Component="CheckBox1" Class="rz-mx-4" />
-                </ChildContent>
-            </RadzenFormField>
-        </RadzenColumn>
-    </RadzenRow>
+        <!-- Información Principal -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-info-circle"></i> Información General
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Nombre:</label>
+                        <p class="form-control-plaintext">@usuario.Nombre</p>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Email:</label>
+                        <p class="form-control-plaintext">
+                            @if (!string.IsNullOrEmpty(usuario.Email))
+                            {
+                                <a href="mailto:@usuario.Email">@usuario.Email</a>
+                            }
+                            else
+                            {
+                                <span class="text-muted">No especificado</span>
+                            }
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">País:</label>
+                        <p class="form-control-plaintext">
+                            @if (!string.IsNullOrEmpty(usuario.Pais))
+                            {
+                                @usuario.Pais
+                            }
+                            else
+                            {
+                                <span class="text-muted">No especificado</span>
+                            }
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Teléfono:</label>
+                        <p class="form-control-plaintext">
+                            @if (!string.IsNullOrEmpty(usuario.Telefono))
+                            {
+                                <a href="tel:@usuario.Telefono">@usuario.Telefono</a>
+                            }
+                            else
+                            {
+                                <span class="text-muted">No especificado</span>
+                            }
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Moneda:</label>
+                        <p class="form-control-plaintext">@(usuario.Moneda?.Nombre ?? "No asignada")</p>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Estado:</label>
+                        <div>
+                            <span class="badge @(usuario.Activo ? "bg-success" : "bg-secondary") fs-6">
+                                @(usuario.Activo ? "Activo" : "Inactivo")
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-    <RadzenRow class="rz-mx-2 rz-mb-8">
-        <RadzenColumn Size="6">
-            <RadzenLabel Text="Roles" />
-            @if (rolesAsignados == null || rolesAsignados.Count == 0)
-            {
-                <RadzenText Text="No tiene roles asignados.-" />
-            }
-            else
-            {
-                <RadzenListBox TValue="int" Data="@rolesAsignados" ReadOnly="true"
-                               TextProperty="Nombre" ValueProperty="Id" Style="width:100%" />
-            }
-        </RadzenColumn>
-        <RadzenColumn Size="6">
-            <RadzenLabel Text="Permisos asociados a los roles seleccionados" />
-            @if (permisos == null || permisos.Count == 0)
-            {
-                <RadzenText Text="No existen permisos asociados.-" />
-            }
-            else
-            {
-                <RadzenListBox TValue="int" Data="@permisos" ReadOnly="true"
-                               TextProperty="Nombre" ValueProperty="Id" Style="width: 100%; height:200px" />
-            }
-        </RadzenColumn>
-    </RadzenRow>
+        <!-- Imagen de Perfil -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-camera"></i> Imagen de Perfil
+                </h5>
+                <RadzenButton ButtonStyle="ButtonStyle.Primary" 
+                             Icon="camera" 
+                             Text="Cambiar Foto" 
+                             Size="ButtonSize.Small"
+                             Click="@CambiarImagenPerfil" />
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 text-center">
+                        @if (usuario.ImagenPerfil != null)
+                        {
+                            <img src="@usuario.ObtenerUrlImagenPerfil()" 
+                                 alt="Imagen de perfil" 
+                                 class="img-fluid rounded-circle mb-3" 
+                                 style="width: 120px; height: 120px; object-fit: cover; border: 3px solid #e9ecef;" />
+                        }
+                        else
+                        {
+                            <div class="bg-light rounded-circle d-flex align-items-center justify-content-center mb-3 mx-auto" 
+                                 style="width: 120px; height: 120px; border: 3px solid #e9ecef;">
+                                <i class="fas fa-user-circle text-muted" style="font-size: 80px;"></i>
+                            </div>
+                        }
+                    </div>
+                    <div class="col-md-9">
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <p class="mb-2">
+                                    @if (usuario.ImagenPerfil != null)
+                                    {
+                                        <span class="text-success">
+                                            <i class="fas fa-check-circle me-1"></i>
+                                            Imagen de perfil configurada
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">
+                                            <i class="fas fa-info-circle me-1"></i>
+                                            Sin imagen de perfil personalizada
+                                        </span>
+                                    }
+                                </p>
+                                <p class="text-muted small mb-0">
+                                    Puedes cambiar la imagen de perfil haciendo clic en "Cambiar Foto". 
+                                    Esta imagen se mostrará en toda la aplicación.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-    <RadzenRow class="rz-mx-2 rz-mb-8" JustifyContent="JustifyContent.End">
-        <RadzenColumn>
-            <MiRadzenButton ButtonStyle="ButtonStyle.Primary" Text="Volver" OnClick="@OnCancel" />
-        </RadzenColumn>
-    </RadzenRow>
-</RadzenCard>
+        <!-- Roles Asignados con estilo horizontal -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-user-tag"></i> Roles Asignados
+                </h5>
+                @if (rolesAsignados?.Count > 0)
+                {
+                    <span class="badge bg-secondary text-white">@rolesAsignados.Count roles</span>
+                }
+            </div>
+            <div class="card-body">
+                @if (rolesAsignados?.Any() == true)
+                {
+                    <div class="roles-horizontal-stack">
+                        @foreach (var rol in rolesAsignados)
+                        {
+                            <div class="role-horizontal-item-detail">
+                                <div class="role-horizontal-content">
+                                    <div class="role-simple-main">
+                                        <span class="role-simple-name">@rol.Nombre</span>
+                                        <i class="fas fa-shield-alt role-simple-check"></i>
+                                    </div>
+                                    @if (!string.IsNullOrEmpty(rol.Descripcion))
+                                    {
+                                        <div class="role-simple-description">
+                                            @rol.Descripcion
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="alert alert-light border d-flex align-items-center">
+                        <i class="fas fa-info-circle text-muted me-3"></i>
+                        <div>
+                            <strong>Sin roles asignados</strong>
+                            <p class="mb-0 text-muted">Este usuario no tiene roles asignados actualmente. Puede gestionar los roles desde las opciones de edición.</p>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Acciones -->
+        <RadzenCard Class="actions-card">
+            <RadzenStack Orientation="Orientation.Horizontal" Gap="1rem" JustifyContent="JustifyContent.End">
+                <RadzenButton ButtonStyle="ButtonStyle.Secondary" 
+                             Icon="list" 
+                             Text="Volver al Listado" 
+                             Click="@(() => IrA("/usuarios"))" />
+                <AuthorizeView Roles="admin_usuario">
+                    <Authorized>
+                        <RadzenButton ButtonStyle="ButtonStyle.Primary" 
+                                     Icon="edit" 
+                                     Text="Modificar" 
+                                     Click="@(() => IrA($"/usuarios/update/{usuario.Id}"))" />
+                        <RadzenButton ButtonStyle="ButtonStyle.Info" 
+                                     Icon="lock" 
+                                     Text="Cambiar Contraseña" 
+                                     Click="@(() => IrA($"/usuarios/update-password/{usuario.Id}/usuarios"))" />
+                    </Authorized>
+                </AuthorizeView>
+            </RadzenStack>
+        </RadzenCard>
+    </RadzenStack>
+}
+
+<style>
+    .detail-card {
+        background: var(--rz-panel-background-color, #fff);
+        border: 1px solid var(--rz-border-color, #e0e0e0);
+        border-radius: 8px;
+        padding: 1.5rem;
+    }
+
+    .actions-card {
+        background: #f8fafc;
+        border: 1px solid var(--rz-border-color, #e0e0e0);
+        border-radius: 8px;
+        padding: 1rem;
+    }
+
+    .detail-field {
+        margin-bottom: 1rem;
+    }
+
+    .detail-field .rz-text:first-child {
+        color: #6b7280;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.25rem;
+    }
+
+    /* Estilos para la lista horizontal de roles */
+    .roles-horizontal-stack {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+    }
+
+    .role-horizontal-item-detail {
+        flex: 1;
+        min-width: 200px; /* Ancho mínimo para evitar que se compriman demasiado */
+        max-width: 250px; /* Ancho máximo para mantener consistencia */
+        background: #fafafa;
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+        padding: 1rem;
+        transition: all 0.2s ease;
+    }
+
+    .role-horizontal-item-detail:hover {
+        background: #f5f5f5;
+        border-color: #dee2e6;
+    }
+
+    .role-horizontal-content {
+        width: 100%;
+    }
+
+    .role-simple-main {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.25rem;
+    }
+
+    .role-simple-name {
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: #495057;
+        margin: 0;
+    }
+
+    .role-simple-check {
+        color: #007bff;
+        font-size: 0.9rem;
+        opacity: 0.8;
+    }
+
+    .role-simple-description {
+        font-size: 0.8rem;
+        color: #6c757d;
+        line-height: 1.4;
+        margin-top: 0.25rem;
+        padding-left: 0;
+    }
+
+    /* Responsivo */
+    @@media (max-width: 768px) {
+        .roles-horizontal-stack {
+            flex-direction: column; /* En móvil volvemos a vertical */
+        }
+        
+        .role-horizontal-item-detail {
+            flex: none;
+            min-width: auto;
+            max-width: none;
+            padding: 0.75rem;
+        }
+        
+        .role-simple-name {
+            font-size: 0.85rem;
+        }
+        
+        .role-simple-description {
+            font-size: 0.75rem;
+        }
+    }
+
+    /* Para tablets */
+    @@media (min-width: 769px) and (max-width: 1024px) {
+        .role-horizontal-item-detail {
+            min-width: 180px;
+            max-width: 220px;
+        }
+    }
+
+    /* Estado de sin roles mejorado */
+    .alert-light {
+        background-color: #fafafa;
+        border-color: #e9ecef;
+    }
+</style>
 
 @code {
     Usuario usuario = new Usuario();
-
-    private List<Permiso> permisos { get; set; }
-    private List<Rol> rolesAsignados { get; set; } // Lista de roles asignados al usuario
+    private List<Rol> rolesAsignados { get; set; }
 
     [Parameter]
     public string id { get; set; }
@@ -91,54 +366,69 @@
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
-
-        EstablecerTituloPagina("Usuarios", "Ver Detalles");
-
-        int id_usuario;
-
-        if (int.TryParse(id, out id_usuario))
-        {
-            var rta_usuario = await serv_usuario.Obtener_por_id(id_usuario);
-            if (rta_usuario.Correcto)
-            {
-                usuario = rta_usuario.Datos;
-
-                // Obtener solo los roles asignados al usuario
-                rolesAsignados = usuario.Roles.ToList();
-
-                // Obtener permisos asociados a los roles asignados
-                await PermisosRolesSeleccionados(rolesAsignados.Select(r => r.Id).AsEnumerable());
-
-                StateHasChanged();
-            }
-        }
+        await CargarUsuario();
     }
 
-    async Task PermisosRolesSeleccionados(IEnumerable<int> idRoles)
+    private async Task CargarUsuario()
     {
-        var permisosUnicos = new HashSet<Permiso>();
-
-        foreach (int idRol in idRoles)
+        try
         {
-            var rta_permisos = await serv_permiso.Obtener_por_rol(idRol);
-            if (rta_permisos.Correcto)
+            if (int.TryParse(id, out int id_usuario))
             {
-                foreach (var permiso in rta_permisos.Datos)
+                var rta_usuario = await serv_usuario.Obtener_por_id(id_usuario);
+                if (rta_usuario.Correcto && rta_usuario.Datos != null)
                 {
-                    permisosUnicos.Add(permiso);
+                    usuario = rta_usuario.Datos;
+                    rolesAsignados = usuario.Roles?.ToList() ?? new List<Rol>();
+                    base.EstablecerTituloPagina("Usuarios", $"Detalle: {usuario.Nombre}");
+                }
+                else
+                {
+                    base.MostrarNotificacion(NotificationSeverity.Error, "Error!", "No se pudo cargar el usuario", "/usuarios");
                 }
             }
             else
             {
-                base.MostrarNotificacion(NotificationSeverity.Error, "Error!", "Error al obtener los permisos asociados al rol");
+                base.MostrarNotificacion(NotificationSeverity.Error, "Error!", "ID de usuario inválido", "/usuarios");
             }
         }
-
-        permisos = permisosUnicos.ToList();
+        catch (Exception ex)
+        {
+            base.MostrarNotificacion(NotificationSeverity.Error, "Error!", $"Error al cargar usuario: {ex.Message}", "/usuarios");
+        }
     }
 
-    async Task OnCancel()
+    private async Task CambiarImagenPerfil()
     {
-        base.IrA("/usuarios");
+        if (usuario == null) return;
+
+        try
+        {
+            var resultado = await dialogService.OpenAsync<CambiarFotoDialog>("Cambiar Imagen de Perfil",
+                new Dictionary<string, object>
+                {
+                    { "Usuario", usuario }
+                },
+                new DialogOptions { 
+                    Width = "600px", 
+                    Height = "500px",
+                    Resizable = true,
+                    Draggable = true,
+                    CloseDialogOnOverlayClick = false
+                });
+
+            if (resultado is bool cambiado && cambiado)
+            {
+                // Recargar el usuario para mostrar la nueva imagen
+                await CargarUsuario();
+                base.MostrarNotificacion(NotificationSeverity.Success, "Éxito!", 
+                    "Imagen de perfil actualizada correctamente");
+            }
+        }
+        catch (Exception ex)
+        {
+            base.MostrarNotificacion(NotificationSeverity.Error, "Error!", 
+                $"Error al cambiar imagen: {ex.Message}");
+        }
     }
 }

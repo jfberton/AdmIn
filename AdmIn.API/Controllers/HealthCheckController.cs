@@ -1,39 +1,112 @@
 ﻿using AdmIn.Business.Servicios;
+using AdmIn.Common;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
 using System.Threading.Tasks;
+using System;
 
 namespace AdmIn.API.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("/")]
     public class HealthCheckController : ControllerBase
     {
-        private readonly IServ_Rol _servicio;
+        private readonly IConfiguration _configuration;
 
-        public HealthCheckController(IServ_Rol servicio)
+        public HealthCheckController(IConfiguration configuration)
         {
-            _servicio = servicio;
+            _configuration = configuration;
         }
 
         [HttpGet]
         public async Task<IActionResult> Get()
         {
+            var healthStatus = new
+            {
+                status = "API is active",
+                timestamp = DateTime.UtcNow,
+                version = "1.0.0",
+                environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production",
+                databaseConnection = await TestDatabaseConnection()
+            };
+
+            return Ok(healthStatus);
+        }
+
+        [HttpGet("health")]
+        public async Task<IActionResult> GetDetailed()
+        {
+            var databaseStatus = await TestDatabaseConnection();
+            var isHealthy = databaseStatus == "Connected successfully";
+
+            var healthStatus = new
+            {
+                status = isHealthy ? "Healthy" : "Unhealthy",
+                timestamp = DateTime.UtcNow,
+                version = "1.0.0",
+                environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production",
+                checks = new
+                {
+                    database = new
+                    {
+                        status = databaseStatus,
+                        connectionString = GetMaskedConnectionString()
+                    },
+                    api = new
+                    {
+                        status = "API is running",
+                        uptime = DateTime.UtcNow - System.Diagnostics.Process.GetCurrentProcess().StartTime
+                    }
+                }
+            };
+
+            return isHealthy ? Ok(healthStatus) : StatusCode(503, healthStatus);
+        }
+
+        private async Task<string> TestDatabaseConnection()
+        {
             try
             {
-                // Intentar obtener un usuario por su ID para verificar la conexión a la base de datos
-                var resultado = await _servicio.Obtener_todos();
-                if (resultado.Correcto)
+                if (string.IsNullOrEmpty(InfoSQL.Conexion))
                 {
-                    return Ok(new { status = "API is active", databaseConnection = "Successful" });
+                    return "Connection string not configured";
                 }
-                else
-                {
-                    return StatusCode(500, new { status = "API is active", databaseConnection = $"Failed. {resultado.Mensaje}" });
-                }
+
+                using var connection = new SqlConnection(InfoSQL.Conexion);
+                await connection.OpenAsync();
+                
+                // Execute a simple query to verify the connection works
+                using var command = new SqlCommand("SELECT 1", connection);
+                await command.ExecuteScalarAsync();
+                
+                return "Connected successfully";
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { status = "API is active", databaseConnection = "Failed", error = ex.Message });
+                return $"Connection failed: {ex.Message}";
+            }
+        }
+
+        private string GetMaskedConnectionString()
+        {
+            if (string.IsNullOrEmpty(InfoSQL.Conexion))
+                return "Not configured";
+
+            try
+            {
+                var builder = new SqlConnectionStringBuilder(InfoSQL.Conexion);
+                
+                // Mask sensitive information
+                if (!string.IsNullOrEmpty(builder.Password))
+                    builder.Password = "***";
+                if (!string.IsNullOrEmpty(builder.UserID))
+                    builder.UserID = "***";
+
+                return builder.ConnectionString;
+            }
+            catch
+            {
+                return "Invalid connection string format";
             }
         }
     }

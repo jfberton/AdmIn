@@ -1,5 +1,5 @@
-﻿using AdmIn.Business.Entidades;
-using AdmIn.Business.Utilidades;
+﻿using AdmIn.Common.Entidades;
+using AdmIn.Common.Utilidades;
 
 namespace AdmIn.UI.Services
 {

@@ -1,0 +1,59 @@
+@using AdmIn.Common.Entidades
+@using AdmIn.Common
+@using AdmIn.UI.Services
+
+@inject IServ_Usuario serv_usuario
+@inject NotificationService notificationService
+
+<RadzenTemplateForm TItem="Usuario" Data="@Usuario" Submit="@GuardarCambiosPerfil">
+    <RadzenStack Gap="1rem">
+        <RadzenFormField Text="Nombre completo" Variant="Variant.Outlined">
+            <RadzenTextBox @bind-Value="@Usuario.Nombre" MaxLength="255" />
+            <RadzenRequiredValidator Component="Nombre" Text="El nombre es requerido" />
+        </RadzenFormField>
+        
+        <RadzenFormField Text="País" Variant="Variant.Outlined">
+            <RadzenTextBox @bind-Value="@Usuario.Pais" MaxLength="100" />
+        </RadzenFormField>
+        
+        <RadzenFormField Text="Teléfono" Variant="Variant.Outlined">
+            <RadzenTextBox @bind-Value="@Usuario.Telefono" MaxLength="20" />
+        </RadzenFormField>
+        
+        <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" JustifyContent="JustifyContent.End">
+            <RadzenButton ButtonStyle="ButtonStyle.Success" 
+                         Text="Guardar Cambios" 
+                         ButtonType="ButtonType.Submit" />
+            <RadzenButton ButtonStyle="ButtonStyle.Secondary" 
+                         Text="Cancelar" 
+                         Click="@(() => dialogService.Close(false))" />
+        </RadzenStack>
+    </RadzenStack>
+</RadzenTemplateForm>
+
+@code {
+    [Parameter] public Usuario Usuario { get; set; }
+    [Inject] DialogService dialogService { get; set; }
+
+    private async Task GuardarCambiosPerfil(Usuario usuario)
+    {
+        try
+        {
+            var resultado = await serv_usuario.Actualizar(usuario);
+            
+            if (resultado.Correcto)
+            {
+                notificationService.Notify(NotificationSeverity.Success, "Éxito", "Perfil actualizado correctamente");
+                dialogService.Close(true); // Cerrar y indicar que se guardaron cambios
+            }
+            else
+            {
+                notificationService.Notify(NotificationSeverity.Error, "Error", resultado.Mensaje);
+            }
+        }
+        catch (Exception ex)
+        {
+            notificationService.Notify(NotificationSeverity.Error, "Error", $"Error al actualizar perfil: {ex.Message}");
+        }
+    }
+}

@@ -1,0 +1,564 @@
+@page "/inmuebles/{id:int}"
+@inherits BaseComponent
+
+@using AdmIn.Common.Entidades
+@using AdmIn.Common
+@using AdmIn.UI.Services
+@using AdmIn.UI.Components.Shared
+
+@inject IServ_Inmueble serv_inmueble
+@inject IServ_Imagen serv_imagen
+
+<PageTitle>@(inmueble?.Nombre ?? "Inmueble")</PageTitle>
+
+@if (inmueble != null)
+{
+    <RadzenStack Gap="2rem" Class="p-4">
+        <!-- Header -->
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem">
+            <RadzenButton ButtonStyle="ButtonStyle.Light" 
+                         Icon="arrow_back" 
+                         Click="@(() => IrA("/inmuebles"))"
+                         Size="ButtonSize.Medium" />
+            <RadzenText TextStyle="TextStyle.H4" Text="@inmueble.Nombre" />
+            <RadzenBadge BadgeStyle="@(inmueble.Activo ? BadgeStyle.Success : BadgeStyle.Danger)" 
+                        Text="@(inmueble.Activo ? "Activo" : "Inactivo")" />
+        </RadzenStack>
+
+        <!-- Breadcrumb -->
+        <RadzenBreadCrumb>
+            <RadzenBreadCrumbItem Path="/inmuebles" Text="Inmuebles" Icon="apartment" />
+            <RadzenBreadCrumbItem Text="@inmueble.Nombre" Icon="home" />
+        </RadzenBreadCrumb>
+
+        <!-- Acciones -->
+        <RadzenStack Orientation="Orientation.Horizontal" Gap="1rem" Wrap="FlexWrap.Wrap">
+            <RadzenButton ButtonStyle="ButtonStyle.Primary" 
+                         Icon="edit" 
+                         Text="Editar" 
+                         Click="@(() => IrA($"/inmuebles/editar/{inmueble.Id}"))" />
+            <RadzenButton ButtonStyle="ButtonStyle.Secondary" 
+                         Icon="photo_library" 
+                         Text="Gestionar Imágenes" 
+                         Click="@(() => GestionarImagenes())" />
+            <RadzenButton ButtonStyle="ButtonStyle.Info" 
+                         Icon="category" 
+                         Text="Gestionar Características" 
+                         Click="@(() => GestionarCaracteristicas())" />
+        </RadzenStack>
+
+        <!-- Información Principal -->
+        <RadzenRow Gap="2rem">
+            <RadzenColumn Size="12" SizeMD="8">
+                <RadzenCard>
+                    <RadzenStack Gap="1.5rem">
+                        <RadzenText TextStyle="TextStyle.H6" Text="Información General" />
+                        
+                        <RadzenRow Gap="1rem">
+                            <RadzenColumn Size="12" SizeMD="6">
+                                <div class="info-item">
+                                    <RadzenText TextStyle="TextStyle.Caption" Text="DIRECCIÓN" />
+                                    <RadzenText TextStyle="TextStyle.Body1" Text="@inmueble.Direccion" />
+                                </div>
+                            </RadzenColumn>
+                            <RadzenColumn Size="12" SizeMD="6">
+                                <div class="info-item">
+                                    <RadzenText TextStyle="TextStyle.Caption" Text="UBICACIÓN" />
+                                    <RadzenText TextStyle="TextStyle.Body1" Text="@($"{inmueble.Ciudad}, {inmueble.Estado}, {inmueble.Pais}")" />
+                                </div>
+                            </RadzenColumn>
+                        </RadzenRow>
+
+                        @if (!string.IsNullOrWhiteSpace(inmueble.Descripcion))
+                        {
+                            <div class="info-item">
+                                <RadzenText TextStyle="TextStyle.Caption" Text="DESCRIPCIÓN" />
+                                <RadzenText TextStyle="TextStyle.Body1" Text="@inmueble.Descripcion" />
+                            </div>
+                        }
+                    </RadzenStack>
+                </RadzenCard>
+            </RadzenColumn>
+
+            <RadzenColumn Size="12" SizeMD="4">
+                <RadzenCard>
+                    <RadzenStack Gap="1.5rem">
+                        <RadzenText TextStyle="TextStyle.H6" Text="Información Económica" />
+                        
+                        <div class="info-item">
+                            <RadzenText TextStyle="TextStyle.Caption" Text="VALOR" />
+                            <RadzenText TextStyle="TextStyle.H5" Text="@inmueble.Valor.ToString("C")" />
+                        </div>
+
+                        @if (inmueble.RentaMensual > 0)
+                        {
+                            <div class="info-item">
+                                <RadzenText TextStyle="TextStyle.Caption" Text="RENTA MENSUAL" />
+                                <RadzenText TextStyle="TextStyle.Body1" Text="@inmueble.RentaMensual.ToString("C")" />
+                            </div>
+                        }
+
+                        @if (inmueble.ConstruccionM2 > 0)
+                        {
+                            <div class="info-item">
+                                <RadzenText TextStyle="TextStyle.Caption" Text="CONSTRUCCIÓN" />
+                                <RadzenText TextStyle="TextStyle.Body1" Text="@($"{inmueble.ConstruccionM2:N2} m²")" />
+                            </div>
+                        }
+
+                        @if (inmueble.Moneda != null)
+                        {
+                            <div class="info-item">
+                                <RadzenText TextStyle="TextStyle.Caption" Text="MONEDA" />
+                                <RadzenText TextStyle="TextStyle.Body1" Text="@inmueble.Moneda.Nombre" />
+                            </div>
+                        }
+                    </RadzenStack>
+                </RadzenCard>
+            </RadzenColumn>
+        </RadzenRow>
+
+        <!-- Gestión de Características -->
+        <RadzenCard id="caracteristicas">
+            <CaracteristicasViewer InmuebleId="@inmueble.Id" 
+                                  MostrarBotonGestionar="true"
+                                  OnGestionarClick="@GestionarCaracteristicas" />
+        </RadzenCard>
+
+        <!-- Gestión de Imágenes -->
+        <RadzenCard id="imagenes">
+            <RadzenStack Gap="1.5rem">
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
+                    <RadzenText TextStyle="TextStyle.H6" Text="Galería de Imágenes" />
+                    <RadzenButton ButtonStyle="ButtonStyle.Primary" 
+                                 Icon="add_photo_alternate" 
+                                 Text="Agregar Imágenes"
+                                 Click="@(() => AgregarImagenes())" />
+                </RadzenStack>
+                
+                <ImageGalleryComponent 
+                    Imagenes="@imagenesInmueble"
+                    ImagenPrincipalId="@inmueble.ImagenPrincipalId"
+                    EntidadId="@inmueble.Id"
+                    TipoEntidad="inmueble"
+                    PermitirEstablecerPrincipal="true"
+                    MensajeSinImagenes="Este inmueble no tiene imágenes"
+                    MensajeUpload="Agrega fotos para mostrar mejor la propiedad"
+                    OnImagenPrincipalCambiada="@OnImagenPrincipalCambiada"
+                    OnImagenEliminada="@OnImagenEliminada"
+                    OnImagenActualizada="@OnImagenActualizada" />
+            </RadzenStack>
+        </RadzenCard>
+
+        <!-- Información Adicional -->
+        @if (inmueble.Administrador != null || inmueble.Latitud != 0 || inmueble.Longitud != 0)
+        {
+            <RadzenCard>
+                <RadzenStack Gap="1.5rem">
+                    <RadzenText TextStyle="TextStyle.H6" Text="Información Adicional" />
+                    
+                    <RadzenRow Gap="1rem">
+                        @if (inmueble.Administrador != null)
+                        {
+                            <RadzenColumn Size="12" SizeMD="6">
+                                <div class="info-item">
+                                    <RadzenText TextStyle="TextStyle.Caption" Text="ADMINISTRADOR" />
+                                    <RadzenText TextStyle="TextStyle.Body1" Text="@inmueble.Administrador.Nombre" />
+                                </div>
+                            </RadzenColumn>
+                        }
+
+                        @if (inmueble.Latitud != 0 && inmueble.Longitud != 0)
+                        {
+                            <RadzenColumn Size="12" SizeMD="6">
+                                <div class="info-item">
+                                    <RadzenText TextStyle="TextStyle.Caption" Text="COORDENADAS" />
+                                    <RadzenText TextStyle="TextStyle.Body1" Text="@($"{inmueble.Latitud:F6}, {inmueble.Longitud:F6}")" />
+                                </div>
+                            </RadzenColumn>
+                        }
+                    </RadzenRow>
+                </RadzenStack>
+            </RadzenCard>
+        }
+
+        <!-- Metadatos -->
+        <RadzenCard>
+            <RadzenStack Gap="1.5rem">
+                <RadzenText TextStyle="TextStyle.H6" Text="Información del Sistema" />
+                
+                <RadzenRow Gap="1rem">
+                    <RadzenColumn Size="6" SizeMD="3">
+                        <div class="info-item">
+                            <RadzenText TextStyle="TextStyle.Caption" Text="FECHA CREACIÓN" />
+                            <RadzenText TextStyle="TextStyle.Body2" Text="@inmueble.FechaCreacion.ToString("dd/MM/yyyy")" />
+                        </div>
+                    </RadzenColumn>
+                    <RadzenColumn Size="6" SizeMD="3">
+                        <div class="info-item">
+                            <RadzenText TextStyle="TextStyle.Caption" Text="ÚLTIMA MODIFICACIÓN" />
+                            <RadzenText TextStyle="TextStyle.Body2" Text="@inmueble.FechaModificacion.ToString("dd/MM/yyyy")" />
+                        </div>
+                    </RadzenColumn>
+                    @if (inmueble.UsuarioCreador != null)
+                    {
+                        <RadzenColumn Size="6" SizeMD="3">
+                            <div class="info-item">
+                                <RadzenText TextStyle="TextStyle.Caption" Text="CREADO POR" />
+                                <RadzenText TextStyle="TextStyle.Body2" Text="@inmueble.UsuarioCreador.Nombre" />
+                            </div>
+                        </RadzenColumn>
+                    }
+                    @if (inmueble.UsuarioModificador != null)
+                    {
+                        <RadzenColumn Size="6" SizeMD="3">
+                            <div class="info-item">
+                                <RadzenText TextStyle="TextStyle.Caption" Text="MODIFICADO POR" />
+                                <RadzenText TextStyle="TextStyle.Body2" Text="@inmueble.UsuarioModificador.Nombre" />
+                            </div>
+                        </RadzenColumn>
+                    }
+                </RadzenRow>
+            </RadzenStack>
+        </RadzenCard>
+    </RadzenStack>
+}
+else if (cargando)
+{
+    <RadzenStack AlignItems="AlignItems.Center" JustifyContent="JustifyContent.Center" Gap="1rem" Class="p-8">
+        <RadzenProgressBarCircular ProgressBarStyle="ProgressBarStyle.Primary" Value="100" ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
+        <RadzenText TextStyle="TextStyle.Body1" Text="Cargando inmueble..." />
+    </RadzenStack>
+}
+else
+{
+    <RadzenStack AlignItems="AlignItems.Center" JustifyContent="JustifyContent.Center" Gap="1rem" Class="p-8">
+        <RadzenIcon Icon="error_outline" Style="font-size: 64px; color: var(--rz-danger);" />
+        <RadzenText TextStyle="TextStyle.H5" Text="Inmueble no encontrado" />
+        <RadzenText TextStyle="TextStyle.Body1" Text="El inmueble solicitado no existe o no tienes permisos para verlo." />
+        <RadzenButton ButtonStyle="ButtonStyle.Primary" Text="Volver a Inmuebles" Click="@(() => IrA("/inmuebles"))" />
+    </RadzenStack>
+}
+
+<style>
+    .info-item {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .info-item .rz-text:first-child {
+        color: #6b7280;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+    }
+</style>
+
+@code {
+    [Parameter] public int Id { get; set; }
+    
+    private Inmueble? inmueble;
+    private bool cargando = true;
+    private CaracteristicasViewer? caracteristicasViewer;
+    private List<Imagen> imagenesInmueble = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        await CargarInmueble();
+        await CargarImagenes();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Solo recargar si el ID del inmueble cambió
+        if (inmueble?.Id != Id)
+        {
+            await LogHelper.Info($"ID del inmueble cambió de {inmueble?.Id} a {Id}, recargando datos");
+            await CargarInmueble();
+            await CargarImagenes();
+        }
+        else
+        {
+            await LogHelper.Info($"ID del inmueble no cambió ({Id}), saltando recarga");
+        }
+    }
+
+    private async Task CargarInmueble()
+    {
+        try
+        {
+            cargando = true;
+            await LogHelper.Info($"Cargando inmueble con ID: {Id}");
+
+            var resultado = await serv_inmueble.Obtener_por_id(Id);
+            
+            if (resultado.Correcto && resultado.Datos != null)
+            {
+                inmueble = resultado.Datos;
+                EstablecerTituloPagina("Inmuebles", inmueble.Nombre);
+                await LogHelper.Info($"Inmueble cargado exitosamente: {inmueble.Nombre}");
+            }
+            else
+            {
+                await LogHelper.Warn($"No se pudo cargar el inmueble con ID: {Id}. Mensaje: {resultado.Mensaje}");
+                EstablecerTituloPagina("Inmuebles", "No encontrado");
+            }
+        }
+        catch (Exception ex)
+        {
+            await LogHelper.Error($"Error al cargar inmueble: {ex.Message}");
+            MostrarNotificacion(
+                NotificationSeverity.Error,
+                "Error",
+                "No se pudo cargar la información del inmueble"
+            );
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+
+    private async Task CargarImagenes()
+    {
+        try
+        {
+            await LogHelper.Info($"Iniciando carga de imágenes para inmueble ID: {Id}");
+            var resultado = await serv_imagen.ObtenerPorInmueble(Id);
+            
+            await LogHelper.Info($"Resultado de carga de imágenes - Correcto: {resultado.Correcto}, Datos count: {resultado.Datos?.Count() ?? 0}");
+            
+            if (resultado.Correcto && resultado.Datos != null)
+            {
+                var nuevasImagenes = resultado.Datos.ToList();
+                
+                // Solo actualizar si hay cambios
+                if (!ImagenesIguales(imagenesInmueble, nuevasImagenes))
+                {
+                    imagenesInmueble = nuevasImagenes;
+                    await LogHelper.Info($"Imágenes cargadas exitosamente: {imagenesInmueble.Count} imágenes");
+                    StateHasChanged();
+                }
+                else
+                {
+                    await LogHelper.Info("No hay cambios en las imágenes, saltando actualización");
+                }
+            }
+            else
+            {
+                await LogHelper.Warn($"No se pudieron cargar las imágenes: {resultado.Mensaje}");
+                if (imagenesInmueble.Any()) // Solo limpiar si había imágenes antes
+                {
+                    imagenesInmueble = new List<Imagen>();
+                    StateHasChanged();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            await LogHelper.Error($"Error al cargar imágenes: {ex.Message}");
+            if (imagenesInmueble.Any()) // Solo limpiar si había imágenes antes
+            {
+                imagenesInmueble = new List<Imagen>();
+                StateHasChanged();
+            }
+        }
+    }
+
+    private bool ImagenesIguales(List<Imagen> lista1, List<Imagen> lista2)
+    {
+        if (lista1.Count != lista2.Count) return false;
+        
+        for (int i = 0; i < lista1.Count; i++)
+        {
+            if (lista1[i].Id != lista2[i].Id) return false;
+            
+            // También comparar nombre y descripción para detectar actualizaciones
+            if (lista1[i].Nombre != lista2[i].Nombre) return false;
+            if (lista1[i].Descripcion != lista2[i].Descripcion) return false;
+        }
+        
+        return true;
+    }
+
+    private async Task GestionarCaracteristicas()
+    {
+        try
+        {
+            var result = await DialogService.OpenAsync<GestionarCaracteristicasDialog>(
+                $"Características - {inmueble?.Nombre}",
+                new Dictionary<string, object>() 
+                { 
+                    { "Inmueble", inmueble! }
+                },
+                new DialogOptions() 
+                { 
+                    Width = "800px", 
+                    Height = "600px", 
+                    Resizable = true, 
+                    Draggable = true,
+                    CloseDialogOnOverlayClick = false
+                });
+
+            if (result == true)
+            {
+                // Actualizar las características sin recargar todo el inmueble
+                if (caracteristicasViewer != null)
+                {
+                    await caracteristicasViewer.RefreshCaracteristicas();
+                }
+                MostrarNotificacion(NotificationSeverity.Success, "Éxito", "Características actualizadas correctamente");
+            }
+        }
+        catch (Exception ex)
+        {
+            MostrarNotificacion(NotificationSeverity.Error, "Error", $"Error al abrir gestión de características: {ex.Message}");
+        }
+    }
+
+    private async Task GestionarImagenes()
+    {
+        try
+        {
+            var result = await DialogService.OpenAsync<AgregarImagenesDialog>(
+                $"Gestionar Imágenes - {inmueble?.Nombre}",
+                new Dictionary<string, object>() 
+                { 
+                    { "InmuebleId", inmueble!.Id },
+                    { "NombreInmueble", inmueble.Nombre }
+                },
+                new DialogOptions() 
+                { 
+                    Width = "900px", 
+                    Height = "700px", 
+                    Resizable = true, 
+                    Draggable = true,
+                    CloseDialogOnOverlayClick = false
+                });
+
+            if (result == true)
+            {
+                await CargarImagenes();
+                await CargarInmueble(); // Para actualizar la imagen principal
+                MostrarNotificacion(NotificationSeverity.Success, "Éxito", "Imágenes actualizadas correctamente");
+            }
+        }
+        catch (Exception ex)
+        {
+            MostrarNotificacion(NotificationSeverity.Error, "Error", $"Error al abrir gestión de imágenes: {ex.Message}");
+        }
+    }
+
+    private async Task AgregarImagenes()
+    {
+        await GestionarImagenes();
+    }
+
+    private async Task OnImagenPrincipalCambiada(Imagen imagen)
+    {
+        try
+        {
+            if (inmueble != null)
+            {
+                inmueble.ImagenPrincipalId = imagen.Id;
+                inmueble.ImagenPrincipal = imagen;
+                
+                // Actualizar la imagen en la lista local si es necesario
+                var imagenExistente = imagenesInmueble.FirstOrDefault(i => i.Id == imagen.Id);
+                if (imagenExistente != null)
+                {
+                    var index = imagenesInmueble.IndexOf(imagenExistente);
+                    imagenesInmueble[index] = imagen;
+                }
+                
+                StateHasChanged();
+                await LogHelper.Info($"Imagen principal actualizada: {imagen.Nombre}");
+                MostrarNotificacion(NotificationSeverity.Success, "Éxito", "Imagen principal actualizada");
+            }
+        }
+        catch (Exception ex)
+        {
+            await LogHelper.Error($"Error al actualizar imagen principal: {ex.Message}");
+            MostrarNotificacion(NotificationSeverity.Error, "Error", $"Error al actualizar imagen principal: {ex.Message}");
+        }
+    }
+
+    private async Task OnImagenEliminada(Imagen imagen)
+    {
+        try
+        {
+            // Remover la imagen de la lista local inmediatamente
+            var imagenExistente = imagenesInmueble.FirstOrDefault(i => i.Id == imagen.Id);
+            if (imagenExistente != null)
+            {
+                imagenesInmueble.Remove(imagenExistente);
+                
+                // Si era la imagen principal, limpiar la referencia
+                if (inmueble?.ImagenPrincipalId == imagen.Id)
+                {
+                    inmueble.ImagenPrincipalId = null;
+                    inmueble.ImagenPrincipal = null;
+                }
+                
+                StateHasChanged();
+                await LogHelper.Info($"Imagen eliminada localmente: {imagen.Nombre}");
+            }
+            
+            MostrarNotificacion(NotificationSeverity.Info, "Información", "Imagen eliminada correctamente");
+        }
+        catch (Exception ex)
+        {
+            await LogHelper.Error($"Error al procesar eliminación localmente: {ex.Message}");
+            MostrarNotificacion(NotificationSeverity.Error, "Error", $"Error al procesar eliminación: {ex.Message}");
+            // Fallback: recargar todas las imágenes
+            await CargarImagenes();
+        }
+    }
+
+    private async Task OnImagenActualizada(Imagen imagen)
+    {
+        try
+        {
+            // Actualizar la imagen específica en la lista local
+            var imagenExistente = imagenesInmueble.FirstOrDefault(i => i.Id == imagen.Id);
+            if (imagenExistente != null)
+            {
+                var index = imagenesInmueble.IndexOf(imagenExistente);
+                imagenesInmueble[index] = imagen;
+                
+                // Si es la imagen principal, también actualizar en el inmueble
+                if (inmueble?.ImagenPrincipalId == imagen.Id)
+                {
+                    inmueble.ImagenPrincipal = imagen;
+                }
+                
+                StateHasChanged();
+                await LogHelper.Info($"Imagen actualizada localmente: {imagen.Nombre}");
+            }
+            else
+            {
+                // Si por alguna razón no está en la lista, recargar todas las imágenes
+                await CargarImagenes();
+            }
+            
+            MostrarNotificacion(NotificationSeverity.Success, "Éxito", "Información de imagen actualizada");
+        }
+        catch (Exception ex)
+        {
+            await LogHelper.Error($"Error al actualizar imagen localmente: {ex.Message}");
+            MostrarNotificacion(NotificationSeverity.Error, "Error", $"Error al actualizar imagen: {ex.Message}");
+            // Fallback: recargar todas las imágenes
+            await CargarImagenes();
+        }
+    }
+
+    private async Task OnCaracteristicaChanged()
+    {
+        // Actualizar las características
+        if (caracteristicasViewer != null)
+        {
+            await caracteristicasViewer.RefreshCaracteristicas();
+        }
+    }
+}

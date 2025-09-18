@@ -1,0 +1,89 @@
+@page "/tipos-servicio/nuevo"
+
+@inherits BaseComponent
+
+@using AdmIn.Common.Entidades
+@using AdmIn.Common
+@using AdmIn.UI.Services
+@using System.ComponentModel.DataAnnotations
+
+@inject IServ_TipoServicio serv_tipoServicio;
+
+<RadzenTemplateForm TItem="TipoServicio" Data="@tipoServicio" Submit="@OnSubmit" @ref="form">
+    <RadzenRow class="rz-mx-2 rz-mb-4">
+        <RadzenColumn>
+            <RadzenFieldset Text="Información del tipo de servicio">
+                <RadzenRow class="rz-mb-2">
+                    <RadzenColumn Size="12" SizeMD="6">
+                        <RadzenLabel Text="Nombre*" />
+                        <RadzenTextBox @bind-Value="tipoServicio.Nombre" MaxLength="100" class="w-100"
+                                       Name="componente_nombre" Placeholder="Ej: Plomería, Electricidad, etc." />
+                        <RadzenRequiredValidator Component="componente_nombre" Text="El nombre es requerido" />
+                    </RadzenColumn>
+                    <RadzenColumn Size="12" SizeMD="6">
+                        <RadzenLabel Text="Descripción" />
+                        <RadzenTextArea @bind-Value="tipoServicio.Descripcion" MaxLength="500" class="w-100"
+                                        Name="componente_descripcion" Placeholder="Descripción opcional del tipo de servicio..." 
+                                        Rows="3" />
+                    </RadzenColumn>
+                </RadzenRow>
+            </RadzenFieldset>
+        </RadzenColumn>
+    </RadzenRow>
+
+    <RadzenRow class="rz-mx-2 rz-mb-8" JustifyContent="JustifyContent.End">
+        <RadzenColumn>
+            <MiRadzenButton ButtonStyle="ButtonStyle.Primary" Text="Guardar" OnClick="@OnSubmit" />
+            <MiRadzenButton ButtonStyle="ButtonStyle.Secondary" Text="Cancelar" OnClick="@OnCancel" />
+        </RadzenColumn>
+    </RadzenRow>
+</RadzenTemplateForm>
+
+@code {
+    RadzenTemplateForm<TipoServicio> form;
+    TipoServicio tipoServicio = new TipoServicio();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        base.EstablecerTituloPagina("Tipos de Servicio", "Nuevo");
+    }
+
+    #region Validaciones
+
+    public bool Is_valid()
+    {
+        form.EditContext.Validate();
+        return form.IsValid;
+    }
+
+    #endregion
+
+    async Task OnSubmit()
+    {
+        if (Is_valid())
+        {
+            try
+            {
+                DTO<TipoServicio> tipoServicio_respuesta = await serv_tipoServicio.Crear(tipoServicio);
+                if (tipoServicio_respuesta != null && tipoServicio_respuesta.Correcto)
+                {
+                    base.MostrarNotificacion(NotificationSeverity.Success, "Alta correcta", "Se ha agregado un nuevo tipo de servicio al sistema", "/tipos-servicio");
+                }
+                else
+                {
+                    base.MostrarNotificacion(NotificationSeverity.Error, "Error!", $"Error al agregar el tipo de servicio: {tipoServicio_respuesta.Mensaje}");
+                }
+            }
+            catch (Exception ex)
+            {
+                base.MostrarNotificacion(NotificationSeverity.Error, "Error!", $"Error al agregar el tipo de servicio: {ex.Message}");
+            }
+        }
+    }
+
+    async Task OnCancel()
+    {
+        base.IrA("/tipos-servicio");
+    }
+}

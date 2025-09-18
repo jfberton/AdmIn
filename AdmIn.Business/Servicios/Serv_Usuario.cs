@@ -1,258 +1,245 @@
-﻿using AdmIn.Business.Entidades;
-using AdmIn.Business.Utilidades;
+﻿using AdmIn.Common.Utilidades;
 using AdmIn.Common;
-using AdmIn.Data.Repositorios;
-using AdmIn.Data.Entidades;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using AdmIn.Common.Entidades;
+using AdmIn.Common.Repositorios;
 
 namespace AdmIn.Business.Servicios
 {
     public class Serv_Usuario : IServ_Usuario
     {
-        private readonly Rep_USUARIO _repUsuario;
-        private readonly Rep_USUARIO_ROL _repUsuarioRol = new Rep_USUARIO_ROL();
+        private readonly IUsuarioRepository _usuarioRepo;
 
-        public Serv_Usuario()
+        public Serv_Usuario(IUsuarioRepository usuarioRepository)
         {
-            _repUsuario = new Rep_USUARIO();
-            _repUsuarioRol = new Rep_USUARIO_ROL();
+            _usuarioRepo = usuarioRepository;
         }
 
-        public async Task<DTO<Usuario>> Crear(Usuario usuario)
+        public async Task<DTO<Usuario>> Crear(Usuario usuarioNuevo)
         {
-            //encripto la contraseña para guardarla en la base de datos
-            usuario.Password = MiHash.GenerarHash(usuario.Password);
-            usuario.Creacion = DateTime.Now;
+            // Usar bcrypt para encriptar la contraseña de usuarios nuevos
+            usuarioNuevo.Password = MiHash.GenerarHashBcrypt(usuarioNuevo.Password);
 
-            var resultado = await _repUsuario.Crear(usuario.ToDataUSUARIO());
+            var resultado = await _usuarioRepo.Crear(usuarioNuevo);
 
-            if (resultado.Correcto && resultado.Datos != null)
-            {
-                usuario.Id = resultado.Datos.USU_ID;
-
-                foreach (var rol in usuario.Roles)
-                {
-                    await _repUsuarioRol.Crear(new USUARIO_ROL() { ROL_ID = rol.Id, USU_ID = usuario.Id });
-                }
-            }
-
-            DTO<Usuario> returns = new DTO<Usuario>();
-            returns.Datos = resultado.Datos.ToBusinessUsuario();
-            returns.Mensaje = resultado.Mensaje;
-            returns.Correcto = resultado.Correcto;
-
-            return returns;
+            return resultado;
         }
 
         public async Task<DTO<Usuario>> Actualizar(Usuario usuario)
         {
-            var usuarioActualizado = new DTO<Usuario>();
-
-            var usuarioRepo = await _repUsuario.Actualizar(usuario.ToDataUSUARIO());
-            if (usuarioRepo.Correcto && usuarioRepo.Datos != null)
-            {
-                var respuesta = _repUsuarioRol.Obtener_por_usuario(usuario.Id).Result;
-                if (respuesta != null)
-                {
-                    var roles = respuesta.Datos;
-                    foreach (var rol in roles)
-                    {
-                        await _repUsuarioRol.Eliminar(rol);
-                    }
-                }
-
-                foreach (var rol in usuario.Roles)
-                {
-                    await _repUsuarioRol.Crear(new USUARIO_ROL() { ROL_ID = rol.Id, USU_ID = usuario.Id });
-                }
-            }
-
-            DTO<Usuario> returns = new DTO<Usuario>();
-            returns.Datos = usuarioRepo.Datos.ToBusinessUsuario();
-            returns.Mensaje = usuarioRepo.Mensaje;
-            returns.Correcto = usuarioRepo.Correcto;
-
-            return returns;
+            var resultado = await _usuarioRepo.Actualizar(usuario);
+            return resultado;
         }
 
         public async Task<DTO<bool>> Eliminar(Usuario usuario)
         {
-            var resultado = await _repUsuario.Eliminar(usuario.ToDataUSUARIO());
-            return resultado;
+            return await _usuarioRepo.Eliminar(usuario);
         }
 
-        public async Task<DTO<Items_pagina<Usuario>>> Obtener_paginado(Filtros_paginado filtros)
+        public async Task<DTO<Usuario>> Obtener_por_id(Usuario usuario)
         {
-            var resultado = new DTO<Items_pagina<Usuario>>
-            {
-                Datos = new Items_pagina<Usuario>
-                {
-                    Items = new List<Usuario>(),
-                    Total_items = 0
-                }
-            };
-
-            filtros.EntityName = "Usuario";
-
-            var usuariosRepo = await _repUsuario.Obtener_paginado(filtros);
-            if (usuariosRepo.Correcto && usuariosRepo.Datos != null)
-            {
-                resultado.Correcto = true;
-                resultado.Mensaje = "Usuarios obtenidos exitosamente";
-                resultado.Datos.Items = usuariosRepo.Datos.Items.Select(u=>u.ToBusinessUsuario()).ToList();
-                resultado.Datos.Total_items = usuariosRepo.Datos.Total_items;
-            }
-            else
-            {
-                resultado.Correcto = false;
-                resultado.Mensaje = "Error al obtener los usuarios.";
-            }
+            var resultado = await _usuarioRepo.Obtener_por_id(usuario);
 
             return resultado;
         }
 
         public async Task<DTO<IEnumerable<Usuario>>> Obtener_todos()
         {
-            var resultado = new DTO<IEnumerable<Usuario>>();
-
-            var usuariosRepo = await _repUsuario.Obtener_todos();
-            if (usuariosRepo.Correcto && usuariosRepo.Datos != null)
-            {
-                resultado.Correcto = true;
-                resultado.Mensaje = "Usuarios obtenidos exitosamente";
-                resultado.Datos = usuariosRepo.Datos.Select(u => u.ToBusinessUsuario()).ToList();
-            }
-            else
-            {
-                resultado.Correcto = false;
-                resultado.Mensaje = usuariosRepo.Mensaje ?? "Error al obtener los usuarios.";
-                resultado.Datos = null;
-            }
-
+            var resultado = await _usuarioRepo.Obtener_todos();
             return resultado;
         }
 
-        public async Task<DTO<Usuario>> Obtener_por_id(Usuario usuario)
+        public async Task<DTO<Items_pagina<Usuario>>> Obtener_paginado(Filtros_paginado filtros)
         {
-            var usuarioData = new DTO<Usuario>();
-
-            var usuarioRepo = await _repUsuario.Obtener_por_id(usuario.ToDataUSUARIO());
-            if (usuarioRepo.Correcto && usuarioRepo.Datos != null)
-            {
-                usuarioData.Datos = usuarioRepo.Datos.ToBusinessUsuario();
-                usuarioData.Correcto = true;
-            }
-
-            return usuarioData;
+            var resultado = await _usuarioRepo.Obtener_paginado(filtros);
+            return resultado;
         }
 
         public async Task<DTO<Usuario>> Validar_credenciales(LoginModel login)
         {
-            var rta = await _repUsuario.Obtener_por_email(login.Email);
-
-            string password_hasheado = MiHash.GenerarHash(login.Password);
-
-            if (rta.Correcto && rta.Datos != null)
+            Console.WriteLine($"[BUSINESS] ========== Serv_Usuario.Validar_credenciales ==========");
+            Console.WriteLine($"[BUSINESS] Email recibido: {login?.Email ?? "null"}");
+            // NUNCA MOSTRAR LA CONTRASEÑA - Solo indicar si está presente
+            Console.WriteLine($"[BUSINESS] Password: {(string.IsNullOrWhiteSpace(login?.Password) ? "NO PROPORCIONADO" : "PROPORCIONADO")}");
+            
+            try
             {
-                if (rta.Datos.USU_PASSWORD == password_hasheado)
+                Console.WriteLine($"[BUSINESS] Llamando a _usuarioRepo.Obtener_por_email...");
+                var usuarioResult = await _usuarioRepo.Obtener_por_email(login.Email);
+                
+                Console.WriteLine($"[BUSINESS] ✓ Respuesta del repositorio recibida");
+                Console.WriteLine($"[BUSINESS] ✓ Operación correcta: {usuarioResult?.Correcto == true}");
+                Console.WriteLine($"[BUSINESS] ✓ Usuario encontrado: {usuarioResult?.Datos != null}");
+                
+                if (!usuarioResult.Correcto || usuarioResult.Datos == null)
                 {
-                    var usr = rta.Datos.ToBusinessUsuario();
+                    Console.WriteLine($"[BUSINESS] ✗ Usuario no encontrado en base de datos");
+                    Console.WriteLine($"[BUSINESS] ✗ Mensaje del repositorio: {usuarioResult?.Mensaje ?? "null"}");
+                    
+                    return new DTO<Usuario>
+                    {
+                        Correcto = false,
+                        Mensaje = "Usuario no encontrado"
+                    };
+                }
 
+                Console.WriteLine($"[BUSINESS] ✓ Usuario encontrado - ID: {usuarioResult.Datos.Id}");
+                Console.WriteLine($"[BUSINESS] ✓ Usuario encontrado - Nombre: {usuarioResult.Datos.Nombre}");
+                Console.WriteLine($"[BUSINESS] ✓ Usuario encontrado - Email: {usuarioResult.Datos.Email}");
+                Console.WriteLine($"[BUSINESS] ✓ Usuario encontrado - Activo: {usuarioResult.Datos.Activo}");
+                Console.WriteLine($"[BUSINESS] ✓ Usuario encontrado - Roles count: {usuarioResult.Datos.Roles?.Count ?? 0}");
 
+                if (usuarioResult.Datos.Roles?.Any() == true)
+                {
+                    foreach (var rol in usuarioResult.Datos.Roles)
+                    {
+                        Console.WriteLine($"[BUSINESS]   - Usuario tiene rol: {rol.Nombre}");
+                    }
+                }
+
+                // Verificar si la contraseña almacenada es bcrypt o SHA512
+                bool passwordCorrecta = false;
+                Console.WriteLine($"[BUSINESS] Iniciando verificación de contraseña...");
+                Console.WriteLine($"[BUSINESS] Hash almacenado length: {usuarioResult.Datos.Password?.Length ?? 0}");
+
+                if (MiHash.EsHashBcrypt(usuarioResult.Datos.Password))
+                {
+                    Console.WriteLine($"[BUSINESS] ✓ Password almacenado es formato BCrypt");
+                    Console.WriteLine($"[BUSINESS] Verificando con BCrypt...");
+                    
+                    // Usar verificación bcrypt
+                    passwordCorrecta = MiHash.VerificarHashBcrypt(login.Password, usuarioResult.Datos.Password);
+                    Console.WriteLine($"[BUSINESS] ✓ Verificación BCrypt completada - Resultado: {passwordCorrecta}");
+                }
+                else
+                {
+                    Console.WriteLine($"[BUSINESS] ✓ Password almacenado es formato SHA512 (legacy)");
+                    Console.WriteLine($"[BUSINESS] Verificando con SHA512...");
+                    
+                    // Compatibilidad con SHA512 existente
+                    string passwordHasheado = MiHash.GenerarHash(login.Password);
+                    passwordCorrecta = usuarioResult.Datos.Password == passwordHasheado;
+                    Console.WriteLine($"[BUSINESS] ✓ Verificación SHA512 completada - Resultado: {passwordCorrecta}");
+                    
+                    // Si la contraseña es correcta pero está en SHA512, migrar a bcrypt
+                    if (passwordCorrecta)
+                    {
+                        Console.WriteLine($"[BUSINESS] Password correcto, iniciando migración a BCrypt...");
+                        await MigrarPasswordABcrypt(usuarioResult.Datos, login.Password);
+                        Console.WriteLine($"[BUSINESS] ✓ Migración a BCrypt completada");
+                    }
+                }
+
+                if (passwordCorrecta)
+                {
+                    Console.WriteLine($"[BUSINESS] ✓ CREDENCIALES VALIDADAS CORRECTAMENTE");
+                    Console.WriteLine($"[BUSINESS] ✓ Retornando usuario completo con roles");
+                    
                     return new DTO<Usuario>
                     {
                         Correcto = true,
-                        Mensaje = "Usuario validado correctamente",
-                        Datos = usr
+                        Datos = usuarioResult.Datos,
+                        Mensaje = "Credenciales validadas correctamente."
                     };
                 }
                 else
                 {
+                    Console.WriteLine($"[BUSINESS] ✗ PASSWORD INCORRECTO");
+                    Console.WriteLine($"[BUSINESS] ✗ La contraseña no coincide con la almacenada");
+                    
                     return new DTO<Usuario>
                     {
                         Correcto = false,
-                        Mensaje = "Contraseña incorrecta"
+                        Mensaje = "Contraseña incorrecta."
                     };
                 }
             }
-            else
+            catch (Exception ex)
             {
+                Console.WriteLine($"[BUSINESS] ✗ ERROR en Validar_credenciales");
+                Console.WriteLine($"[BUSINESS] ✗ Exception: {ex.GetType().Name}");
+                Console.WriteLine($"[BUSINESS] ✗ Message: {ex.Message}");
+                Console.WriteLine($"[BUSINESS] ✗ Stack trace: {ex.StackTrace}");
+                
+                if (ex.InnerException != null)
+                {
+                    Console.WriteLine($"[BUSINESS] ✗ Inner exception: {ex.InnerException.Message}");
+                }
+                
                 return new DTO<Usuario>
                 {
                     Correcto = false,
-                    Mensaje = "Usuario no encontrado"
+                    Mensaje = $"Error interno al validar credenciales: {ex.Message}"
                 };
             }
         }
 
         public async Task<DTO<Usuario>> Obtener_por_mail(string mail)
         {
-            var usuarioData = new DTO<Usuario>();
-
-            var usuarioRepo = await _repUsuario.Obtener_por_email(mail);
-
-            if (usuarioRepo.Correcto && usuarioRepo.Datos != null)
-            {
-                usuarioData.Datos = usuarioRepo.Datos.ToBusinessUsuario();
-                usuarioData.Correcto = true;
-                usuarioData.Mensaje = "Usuario obtenido correctamente";
-            }
-
-            return usuarioData;
+            return await _usuarioRepo.Obtener_por_email(mail);
         }
 
         public async Task<DTO<bool>> Modificar_contraseña(CambioClaveModel datos)
         {
-            var rta = await _repUsuario.Obtener_por_email(datos.Email);
+            var usuarioResult = await _usuarioRepo.Obtener_por_email(datos.Email);
 
-            string password_hasheado = MiHash.GenerarHash(datos.Password);
+            if (!usuarioResult.Correcto || usuarioResult.Datos == null)
+                return new DTO<bool> { Correcto = false, Mensaje = "Usuario no encontrado." };
 
-            if (rta.Correcto && rta.Datos != null)
+            // Verificar contraseña actual (compatible con ambos formatos)
+            bool passwordActualCorrecta = false;
+
+            if (MiHash.EsHashBcrypt(usuarioResult.Datos.Password))
             {
-                if (rta.Datos.USU_PASSWORD == password_hasheado)
-                {
-                    rta.Datos.USU_PASSWORD = MiHash.GenerarHash(datos.NuevaPassword);
-
-                    rta = await _repUsuario.Actualizar(rta.Datos);
-
-                    if (rta.Correcto)
-                    {
-                        return new DTO<bool>
-                        {
-                            Correcto = true,
-                            Datos = true,
-                            Mensaje = "La contraseña se actualizó correctamente."
-                        };
-                    }
-                    else
-                    {
-                        return new DTO<bool>
-                        {
-                            Correcto = false,
-                            Datos = false,
-                            Mensaje = rta.Mensaje //error del repositorio
-                        };
-                    }
-                }
-                else
-                {
-                    return new DTO<bool>
-                    {
-                        Correcto = false,
-                        Datos = false,
-                        Mensaje = "La contraseña ingresada es incorrecta."
-                    };
-                }
+                passwordActualCorrecta = MiHash.VerificarHashBcrypt(datos.Password, usuarioResult.Datos.Password);
             }
             else
+            {
+                string passwordActualHasheada = MiHash.GenerarHash(datos.Password);
+                passwordActualCorrecta = usuarioResult.Datos.Password == passwordActualHasheada;
+            }
+
+            if (!passwordActualCorrecta)
             {
                 return new DTO<bool>
                 {
                     Correcto = false,
-                    Mensaje = "Usuario no encontrado"
+                    Datos = false,
+                    Mensaje = "Contraseña actual incorrecta."
                 };
+            }
+
+            // Siempre usar bcrypt para la nueva contraseña
+            usuarioResult.Datos.Password = MiHash.GenerarHashBcrypt(datos.NuevaPassword);
+
+            var actualizado = await _usuarioRepo.Actualizar(usuarioResult.Datos);
+
+            return new DTO<bool>
+            {
+                Correcto = actualizado.Correcto,
+                Datos = actualizado.Correcto,
+                Mensaje = actualizado.Correcto
+                    ? "Contraseña actualizada correctamente."
+                    : actualizado.Mensaje
+            };
+        }
+
+        /// <summary>
+        /// Migra una contraseña de SHA512 a bcrypt de forma transparente
+        /// </summary>
+        private async Task MigrarPasswordABcrypt(Usuario usuario, string passwordTextoPlano)
+        {
+            try
+            {
+                Console.WriteLine($"[BUSINESS] Iniciando migración de password para usuario {usuario.Id}");
+                usuario.Password = MiHash.GenerarHashBcrypt(passwordTextoPlano);
+                await _usuarioRepo.Actualizar(usuario);
+                Console.WriteLine($"[BUSINESS] ✓ Password migrado exitosamente a BCrypt");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[BUSINESS] ✗ Error en migración de password: {ex.Message}");
+                // Si falla la migración, no afectar el login
+                // Se puede loggear el error si se desea
             }
         }
     }

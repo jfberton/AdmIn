@@ -1,19 +1,70 @@
+/* Global CSS Variables */
+:root {
+    --app-primary-color: #007bff;
+    --app-primary-color-darker: #0056b3;
+    --app-secondary-color: #6c757d;
+    --app-light-bg-color: #f8f9fa;     /* Light grey for backgrounds */
+    --app-text-color: #212529;         /* Main text color */
+    --app-text-color-muted: #555;      /* Muted text color */
+    --app-success-color: #28a745;
+    --app-info-color: #17a2b8;
+    --app-warning-color: #ffc107;
+    --app-danger-color: #dc3545;
+    --app-dark-color: #343a40;
+    --app-font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    --app-border-color: #dee2e6;
+    --app-card-bg: #ffffff;
+    --app-body-bg: #eaedf1; /* Site-wide body background */
+
+    /* Layout specific - can remain here or be component-specific if they don't apply globally */
+    --app-header-bg: #2c3e50;
+    --app-sidebar-bg: #34495e;
+    --app-sidebar-text-color: #ecf0f1;
+    --app-sidebar-icon-color: #ecf0f1;
+    --app-sidebar-hover-bg: #46627f;
+    --app-sidebar-active-bg: var(--app-primary-color);
+
+    /* Card specific */
+    --app-card-shadow: 0 4px 8px rgba(0,0,0,0.05); /* Softer default shadow */
+    --app-card-hover-shadow: 0 6px 12px rgba(0,0,0,0.1);
+}
+
+body {
+    font-family: var(--app-font-family);
+    background-color: var(--app-body-bg);
+    color: var(--app-text-color);
+    margin: 0; /* Ensure no default browser margin */
+    line-height: 1.6;
+}
+
+/* Example: Global styling for Radzen Buttons to use variables if not default */
+/* This might be too broad; test carefully.
+   It's often better to let Radzen themes handle this or use more specific selectors.
+.rz-button-primary {
+    background-color: var(--app-primary-color) !important;
+}
+.rz-button-secondary {
+    background-color: var(--app-secondary-color) !important;
+    color: white !important;
+}
+*/
+
 html, body {
-    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; /* This will be overridden by the body rule above for var(--app-font-family) */
 }
 
 a, .btn-link {
-    color: #006bb7;
+    color: #006bb7; /* Consider var(--app-primary-color) */
 }
 
 .btn-primary {
     color: #fff;
-    background-color: #1b6ec2;
-    border-color: #1861ac;
+    background-color: #1b6ec2; /* Consider var(--app-primary-color) */
+    border-color: #1861ac; /* Consider var(--app-primary-color-darker) */
 }
 
 .btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
-  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb; /* Consider var(--app-primary-color) with opacity */
 }
 
 .content {
@@ -25,15 +76,15 @@ h1:focus {
 }
 
 .valid.modified:not([type=checkbox]) {
-    outline: 1px solid #26b050;
+    outline: 1px solid #26b050; /* Consider var(--app-success-color) */
 }
 
 .invalid {
-    outline: 1px solid #e50000;
+    outline: 1px solid #e50000; /* Consider var(--app-danger-color) */
 }
 
 .validation-message {
-    color: #e50000;
+    color: #e50000; /* Consider var(--app-danger-color) */
 }
 
 .blazor-error-boundary {

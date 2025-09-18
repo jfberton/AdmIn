@@ -1,0 +1,235 @@
+@page "/mi-perfil"
+@using AdmIn.Common.Entidades
+@using AdmIn.Common
+@using AdmIn.UI.Services
+@using AdmIn.UI.Services.UtilityServices
+@using AdmIn.UI.Components.Shared
+@using Microsoft.AspNetCore.Components.Authorization
+
+@inject IServ_Usuario serv_usuario
+@inject IServ_Imagen serv_imagen
+@inject AuthenticationStateProvider authStateProvider
+@inject NavigationManager navManager
+@inject NotificationService notificationService
+@inject DialogService dialogService
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Mi Perfil</PageTitle>
+
+<RadzenStack Gap="2rem" Class="p-4">
+    <!-- Header del Perfil -->
+    <RadzenCard>
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="2rem" Class="p-4">
+            <!-- Imagen de Perfil -->
+            <div class="profile-image-container">
+                <ProfilePhotoComponent Usuario="@usuarioActual" Tamaño="120" ClasesAdicionales="profile-image-large" />
+                
+                <RadzenButton ButtonStyle="ButtonStyle.Secondary" 
+                             Icon="photo_camera" 
+                             Size="ButtonSize.Small"
+                             Class="change-photo-btn"
+                             Click="@MostrarDialogoCambiarFoto"
+                             Text="Cambiar foto" />
+            </div>
+
+            <!-- Información del Usuario -->
+            <RadzenStack Gap="0.5rem" Class="flex-grow-1">
+                <RadzenText TextStyle="TextStyle.H4" Text="@usuarioActual?.Nombre" />
+                <RadzenText TextStyle="TextStyle.Subtitle1" Text="@usuarioActual?.Email" Style="color: #6b7280;" />
+                <RadzenText TextStyle="TextStyle.Body2" Text="@usuarioActual?.RolString" Style="color: #9ca3af;" />
+                
+                @if (!string.IsNullOrEmpty(usuarioActual?.Pais))
+                {
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                        <RadzenIcon Icon="place" Style="color: #9ca3af;" />
+                        <RadzenText TextStyle="TextStyle.Body2" Text="@usuarioActual.Pais" Style="color: #9ca3af;" />
+                    </RadzenStack>
+                }
+                
+                @if (!string.IsNullOrEmpty(usuarioActual?.Telefono))
+                {
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                        <RadzenIcon Icon="phone" Style="color: #9ca3af;" />
+                        <RadzenText TextStyle="TextStyle.Body2" Text="@usuarioActual.Telefono" Style="color: #9ca3af;" />
+                    </RadzenStack>
+                }
+            </RadzenStack>
+
+            <!-- Acciones -->
+            <RadzenStack Gap="0.5rem">
+                <RadzenButton ButtonStyle="ButtonStyle.Primary" 
+                             Icon="edit" 
+                             Text="Editar Perfil"
+                             Click="@MostrarDialogoEditarPerfil" />
+                
+                <RadzenButton ButtonStyle="ButtonStyle.Warning" 
+                             Icon="lock_reset" 
+                             Text="Cambiar Contraseña"
+                             Click="@CambiarPassword" />
+            </RadzenStack>
+        </RadzenStack>
+    </RadzenCard>
+
+    <!-- Información Detallada -->
+    <RadzenRow Gap="2rem">
+        <RadzenColumn Size="6">
+            <RadzenCard>
+                <RadzenText TextStyle="TextStyle.H6" Text="Información Personal" Class="mb-3" />
+                
+                <RadzenStack Gap="1rem">
+                    <div class="info-row">
+                        <RadzenText TextStyle="TextStyle.Body2" Text="Nombre completo:" Style="font-weight: 600;" />
+                        <RadzenText TextStyle="TextStyle.Body2" Text="@usuarioActual?.Nombre" />
+                    </div>
+                    
+                    <div class="info-row">
+                        <RadzenText TextStyle="TextStyle.Body2" Text="Email:" Style="font-weight: 600;" />
+                        <RadzenText TextStyle="TextStyle.Body2" Text="@usuarioActual?.Email" />
+                    </div>
+                    
+                    <div class="info-row">
+                        <RadzenText TextStyle="TextStyle.Body2" Text="País:" Style="font-weight: 600;" />
+                        <RadzenText TextStyle="TextStyle.Body2" Text="@(usuarioActual?.Pais ?? "No especificado")" />
+                    </div>
+                    
+                    <div class="info-row">
+                        <RadzenText TextStyle="TextStyle.Body2" Text="Teléfono:" Style="font-weight: 600;" />
+                        <RadzenText TextStyle="TextStyle.Body2" Text="@(usuarioActual?.Telefono ?? "No especificado")" />
+                    </div>
+                    
+                    <div class="info-row">
+                        <RadzenText TextStyle="TextStyle.Body2" Text="Fecha de registro:" Style="font-weight: 600;" />
+                        <RadzenText TextStyle="TextStyle.Body2" Text="@usuarioActual?.FechaCreacion.ToString("dd/MM/yyyy")" />
+                    </div>
+                </RadzenStack>
+            </RadzenCard>
+        </RadzenColumn>
+        
+        <RadzenColumn Size="6">
+            <RadzenCard>
+                <RadzenText TextStyle="TextStyle.H6" Text="Roles y Permisos" Class="mb-3" />
+                
+                @if (usuarioActual?.Roles?.Any() == true)
+                {
+                    <RadzenStack Gap="0.5rem">
+                        @foreach (var rol in usuarioActual.Roles)
+                        {
+                            <RadzenBadge BadgeStyle="BadgeStyle.Info" Text="@rol.Nombre" />
+                        }
+                    </RadzenStack>
+                }
+                else
+                {
+                    <RadzenText TextStyle="TextStyle.Body2" Text="Sin roles asignados" Style="color: #9ca3af;" />
+                }
+            </RadzenCard>
+        </RadzenColumn>
+    </RadzenRow>
+</RadzenStack>
+
+<style>
+    .profile-image-container {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
+    }
+    
+    .change-photo-btn {
+        margin-top: 0.5rem;
+    }
+    
+    .info-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid #f3f4f6;
+    }
+    
+    .info-row:last-child {
+        border-bottom: none;
+    }
+    
+    .mb-3 {
+        margin-bottom: 1rem;
+    }
+</style>
+
+@code {
+    private Usuario? usuarioActual;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarUsuarioActual();
+    }
+
+    private async Task CargarUsuarioActual()
+    {
+        try
+        {
+            var authState = await authStateProvider.GetAuthenticationStateAsync();
+            var userEmail = authState.User.Identity?.Name;
+            
+            if (!string.IsNullOrEmpty(userEmail))
+            {
+                var resultado = await serv_usuario.Obtener_usuario_por_email(userEmail);
+                if (resultado.Correcto)
+                {
+                    usuarioActual = resultado.Datos;
+                    StateHasChanged();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            notificationService.Notify(NotificationSeverity.Error, "Error", $"Error al cargar perfil: {ex.Message}");
+        }
+    }
+
+    private async Task MostrarDialogoCambiarFoto()
+    {
+        var result = await dialogService.OpenAsync<CambiarFotoDialog>("Cambiar Foto de Perfil",
+            new Dictionary<string, object>() { 
+                { "Usuario", usuarioActual } 
+            },
+            new DialogOptions() { Width = "500px", Height = "400px", Resizable = true, Draggable = true });
+
+        if (result == true) // Si se cambió la foto
+        {
+            await CargarUsuarioActual(); // Recargar datos
+        }
+    }
+
+    private async Task MostrarDialogoEditarPerfil()
+    {
+        var usuarioEdicion = new Usuario
+        {
+            Id = usuarioActual.Id,
+            Nombre = usuarioActual.Nombre,
+            Email = usuarioActual.Email,
+            Pais = usuarioActual.Pais,
+            Telefono = usuarioActual.Telefono
+        };
+
+        var result = await dialogService.OpenAsync<EditarPerfilDialog>("Editar Información Personal",
+            new Dictionary<string, object>() { 
+                { "Usuario", usuarioEdicion } 
+            },
+            new DialogOptions() { Width = "500px", Height = "400px", Resizable = true, Draggable = true });
+
+        if (result == true) // Si se guardaron los cambios
+        {
+            await CargarUsuarioActual(); // Recargar datos
+        }
+    }
+
+    private async Task CambiarPassword()
+    {
+        if (usuarioActual != null)
+        {
+            navManager.NavigateTo($"/usuarios/update-password/{usuarioActual.Id}/perfil");
+        }
+    }
+}

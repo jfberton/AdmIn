@@ -1,0 +1,248 @@
+@page "/caracteristicas/detalle/{id}"
+
+@inherits BaseComponent
+
+@using AdmIn.Common.Entidades
+@using AdmIn.Common
+@using AdmIn.UI.Services
+@using Microsoft.AspNetCore.Components.Authorization
+
+@inject IServ_Caracteristica serv_caracteristica;
+
+@if (caracteristica == null)
+{
+    <RadzenProgressBarCircular ProgressBarStyle="ProgressBarStyle.Primary" 
+                              Value="100" 
+                              ShowValue="false" 
+                              Mode="ProgressBarMode.Indeterminate" />
+    <p>Cargando característica...</p>
+}
+else
+{
+    <RadzenStack Gap="2rem" Class="p-4">
+        <!-- Header -->
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem">
+            <RadzenButton ButtonStyle="ButtonStyle.Light" 
+                         Icon="arrow_back" 
+                         Click="@(() => IrA("/caracteristicas"))"
+                         Size="ButtonSize.Medium" />
+            <RadzenText TextStyle="TextStyle.H4" Text="@($"Característica: {caracteristica.Nombre}")" />
+        </RadzenStack>
+
+        <!-- Breadcrumb -->
+        <RadzenBreadCrumb>
+            <RadzenBreadCrumbItem Path="/caracteristicas" Text="Características" Icon="category" />
+            <RadzenBreadCrumbItem Text="@caracteristica.Nombre" Icon="label" />
+        </RadzenBreadCrumb>
+
+        <!-- Información Principal -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-info-circle"></i> Información General
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">ID:</label>
+                        <p class="form-control-plaintext">@caracteristica.Id</p>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Nombre:</label>
+                        <p class="form-control-plaintext">@caracteristica.Nombre</p>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Tipo:</label>
+                        <div>
+                            <span class="badge bg-info fs-6">
+                                <i class="fas fa-tag me-1"></i>
+                                @caracteristica.Tipo
+                            </span>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-bold">Descripción:</label>
+                        <p class="form-control-plaintext">
+                            @if (!string.IsNullOrEmpty(caracteristica.Descripcion))
+                            {
+                                @caracteristica.Descripcion
+                            }
+                            else
+                            {
+                                <span class="text-muted">Sin descripción</span>
+                            }
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Información Técnica -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-cogs"></i> Información Técnica
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-12">
+                        <label class="form-label fw-bold">Tipo de Dato:</label>
+                        <p class="form-control-plaintext">
+                            @switch (caracteristica.Tipo.ToLower())
+                            {
+                                case "texto":
+                                    <span class="badge bg-primary">
+                                        <i class="fas fa-font me-1"></i>
+                                        Texto - Permite valores alfanuméricos
+                                    </span>
+                                    break;
+                                case "numerico":
+                                    <span class="badge bg-success">
+                                        <i class="fas fa-calculator me-1"></i>
+                                        Numérico - Permite valores numéricos
+                                    </span>
+                                    break;
+                                case "booleano":
+                                    <span class="badge bg-warning">
+                                        <i class="fas fa-toggle-on me-1"></i>
+                                        Booleano - Permite valores verdadero/falso
+                                    </span>
+                                    break;
+                                default:
+                                    <span class="badge bg-secondary">
+                                        <i class="fas fa-question me-1"></i>
+                                        @caracteristica.Tipo
+                                    </span>
+                                    break;
+                            }
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Acciones -->
+        <RadzenCard Class="actions-card">
+            <RadzenStack Orientation="Orientation.Horizontal" Gap="1rem" JustifyContent="JustifyContent.End">
+                <RadzenButton ButtonStyle="ButtonStyle.Secondary" 
+                             Icon="list" 
+                             Text="Volver al Listado" 
+                             Click="@(() => IrA("/caracteristicas"))" />
+                <AuthorizeView Roles="admin_usuario">
+                    <Authorized>
+                        <RadzenButton ButtonStyle="ButtonStyle.Primary" 
+                                     Icon="edit" 
+                                     Text="Modificar" 
+                                     Click="@(() => IrA($"/caracteristicas/modificar/{caracteristica.Id}"))" />
+                        <RadzenButton ButtonStyle="ButtonStyle.Danger" 
+                                     Icon="delete" 
+                                     Text="Eliminar" 
+                                     Click="@EliminarCaracteristica" />
+                    </Authorized>
+                </AuthorizeView>
+            </RadzenStack>
+        </RadzenCard>
+    </RadzenStack>
+}
+
+<style>
+    .detail-card {
+        background: var(--rz-panel-background-color, #fff);
+        border: 1px solid var(--rz-border-color, #e0e0e0);
+        border-radius: 8px;
+        padding: 1.5rem;
+    }
+
+    .actions-card {
+        background: #f8fafc;
+        border: 1px solid var(--rz-border-color, #e0e0e0);
+        border-radius: 8px;
+        padding: 1rem;
+    }
+
+    .detail-field {
+        margin-bottom: 1rem;
+    }
+
+    .detail-field .rz-text:first-child {
+        color: #6b7280;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.25rem;
+    }
+</style>
+
+@code {
+    Caracteristica caracteristica = new Caracteristica();
+
+    [Parameter]
+    public string id { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        await CargarCaracteristica();
+    }
+
+    private async Task CargarCaracteristica()
+    {
+        try
+        {
+            if (int.TryParse(id, out int id_caracteristica))
+            {
+                var rta_caracteristica = await serv_caracteristica.Obtener_por_id(id_caracteristica);
+                if (rta_caracteristica.Correcto && rta_caracteristica.Datos != null)
+                {
+                    caracteristica = rta_caracteristica.Datos;
+                    base.EstablecerTituloPagina("Características", $"Detalle: {caracteristica.Nombre}");
+                }
+                else
+                {
+                    base.MostrarNotificacion(NotificationSeverity.Error, "Error!", "No se pudo cargar la característica", "/caracteristicas");
+                }
+            }
+            else
+            {
+                base.MostrarNotificacion(NotificationSeverity.Error, "Error!", "ID de característica inválido", "/caracteristicas");
+            }
+        }
+        catch (Exception ex)
+        {
+            base.MostrarNotificacion(NotificationSeverity.Error, "Error!", $"Error al cargar característica: {ex.Message}", "/caracteristicas");
+        }
+    }
+
+    private async Task EliminarCaracteristica()
+    {
+        if (caracteristica == null) return;
+
+        try
+        {
+            var confirmResult = await base.MostrarConfirmacion(
+                $"¿Está seguro de eliminar la característica '{caracteristica.Nombre}'?", 
+                "Confirmar eliminación");
+
+            if (confirmResult == true)
+            {
+                var rta = await serv_caracteristica.Eliminar(caracteristica.Id);
+
+                if (rta.Correcto)
+                {
+                    base.MostrarNotificacion(NotificationSeverity.Success, "Éxito!", 
+                        "Característica eliminada correctamente", "/caracteristicas");
+                }
+                else
+                {
+                    base.MostrarNotificacion(NotificationSeverity.Error, "Error!", rta.Mensaje);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            base.MostrarNotificacion(NotificationSeverity.Error, "Error!", 
+                $"Error al eliminar característica: {ex.Message}");
+        }
+    }
+}

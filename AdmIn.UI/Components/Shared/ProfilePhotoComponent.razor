@@ -1,0 +1,108 @@
+@using AdmIn.Common.Entidades
+
+@* Debug info temporal *@
+@if (false) // Cambiar a true para debug
+{
+    <div style="position: absolute; z-index: 9999; background: red; color: white; padding: 2px; font-size: 8px;">
+        Usuario: @(Usuario?.Nombre ?? "NULL")<br/>
+        URL: @(Usuario?.ObtenerUrlImagenPerfil() ?? "NULL")<br/>
+        Placeholder: @EsPlaceholder
+    </div>
+}
+
+@if (!string.IsNullOrEmpty(Usuario?.ObtenerUrlImagenPerfil()) && !EsPlaceholder)
+{
+    <RadzenImage class="@GetClasses()" 
+                Path="@Usuario.ObtenerUrlImagenPerfil()" 
+                Alt="@(Usuario.Nombre ?? "Usuario")"
+                Style="@GetStyles()" />
+}
+else
+{
+    <div class="@GetPlaceholderClasses()" style="@GetStyles()">
+        <RadzenIcon Icon="@Icono" Style="@GetIconStyles()" />
+    </div>
+}
+
+@code {
+    [Parameter] public Usuario? Usuario { get; set; }
+    [Parameter] public int Tamaño { get; set; } = 32;
+    [Parameter] public bool Circular { get; set; } = true;
+    [Parameter] public string Icono { get; set; } = "account_circle";
+    [Parameter] public string ClasesAdicionales { get; set; } = "";
+    [Parameter] public bool MostrarBorde { get; set; } = true;
+    [Parameter] public string ColorBorde { get; set; } = "#e5e7eb";
+    [Parameter] public string ColorFondo { get; set; } = "#f3f4f6";
+
+    private bool EsPlaceholder => string.IsNullOrEmpty(Usuario?.ObtenerUrlImagenPerfil());
+
+    private string GetClasses()
+    {
+        var clases = new List<string> { "profile-photo" };
+        
+        if (Circular) clases.Add("profile-photo-circular");
+        if (MostrarBorde) clases.Add("profile-photo-border");
+        if (!string.IsNullOrEmpty(ClasesAdicionales)) clases.Add(ClasesAdicionales);
+        
+        return string.Join(" ", clases);
+    }
+
+    private string GetPlaceholderClasses()
+    {
+        var clases = new List<string> { "profile-photo-placeholder" };
+        
+        if (Circular) clases.Add("profile-photo-circular");
+        if (MostrarBorde) clases.Add("profile-photo-border");
+        if (!string.IsNullOrEmpty(ClasesAdicionales)) clases.Add(ClasesAdicionales);
+        
+        return string.Join(" ", clases);
+    }
+
+    private string GetStyles()
+    {
+        var estilos = new List<string>
+        {
+            $"width: {Tamaño}px",
+            $"height: {Tamaño}px"
+        };
+
+        if (MostrarBorde)
+        {
+            estilos.Add($"border: 2px solid {ColorBorde}");
+        }
+
+        if (EsPlaceholder)
+        {
+            estilos.Add($"background: {ColorFondo}");
+        }
+
+        return string.Join("; ", estilos);
+    }
+
+    private string GetIconStyles()
+    {
+        var iconSize = (int)(Tamaño * 0.6); // Icono al 60% del tamaño del contenedor
+        return $"font-size: {iconSize}px; color: #6b7280;";
+    }
+}
+
+<style>
+    .profile-photo {
+        object-fit: cover;
+        display: inline-block;
+    }
+    
+    .profile-photo-circular {
+        border-radius: 50%;
+    }
+    
+    .profile-photo-placeholder {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .profile-photo-border {
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+</style>

@@ -1,4 +1,4 @@
-﻿using AdmIn.Business.Entidades;
+﻿using AdmIn.Common.Entidades;
 using AdmIn.Common;
 
 namespace AdmIn.UI.Services

@@ -1,0 +1,587 @@
+﻿@using AdmIn.Common.Entidades
+@using Radzen.Blazor
+
+<RadzenCard class="modern-property-card">
+    <Header>
+        <div class="property-image-container">
+            @if (Inmueble.ImagenPrincipal != null)
+            {
+                <img src="@Inmueble.ImagenPrincipal.Url" 
+                     class="property-image" 
+                     alt="@Inmueble.Nombre" />
+                <div class="image-overlay">
+                    <div class="overlay-gradient"></div>
+                    <!-- Mostrar condición en overlay solo si existe -->
+                    @if (Inmueble.Condicion != null && !string.IsNullOrEmpty(Inmueble.Condicion.Nombre))
+                    {
+                        <div class="property-status-overlay">
+                            <RadzenBadge Text="@GetCondicionTexto()"
+                                         BadgeStyle="@GetBadgeStylePorCondicion()"
+                                         class="status-badge-overlay" 
+                                         style="@GetBadgeStyle()" />
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="property-image-placeholder">
+                    <div class="placeholder-content">
+                        <RadzenIcon Icon="home" class="placeholder-icon" />
+                        <span class="placeholder-text">Sin imagen disponible</span>
+                    </div>
+                    <!-- Mostrar condición en placeholder solo si existe -->
+                    @if (Inmueble.Condicion != null && !string.IsNullOrEmpty(Inmueble.Condicion.Nombre))
+                    {
+                        <div class="property-status-overlay">
+                            <RadzenBadge Text="@GetCondicionTexto()"
+                                         BadgeStyle="@GetBadgeStylePorCondicion()"
+                                         class="status-badge-overlay" 
+                                         style="@GetBadgeStyle()" />
+                        </div>
+                    }
+                </div>
+            }
+            
+            <!-- Indicador de precio destacado -->
+            <div class="price-tag">
+                <span class="price-amount">@Inmueble.Valor.ToString("C")</span>
+            </div>
+
+            <!-- Indicador de múltiples imágenes -->
+            @if (Inmueble.Imagenes?.Count > 1)
+            {
+                <div class="images-count-badge">
+                    <RadzenIcon Icon="photo_library" class="images-icon" />
+                    <span>@Inmueble.Imagenes.Count</span>
+                </div>
+            }
+        </div>
+    </Header>
+    
+    <Content>
+        <div class="property-content">
+            <!-- Header de la propiedad -->
+            <div class="property-header">
+                <h3 class="property-title">
+                    <RadzenIcon Icon="business" class="title-icon" />
+                    @TruncateText(Inmueble.Nombre, 30)
+                </h3>
+                <div class="property-id-badge">ID: @Inmueble.Id</div>
+            </div>
+            
+            <!-- Descripción principal -->
+            <div class="property-description">
+                <p class="description-main">@TruncateDescription(Inmueble.Descripcion)</p>
+            </div>
+            
+            <!-- Información de ubicación -->
+            <div class="property-location">
+                <RadzenIcon Icon="location_on" class="location-icon" />
+                <span class="location-text">@TruncateText($"{Inmueble.Ciudad}, {Inmueble.Estado}", 35)</span>
+            </div>
+            
+            <!-- Mostrar características principales si existen -->
+            @if (Inmueble.Caracteristicas?.Any() == true)
+            {
+                <div class="property-characteristics">
+                    <RadzenIcon Icon="featured_play_list" class="characteristics-icon" />
+                    <span class="characteristics-count">@Inmueble.Caracteristicas.Count características</span>
+                </div>
+            }
+            
+            <!-- Condición operativa de la propiedad - Solo mostrar si existe -->
+            @if (Inmueble.Condicion != null && !string.IsNullOrEmpty(Inmueble.Condicion.Nombre))
+            {
+                <div class="property-status-section">
+                    <div class="status-indicator-wrapper">
+                        <div class="status-badge-container">
+                            <span class="status-dot @GetStatusDotClass()"></span>
+                            <RadzenBadge Text="@GetCondicionTexto()"
+                                         BadgeStyle="@GetBadgeStylePorCondicion()"
+                                         class="status-badge" 
+                                         style="@GetBadgeStyle()" />
+                        </div>
+                        @if (!string.IsNullOrEmpty(GetCondicionDescripcion()))
+                        {
+                            <RadzenText TextStyle="TextStyle.Caption" class="status-description">
+                                @GetCondicionDescripcion()
+                            </RadzenText>
+                        }
+                    </div>
+                </div>
+            }
+            
+            <!-- Botones de acción -->
+            <div class="property-actions">
+                <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" JustifyContent="JustifyContent.SpaceBetween" Wrap="FlexWrap.Wrap">
+                    <RadzenButton Text="Ver Detalles" 
+                                 Icon="visibility" 
+                                 ButtonStyle="ButtonStyle.Primary" 
+                                 Size="ButtonSize.Small"
+                                 Click="@(() => VerDetalle(Inmueble.Id))" />
+                    
+                    <!-- Botones de gestión - Solo mostrar si está autorizado -->
+                    @if (MostrarBotonesGestion)
+                    {
+                        <RadzenStack Orientation="Orientation.Horizontal" Gap="0.25rem">
+                            <RadzenButton Text="Características" 
+                                         Icon="featured_play_list" 
+                                         ButtonStyle="ButtonStyle.Info" 
+                                         Size="ButtonSize.Small"
+                                         Disabled="@gestionandoCaracteristicas"
+                                         IsBusy="@gestionandoCaracteristicas"
+                                         Click="@(() => GestionarCaracteristicas())" />
+                            <RadzenButton Text="Imágenes" 
+                                         Icon="photo_library" 
+                                         ButtonStyle="ButtonStyle.Secondary" 
+                                         Size="ButtonSize.Small"
+                                         Disabled="@gestionandoImagenes"
+                                         IsBusy="@gestionandoImagenes"
+                                         Click="@(() => GestionarImagenes())" />
+                        </RadzenStack>
+                    }
+                </RadzenStack>
+            </div>
+            
+            <!-- Footer con precio -->
+            <div class="property-footer">
+                <div class="property-price-footer">
+                    <span class="price-label">Precio</span>
+                    <span class="price-value">@Inmueble.Valor.ToString("C")</span>
+                </div>
+            </div>
+        </div>
+    </Content>
+</RadzenCard>
+
+<style>
+    .modern-property-card {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        transition: all 0.3s ease;
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    .modern-property-card:hover {
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        transform: translateY(-2px);
+    }
+
+    .property-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        padding: 1rem;
+    }
+
+    .property-header {
+        margin-bottom: 0.75rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+    }
+
+    .property-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin: 0;
+        color: #333;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex: 1;
+        min-height: 1.5rem;
+    }
+
+    .title-icon {
+        color: var(--rz-primary, #007acc);
+        font-size: 1.2rem;
+    }
+
+    .property-id-badge {
+        background: #f0f4f8;
+        color: #64748b;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+
+    .property-description {
+        margin-bottom: 0.75rem;
+        flex-grow: 1;
+    }
+
+    .description-main {
+        margin: 0;
+        color: #666;
+        font-size: 0.875rem;
+        line-height: 1.4;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        min-height: 2.4rem; /* Aproximadamente 2 líneas */
+        max-height: 2.4rem;
+    }
+
+    .property-location {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.75rem;
+        padding: 0.5rem;
+        background: #f8fafc;
+        border-radius: 6px;
+    }
+
+    .location-icon {
+        color: var(--rz-warning, #ff9800);
+        font-size: 1rem;
+        flex-shrink: 0;
+    }
+
+    .location-text {
+        font-size: 0.875rem;
+        color: #475569;
+        font-weight: 500;
+    }
+
+    .property-characteristics {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin: 0.75rem 0;
+        padding: 0.5rem;
+        background-color: var(--rz-info-lighter, #e3f2fd);
+        border-radius: 6px;
+        border-left: 3px solid var(--rz-info, #2196f3);
+    }
+
+    .characteristics-icon {
+        color: var(--rz-info, #2196f3);
+        font-size: 1rem;
+    }
+
+    .characteristics-count {
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: var(--rz-info-dark, #1976d2);
+    }
+
+    .property-status-section {
+        margin-bottom: 1rem;
+    }
+
+    .status-indicator-wrapper {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .status-badge-container {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .status-description {
+        color: #6b7280;
+        font-style: italic;
+        font-size: 0.75rem;
+        margin-top: 0.25rem;
+    }
+
+    .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        display: inline-block;
+        flex-shrink: 0;
+    }
+
+    .status-available { background-color: #10b981; }
+    .status-occupied { background-color: #374151; }
+    .status-reserved { background-color: #3b82f6; }
+    .status-maintenance { background-color: #f59e0b; }
+    .status-default { background-color: #6b7280; }
+
+    .property-actions {
+        margin-top: auto;
+        padding-top: 0.75rem;
+        border-top: 1px solid var(--rz-border-color, #e0e0e0);
+    }
+
+    .property-footer {
+        margin-top: 0.5rem;
+        padding-top: 0.5rem;
+    }
+
+    .property-price-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .price-label {
+        font-size: 0.875rem;
+        color: var(--rz-text-secondary-color, #666);
+        font-weight: 500;
+    }
+
+    .price-value {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--rz-success, #4caf50);
+    }
+
+    .images-count-badge {
+        position: absolute;
+        bottom: 8px;
+        left: 8px;
+        background: rgba(0,0,0,0.8);
+        color: white;
+        padding: 4px 8px;
+        border-radius: 16px;
+        font-size: 0.75rem;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .images-icon {
+        font-size: 0.875rem;
+    }
+
+    .property-image-container {
+        position: relative;
+        height: 200px;
+        overflow: hidden;
+    }
+
+    .property-image {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.3s ease;
+    }
+
+    .property-image:hover {
+        transform: scale(1.05);
+    }
+
+    .property-image-placeholder {
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, #f0f0f0 0%, #e0e0e0 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+    }
+
+    .placeholder-content {
+        text-align: center;
+        color: #999;
+    }
+
+    .placeholder-icon {
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .placeholder-text {
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+
+    .price-tag {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        background: var(--rz-success, #4caf50);
+        color: white;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 0.875rem;
+        box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+    }
+
+    .image-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        pointer-events: none;
+    }
+
+    .overlay-gradient {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 50%;
+        background: linear-gradient(transparent, rgba(0,0,0,0.6));
+    }
+
+    .property-status-overlay {
+        position: absolute;
+        bottom: 8px;
+        right: 8px;
+    }
+
+    .status-badge-overlay {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+    }
+</style>
+
+@code {
+    [Parameter]
+    public Inmueble Inmueble { get; set; } = new();
+
+    [Parameter]
+    public EventCallback<int> OnVerDetalle { get; set; }
+
+    [Parameter]
+    public EventCallback<Inmueble> OnGestionarCaracteristicas { get; set; }
+
+    [Parameter]
+    public EventCallback<Inmueble> OnGestionarImagenes { get; set; }
+
+    /// <summary>
+    /// Determina si se muestran los botones de gestión (Características e Imágenes)
+    /// Esto debería basarse en los permisos del usuario actual
+    /// </summary>
+    [Parameter]
+    public bool MostrarBotonesGestion { get; set; } = false;
+
+    // Variables para evitar múltiples clicks
+    private bool gestionandoCaracteristicas = false;
+    private bool gestionandoImagenes = false;
+
+    private async Task VerDetalle(int inmuebleId)
+    {
+        await OnVerDetalle.InvokeAsync(inmuebleId);
+    }
+
+    private async Task GestionarCaracteristicas()
+    {
+        if (gestionandoCaracteristicas) return; // Evitar múltiples clicks
+        
+        try
+        {
+            gestionandoCaracteristicas = true;
+            StateHasChanged();
+            
+            await OnGestionarCaracteristicas.InvokeAsync(Inmueble);
+        }
+        finally
+        {
+            gestionandoCaracteristicas = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task GestionarImagenes()
+    {
+        if (gestionandoImagenes) return; // Evitar múltiples clicks
+        
+        try
+        {
+            gestionandoImagenes = true;
+            StateHasChanged();
+            
+            await OnGestionarImagenes.InvokeAsync(Inmueble);
+        }
+        finally
+        {
+            gestionandoImagenes = false;
+            StateHasChanged();
+        }
+    }
+
+    private string GetCondicionTexto()
+    {
+        return Inmueble.Condicion?.Nombre ?? "";
+    }
+
+    private string GetCondicionDescripcion()
+    {
+        return Inmueble.Condicion?.Descripcion ?? "";
+    }
+
+    private BadgeStyle GetBadgeStylePorCondicion()
+    {
+        var condicionNombre = Inmueble.Condicion?.Nombre?.ToLower();
+        return condicionNombre switch
+        {
+            "disponible" => BadgeStyle.Success,
+            "ocupado" => BadgeStyle.Dark,
+            "reservado" => BadgeStyle.Info,
+            "en reparación" or "en reparacion" => BadgeStyle.Warning,
+            "en mantenimiento" => BadgeStyle.Secondary,
+            _ => BadgeStyle.Light
+        };
+    }
+    
+    private string GetStatusDotClass()
+    {
+        var condicionNombre = Inmueble.Condicion?.Nombre?.ToLower();
+        return condicionNombre switch
+        {
+            "disponible" => "status-available",
+            "ocupado" => "status-occupied", 
+            "reservado" => "status-reserved",
+            "en reparación" or "en reparacion" => "status-maintenance",
+            "en mantenimiento" => "status-maintenance",
+            _ => "status-default"
+        };
+    }
+
+    private string GetBadgeStyle()
+    {
+        var color = Inmueble.Condicion?.Color;
+        if (!string.IsNullOrEmpty(color))
+        {
+            return $"background-color: {color}; border-color: {color};";
+        }
+        return "";
+    }
+
+    private string TruncateText(string text, int maxLength)
+    {
+        if (string.IsNullOrEmpty(text)) return "";
+        
+        if (text.Length <= maxLength) return text;
+        
+        return text.Substring(0, maxLength).TrimEnd() + "...";
+    }
+
+    private string TruncateDescription(string description)
+    {
+        if (string.IsNullOrEmpty(description)) return "";
+        
+        // Aproximadamente 80-100 caracteres para 2 líneas
+        const int maxChars = 90;
+        
+        if (description.Length <= maxChars) return description;
+        
+        // Buscar el último espacio antes del límite para no cortar palabras
+        int lastSpace = description.LastIndexOf(' ', maxChars);
+        if (lastSpace > maxChars - 20) // Si el último espacio está muy cerca del límite
+        {
+            return description.Substring(0, lastSpace).TrimEnd() + "...";
+        }
+        else
+        {
+            return description.Substring(0, maxChars).TrimEnd() + "...";
+        }
+    }
+}

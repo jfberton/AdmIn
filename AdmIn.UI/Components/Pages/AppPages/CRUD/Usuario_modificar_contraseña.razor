@@ -1,8 +1,8 @@
 ﻿@page "/usuarios/update-password/{id}/{origin}"
 @inherits BaseComponent
 
-@using AdmIn.Business.Entidades
-@using AdmIn.Business.Utilidades
+@using AdmIn.Common.Entidades
+@using AdmIn.Common.Utilidades
 @using System.Text.RegularExpressions
 @using AdmIn.Common
 @using AdmIn.UI.Services
@@ -156,6 +156,15 @@
         }
         else if (origin == "home")
         {
+            base.IrA("/home");
+        }
+        else if (origin == "perfil")
+        {
+            base.IrA("/mi-perfil");
+        }
+        else
+        {
+            // Por defecto, ir al home
             base.IrA("/home");
         }
     }

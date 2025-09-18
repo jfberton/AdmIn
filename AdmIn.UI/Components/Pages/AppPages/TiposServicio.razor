@@ -1,0 +1,189 @@
+@page "/tipos-servicio"
+
+@inherits BaseComponent
+
+@using AdmIn.Common.Entidades
+@using AdmIn.Common
+@using AdmIn.UI.Services
+@using AdmIn.UI.Services.UtilityServices
+@using Microsoft.AspNetCore.Components.Authorization
+
+@inject IServ_TipoServicio Serv_tipoServicio;
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3>Gestión de Tipos de Servicio</h3>
+    <button class="btn btn-primary" @onclick="NuevoTipoServicio">
+        <i class="fas fa-plus"></i> Nuevo Tipo de Servicio
+    </button>
+</div>
+
+<!-- Filtros Avanzados -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label">Buscar:</label>
+                <input type="text" class="form-control" @bind="filtroTexto"
+                       @onkeypress="@(async (e) => { if (e.Key == "Enter") await RecargarGrilla(); })"
+                       placeholder="Nombre o descripción..." />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Ordenar por:</label>
+                <select class="form-select" @bind="ordenarPor" @bind:after="RecargarGrilla">
+                    <option value="Nombre">Nombre</option>
+                    <option value="Descripcion">Descripción</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Por página:</label>
+                <select class="form-select" @bind="tamanioPagina" @bind:after="RecargarGrilla">
+                    <option value="5">5</option>
+                    <option value="10">10</option>
+                    <option value="25">25</option>
+                    <option value="50">50</option>
+                </select>
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+                <button class="btn btn-outline-primary w-100" @onclick="RecargarGrilla">
+                    <i class="fas fa-search"></i> Buscar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<RadzenDataGrid class="rz-m-2" @ref="grilla" IsLoading=@isLoading Count="@count" Data="@items" EmptyText="No hay registros para mostrar"
+LoadData="@LoadData" AllowSorting="false" AllowFiltering="false" AllowPaging="true" PageSize="@tamanioPagina"
+PagerHorizontalAlign="HorizontalAlign.Center" TItem="TipoServicio">
+    <Columns>
+        <RadzenDataGridColumn TItem="TipoServicio" Property="Nombre" Title="Nombre" MinWidth="200px" />
+        <RadzenDataGridColumn TItem="TipoServicio" Property="Descripcion" Title="Descripción" MinWidth="300px">
+            <Template Context="tipoServicio">
+                @if (!string.IsNullOrWhiteSpace(tipoServicio.Descripcion))
+                {
+                    <span>@tipoServicio.Descripcion</span>
+                }
+                else
+                {
+                    <em class="text-muted">Sin descripción</em>
+                }
+            </Template>
+        </RadzenDataGridColumn>
+        <RadzenDataGridColumn Width="250px" TItem="TipoServicio" Context="tipoServicio" MinWidth="250px">
+            <Template>
+                <MiRadzenButton ButtonStyle="ButtonStyle.Primary" Variant="Variant.Outlined" Shade="Shade.Lighter" Title="Ver" Icon="visibility" Size="ButtonSize.ExtraSmall" OnClick=@(() => Ver(tipoServicio)) />
+                <AuthorizeView Roles="admin_usuario">
+                    <Authorized>
+                        <MiRadzenButton ButtonStyle="ButtonStyle.Primary" Variant="Variant.Outlined" Shade="Shade.Lighter" Title="Editar" Icon="edit" Size="ButtonSize.ExtraSmall" OnClick=@(() => Editar(tipoServicio)) />
+                        <MiRadzenButton ButtonStyle="ButtonStyle.Danger" Variant="Variant.Outlined" Shade="Shade.Lighter" Title="Eliminar" Icon="delete" Size="ButtonSize.ExtraSmall" OnClick=@(() => Eliminar(tipoServicio)) />
+                    </Authorized>
+                </AuthorizeView>
+            </Template>
+        </RadzenDataGridColumn>
+    </Columns>
+</RadzenDataGrid>
+
+@code {
+    RadzenDataGrid<TipoServicio> grilla;
+
+    bool isLoading = false;
+    int count;
+    IEnumerable<TipoServicio> items;
+    
+    // Filtros avanzados
+    string filtroTexto = "";
+    string ordenarPor = "Nombre";
+    int tamanioPagina = 10;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        base.EstablecerTituloPagina("Tipos de Servicio", "Listado");
+    }
+
+    async Task LoadData(LoadDataArgs args)
+    {
+        isLoading = true;
+
+        try
+        {
+            Filtros_paginado filtros = new Filtros_paginado
+            {
+                Skip = args.Skip.HasValue ? args.Skip.Value : 0,
+                Top = args.Top.HasValue ? args.Top.Value : tamanioPagina,
+                OrderBy = ordenarPor,
+                Filter = filtroTexto
+            };
+
+            var rta = await Serv_tipoServicio.Obtener_paginado(filtros);
+
+            if (rta.Correcto)
+            {
+                items = rta.Datos.Items;
+                count = rta.Datos.Total_items;
+            }
+            else
+            {
+                base.MostrarNotificacion(NotificationSeverity.Error, "Error!", rta.Mensaje);
+            }
+        }
+        catch (Exception ex)
+        {
+            base.MostrarNotificacion(NotificationSeverity.Error, "Error!", $"Error al cargar tipos de servicio: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    async Task RecargarGrilla()
+    {
+        if (grilla != null)
+        {
+            await grilla.FirstPage();
+        }
+    }
+
+    void NuevoTipoServicio()
+    {
+        base.IrA("/tipos-servicio/nuevo");
+    }
+
+    void Ver(TipoServicio tipoServicio)
+    {
+        base.IrA($"/tipos-servicio/detalle/{tipoServicio.Id}");
+    }
+
+    void Editar(TipoServicio tipoServicio)
+    {
+        base.IrA($"/tipos-servicio/modificar/{tipoServicio.Id}");
+    }
+
+    async Task Eliminar(TipoServicio tipoServicio)
+    {
+        try
+        {
+            var confirmResult = await base.MostrarConfirmacion("¿Está seguro de eliminar el tipo de servicio '" + tipoServicio.Nombre + "'?", "Confirmar eliminación");
+
+            if (confirmResult == true)
+            {
+                var rta = await Serv_tipoServicio.Eliminar(tipoServicio.Id);
+
+                if (rta.Correcto)
+                {
+                    base.MostrarNotificacion(NotificationSeverity.Success, "Éxito!", "Tipo de servicio eliminado correctamente");
+                    await grilla.Reload();
+                }
+                else
+                {
+                    base.MostrarNotificacion(NotificationSeverity.Error, "Error!", rta.Mensaje);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            base.MostrarNotificacion(NotificationSeverity.Error, "Error!", $"Error al eliminar tipo de servicio: {ex.Message}");
+        }
+    }
+}

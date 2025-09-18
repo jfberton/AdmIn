@@ -2,7 +2,7 @@
 
 @inherits BaseComponent
 
-@using AdmIn.Business.Entidades
+@using AdmIn.Common.Entidades
 @using AdmIn.Common
 @using AdmIn.UI.Services
 @using AdmIn.UI.Services.UtilityServices
@@ -10,48 +10,404 @@
 
 @inject IServ_Usuario Serv_usuario;
 
-<MiRadzenButton ButtonStyle="ButtonStyle.Primary" Text="Agregar usuario" OnClick="@(() =>Agregar())" />
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3>Gestión de Usuarios</h3>
+    <button class="btn btn-primary" @onclick="NuevoUsuario">
+        <i class="fas fa-plus"></i> Nuevo Usuario
+    </button>
+</div>
 
-<RadzenDataGrid class="rz-m-2" @ref="grilla" IsLoading=@isLoading Count="@count" Data="@items" EmptyText="No hay registros para mostrar"
-LoadData="@LoadData" AllowSorting="true" AllowFiltering="true" FilterMode="FilterMode.Simple" AllowPaging="true" PageSize="5"
+<!-- Filtros Avanzados -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label">Buscar:</label>
+                <input type="text" class="form-control" @bind="filtroTexto" 
+                       @onkeypress="@(async (e) => { if (e.Key == "Enter") await RecargarGrilla(); })"
+                       placeholder="Nombre, email o teléfono..." />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Ordenar por:</label>
+                <select class="form-select" @bind="ordenarPor" @bind:after="RecargarGrilla">
+                    <option value="Nombre">Nombre</option>
+                    <option value="Email">Email</option>
+                    <option value="FechaCreacion">Fecha Creación</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Estado:</label>
+                <select class="form-select" @bind="filtroEstado" @bind:after="RecargarGrilla">
+                    <option value="todos">Todos</option>
+                    <option value="activos">Activos</option>
+                    <option value="inactivos">Inactivos</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Por página:</label>
+                <select class="form-select" @bind="tamanioPagina" @bind:after="RecargarGrilla">
+                    <option value="5">5</option>
+                    <option value="10">10</option>
+                    <option value="25">25</option>
+                    <option value="50">50</option>
+                </select>
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button class="btn btn-outline-primary w-100" @onclick="RecargarGrilla">
+                    <i class="fas fa-search"></i> Buscar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<RadzenDataGrid class="rz-m-2 modern-grid" @ref="grilla" IsLoading=@isLoading Count="@count" Data="@items" EmptyText="No hay registros para mostrar"
+LoadData="@LoadData" AllowSorting="false" AllowFiltering="false" AllowPaging="true" PageSize="@tamanioPagina"
 PagerHorizontalAlign="HorizontalAlign.Center" TItem="Usuario">
     <Columns>
-        <RadzenDataGridColumn TItem="Usuario" Property="Nombre" Title="Nombre" MinWidth="200px" />
-        <RadzenDataGridColumn TItem="Usuario" Title="Activo" MinWidth="200px" Filterable="false">
-            <Template Context="usu">
-                <RadzenCheckBox @bind-Value="usu.Activo" Disabled="true" />
+        <RadzenDataGridColumn TItem="Usuario" Width="60px" Title="ID" MinWidth="60px" Sortable="false">
+            <Template Context="usuario">
+                <div class="id-cell">
+                    @usuario.Id
+                </div>
             </Template>
         </RadzenDataGridColumn>
-        <RadzenDataGridColumn TItem="Usuario" Property="Email" Title="Email" MinWidth="200px" />
-        <RadzenDataGridColumn TItem="Usuario" Property="RolString" Title="Roles" MinWidth="200px" />
-        <RadzenDataGridColumn Width="200px" TItem="Usuario" Context="usu" MinWidth="200px">
-            <Template>
-                <MiRadzenButton ButtonStyle="ButtonStyle.Primary" Variant="Variant.Outlined" Shade="Shade.Lighter" Title="Ver" Icon="visibility" Size="ButtonSize.ExtraSmall" OnClick=@(() => Ver(usu)) />
-                <AuthorizeView Roles="admin_usuario">
-                    <Authorized>
-                        <MiRadzenButton ButtonStyle="ButtonStyle.Success" Variant="Variant.Outlined" Shade="Shade.Lighter" Title="Modificar" Icon="edit" Size="ButtonSize.ExtraSmall" OnClick=@(() => Modificar(usu)) />
-                        <MiRadzenButton ButtonStyle="ButtonStyle.Success" Variant="Variant.Outlined" Shade="Shade.Lighter" Title="Modificar contraseña" Icon="password" Size="ButtonSize.ExtraSmall" OnClick=@(() => ModificarContraseña(usu)) />
-                        <MiRadzenButton ButtonStyle="ButtonStyle.Danger" Variant="Variant.Outlined" Shade="Shade.Lighter" Title="Eliminar" Icon="delete" Size="ButtonSize.ExtraSmall" OnClick=@(() => Eliminar(usu)) />
-                    </Authorized>
-                </AuthorizeView>
+        
+        <RadzenDataGridColumn TItem="Usuario" Width="80px" Title="Foto" MinWidth="80px" Sortable="false">
+            <Template Context="usuario">
+                <div class="photo-cell">
+                    @{
+                        var urlImagen = ObtenerUrlImagenPerfil(usuario);
+                    }
+                    @if (!string.IsNullOrEmpty(urlImagen))
+                    {
+                        <img src="@urlImagen" 
+                             alt="@usuario.Nombre" 
+                             class="profile-photo"
+                             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+                        <div class="profile-photo-placeholder" style="display: none;">
+                            <i class="fas fa-user"></i>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="profile-photo-placeholder">
+                            <i class="fas fa-user"></i>
+                        </div>
+                    }
+                </div>
+            </Template>
+        </RadzenDataGridColumn>
+        
+        <RadzenDataGridColumn TItem="Usuario" Title="Nombre" MinWidth="180px">
+            <Template Context="usuario">
+                <div class="name-cell">
+                    <strong>@usuario.Nombre</strong>
+                </div>
+            </Template>
+        </RadzenDataGridColumn>
+        
+        <RadzenDataGridColumn TItem="Usuario" Title="Email" MinWidth="220px">
+            <Template Context="usuario">
+                <div class="email-cell">
+                    @if (!string.IsNullOrEmpty(usuario.Email))
+                    {
+                        <a href="mailto:@usuario.Email" class="email-link">@usuario.Email</a>
+                    }
+                    else
+                    {
+                        <span class="text-muted">No especificado</span>
+                    }
+                </div>
+            </Template>
+        </RadzenDataGridColumn>
+        
+        <RadzenDataGridColumn TItem="Usuario" Title="País" MinWidth="120px">
+            <Template Context="usuario">
+                <div class="country-cell">
+                    @if (!string.IsNullOrEmpty(usuario.Pais))
+                    {
+                        <span class="country-badge">@usuario.Pais</span>
+                    }
+                    else
+                    {
+                        <span class="text-muted">No especificado</span>
+                    }
+                </div>
+            </Template>
+        </RadzenDataGridColumn>
+        
+        <RadzenDataGridColumn TItem="Usuario" Title="Teléfono" MinWidth="140px">
+            <Template Context="usuario">
+                <div class="phone-cell">
+                    @if (!string.IsNullOrEmpty(usuario.Telefono))
+                    {
+                        <a href="tel:@usuario.Telefono" class="phone-link">@usuario.Telefono</a>
+                    }
+                    else
+                    {
+                        <span class="text-muted">No especificado</span>
+                    }
+                </div>
+            </Template>
+        </RadzenDataGridColumn>
+        
+        <RadzenDataGridColumn TItem="Usuario" Title="Moneda" MinWidth="100px" Sortable="false">
+            <Template Context="usuario">
+                <div class="currency-cell">
+                    @if (usuario.Moneda != null)
+                    {
+                        <span class="currency-badge">@usuario.Moneda.Codigo</span>
+                    }
+                    else
+                    {
+                        <span class="text-muted">No asignada</span>
+                    }
+                </div>
+            </Template>
+        </RadzenDataGridColumn>
+        
+        <RadzenDataGridColumn TItem="Usuario" Title="Estado" MinWidth="100px" Sortable="false">
+            <Template Context="usuario">
+                <div class="status-cell">
+                    <span class="badge status-badge @(usuario.Activo ? "bg-success" : "bg-secondary")">
+                        @(usuario.Activo ? "Activo" : "Inactivo")
+                    </span>
+                </div>
+            </Template>
+        </RadzenDataGridColumn>
+        
+        <RadzenDataGridColumn TItem="Usuario" Title="Roles" MinWidth="150px">
+            <Template Context="usuario">
+                <div class="roles-cell">
+                    @if (!string.IsNullOrEmpty(usuario.RolString))
+                    {
+                        <span class="roles-text">@usuario.RolString</span>
+                    }
+                    else
+                    {
+                        <span class="text-muted">Sin roles</span>
+                    }
+                </div>
+            </Template>
+        </RadzenDataGridColumn>
+        
+        <RadzenDataGridColumn Width="200px" TItem="Usuario" Title="Acciones" MinWidth="200px" Sortable="false">
+            <Template Context="usuario">
+                <div class="actions-cell">
+                    <MiRadzenButton ButtonStyle="ButtonStyle.Primary" Variant="Variant.Outlined" Shade="Shade.Lighter" 
+                                   Title="Ver" Icon="visibility" Size="ButtonSize.ExtraSmall" 
+                                   OnClick=@(() => Ver(usuario)) />
+                    <AuthorizeView Roles="admin_usuario">
+                        <Authorized>
+                            <MiRadzenButton ButtonStyle="ButtonStyle.Success" Variant="Variant.Outlined" Shade="Shade.Lighter" 
+                                           Title="Modificar" Icon="edit" Size="ButtonSize.ExtraSmall" 
+                                           OnClick=@(() => Modificar(usuario)) />
+                            <MiRadzenButton ButtonStyle="ButtonStyle.Warning" Variant="Variant.Outlined" Shade="Shade.Lighter" 
+                                           Title="Modificar contraseña" Icon="password" Size="ButtonSize.ExtraSmall" 
+                                           OnClick=@(() => ModificarContraseña(usuario)) />
+                            <MiRadzenButton ButtonStyle="ButtonStyle.Danger" Variant="Variant.Outlined" Shade="Shade.Lighter" 
+                                           Title="Eliminar" Icon="delete" Size="ButtonSize.ExtraSmall" 
+                                           OnClick=@(() => Eliminar(usuario)) />
+                        </Authorized>
+                    </AuthorizeView>
+                </div>
             </Template>
         </RadzenDataGridColumn>
     </Columns>
 </RadzenDataGrid>
 
+<style>
+    .modern-grid {
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .photo-cell {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 8px;
+    }
+
+    .profile-photo {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid #e9ecef;
+        transition: border-color 0.3s ease;
+    }
+
+    .profile-photo:hover {
+        border-color: #007bff;
+    }
+
+    .profile-photo-placeholder {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background-color: #f8f9fa;
+        border: 2px solid #e9ecef;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #6c757d;
+        font-size: 16px;
+    }
+
+    .id-cell {
+        font-weight: 600;
+        color: #6c757d;
+        font-size: 0.9rem;
+    }
+
+    .name-cell strong {
+        color: #2c3e50;
+        font-size: 0.95rem;
+    }
+
+    .email-cell .email-link {
+        color: #007bff;
+        text-decoration: none;
+        font-size: 0.9rem;
+    }
+
+    .email-cell .email-link:hover {
+        text-decoration: underline;
+    }
+
+    .country-cell .country-badge {
+        background-color: #e3f2fd;
+        color: #1976d2;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.5rem;
+        font-size: 0.8rem;
+        font-weight: 500;
+    }
+
+    .phone-cell .phone-link {
+        color: #28a745;
+        text-decoration: none;
+        font-size: 0.9rem;
+    }
+
+    .phone-cell .phone-link:hover {
+        text-decoration: underline;
+    }
+
+    .currency-cell .currency-badge {
+        background-color: #fff3cd;
+        color: #856404;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.5rem;
+        font-size: 0.8rem;
+        font-weight: 600;
+        font-family: 'Courier New', monospace;
+    }
+
+    .status-cell {
+        display: flex;
+        justify-content: center;
+    }
+
+    .status-badge {
+        font-size: 0.8rem;
+        padding: 0.35rem 0.65rem;
+        border-radius: 1rem;
+    }
+
+    .roles-cell .roles-text {
+        background-color: #f8f9fa;
+        color: #495057;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.5rem;
+        font-size: 0.8rem;
+        border: 1px solid #dee2e6;
+    }
+
+    .actions-cell {
+        display: flex;
+        gap: 4px;
+        justify-content: center;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    /* Mejorar el estilo general de la grilla */
+    .modern-grid .rz-data-grid-header {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-bottom: 2px solid #dee2e6;
+    }
+
+    .modern-grid .rz-data-grid-header th {
+        font-weight: 600;
+        color: #495057;
+        font-size: 0.9rem;
+        padding: 1rem 0.75rem;
+    }
+
+    .modern-grid .rz-data-grid-data tr:nth-child(even) {
+        background-color: #f8f9fa;
+    }
+
+    .modern-grid .rz-data-grid-data tr:hover {
+        background-color: #e3f2fd !important;
+        transition: background-color 0.2s ease;
+    }
+
+    .modern-grid .rz-data-grid-data td {
+        padding: 0.75rem;
+        vertical-align: middle;
+        border-bottom: 1px solid #e9ecef;
+    }
+
+    /* Responsive adjustments */
+    @@media (max-width: 768px) {
+        .profile-photo, .profile-photo-placeholder {
+            width: 32px;
+            height: 32px;
+        }
+        
+        .profile-photo-placeholder i {
+            font-size: 14px;
+        }
+        
+        .actions-cell {
+            flex-direction: column;
+            gap: 2px;
+        }
+        
+        .country-badge, .currency-badge, .roles-text {
+            font-size: 0.75rem;
+            padding: 0.2rem 0.4rem;
+        }
+    }
+</style>
 
 @code {
-
     private bool isLoading = false;
     private RadzenDataGrid<Usuario> grilla;
     private int count;
     private IEnumerable<Usuario> items;
+    
+    // Filtros avanzados
+    string filtroTexto = "";
+    string ordenarPor = "Nombre";
+    string filtroEstado = "todos";
+    int tamanioPagina = 10;
 
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
-
         base.EstablecerTituloPagina("Usuarios", "Principal");
+    }
+
+    private string ObtenerUrlImagenPerfil(Usuario usuario)
+    {
+        var url = usuario?.ObtenerUrlImagenPerfil();
+        return !string.IsNullOrEmpty(url) ? url : null; // Devolver null si no hay imagen para mostrar placeholder
     }
 
     private async Task LoadData(LoadDataArgs args)
@@ -62,27 +418,45 @@ PagerHorizontalAlign="HorizontalAlign.Center" TItem="Usuario">
 
             await Task.Yield();
 
-            Filtros_paginado filtros = new Filtros_paginado
+            try
+            {
+                Filtros_paginado filtros = new Filtros_paginado
                 {
-                    Filter = args.Filter != "" ? args.Filter : null,
-                    OrderBy = args.OrderBy != "" ? args.OrderBy : null,
+                    Filter = filtroTexto,
+                    OrderBy = ordenarPor,
                     Skip = args.Skip != null ? args.Skip.Value : 0,
-                    Top = args.Top != null ? args.Top.Value : 5
+                    Top = args.Top != null ? args.Top.Value : tamanioPagina
                 };
 
-            DTO<Items_pagina<Usuario>> respuesta = await Serv_usuario.Obtener_paginado(filtros);
+                DTO<Items_pagina<Usuario>> respuesta = await Serv_usuario.Obtener_paginado(filtros);
 
-            if (respuesta != null && respuesta.Correcto)
-            {
-                items = respuesta.Datos.Items;
-                count = respuesta.Datos.Total_items;
+                if (respuesta != null && respuesta.Correcto)
+                {
+                    var usuarios = respuesta.Datos.Items.ToList();
+
+                    // Aplicar filtro por estado si es necesario
+                    if (filtroEstado != "todos")
+                    {
+                        usuarios = usuarios.Where(u => 
+                            filtroEstado == "activos" ? u.Activo : !u.Activo).ToList();
+                    }
+
+                    items = usuarios;
+                    count = respuesta.Datos.Total_items; // Usar el conteo real del servidor
+                }
+                else
+                {
+                    if (respuesta != null && !respuesta.Correcto)
+                        base.MostrarNotificacion(NotificationSeverity.Error, "Error al obtener los usuarios", $"Error: {respuesta.Mensaje}");
+
+                    items = new List<Usuario>();
+                    count = 0;
+                }
             }
-            else
+            catch (Exception ex)
             {
-                if (respuesta != null && !respuesta.Correcto)
-                    base.MostrarNotificacion(NotificationSeverity.Error, "Error al obtener los usuarios", $"Error: {respuesta.Mensaje}");
-
-                items = null;
+                base.MostrarNotificacion(NotificationSeverity.Error, "Error!", $"Error al cargar usuarios: {ex.Message}");
+                items = new List<Usuario>();
                 count = 0;
             }
         }
@@ -90,7 +464,15 @@ PagerHorizontalAlign="HorizontalAlign.Center" TItem="Usuario">
         isLoading = false;
     }
 
-    private async Task Agregar()
+    async Task RecargarGrilla()
+    {
+        if (grilla != null)
+        {
+            await grilla.Reload();
+        }
+    }
+
+    private void NuevoUsuario()
     {
         base.IrA("/usuarios/new");
     }
@@ -111,6 +493,20 @@ PagerHorizontalAlign="HorizontalAlign.Center" TItem="Usuario">
     }
 
     private async Task Eliminar(Usuario usuario)
-    { }
+    {
+        try
+        {
+            var confirmResult = await base.MostrarConfirmacion("¿Está seguro de eliminar el usuario '" + usuario.Nombre + "'?", "Confirmar eliminación");
 
+            if (confirmResult == true)
+            {
+                // TODO: Implementar eliminación de usuario
+                base.MostrarNotificacion(NotificationSeverity.Info, "Pendiente", "Funcionalidad de eliminación pendiente de implementar");
+            }
+        }
+        catch (Exception ex)
+        {
+            base.MostrarNotificacion(NotificationSeverity.Error, "Error!", $"Error al eliminar usuario: {ex.Message}");
+        }
+    }
 }

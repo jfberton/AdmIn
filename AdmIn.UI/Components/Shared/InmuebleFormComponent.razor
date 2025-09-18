@@ -1,0 +1,443 @@
+@using AdmIn.Common.Entidades
+@using AdmIn.Common
+@using AdmIn.UI.Services
+
+@inject IServ_Moneda serv_moneda
+@inject IServ_Usuario serv_usuario
+
+<RadzenTemplateForm @ref="form" TItem="Inmueble" Data="@Model" Submit="@OnSubmit">
+    <RadzenFieldset Text="Información Básica" class="mb-4">
+        <!-- Nombre del Inmueble -->
+        <RadzenRow class="mb-3">
+            <RadzenColumn>
+                <RadzenFormField Text="Nombre del Inmueble" Variant="Variant.Outlined" Style="width:100%">
+                    <ChildContent>
+                        <RadzenTextBox @bind-Value="@Model.Nombre" 
+                                      MaxLength="255" 
+                                      Name="nombre" 
+                                      Placeholder="Ej: Casa en Palermo, Departamento Centro"
+                                      TValue="string" />
+                    </ChildContent>
+                    <Helper>
+                        <RadzenRequiredValidator Component="nombre" Text="El nombre del inmueble es requerido" />
+                    </Helper>
+                </RadzenFormField>
+            </RadzenColumn>
+        </RadzenRow>
+
+        <!-- Descripción -->
+        <RadzenRow class="mb-3">
+            <RadzenColumn>
+                <RadzenFormField Text="Descripción" Variant="Variant.Outlined" Style="width:100%">
+                    <ChildContent>
+                        <RadzenTextArea @bind-Value="@Model.Descripcion" 
+                                       MaxLength="1000" 
+                                       Rows="4"
+                                       Name="descripcion"
+                                       Placeholder="Descripción detallada del inmueble"
+                                       TValue="string" />
+                    </ChildContent>
+                </RadzenFormField>
+            </RadzenColumn>
+        </RadzenRow>
+
+        <!-- Dirección -->
+        <RadzenRow class="mb-3">
+            <RadzenColumn>
+                <RadzenFormField Text="Dirección" Variant="Variant.Outlined" Style="width:100%">
+                    <ChildContent>
+                        <RadzenTextBox @bind-Value="@Model.Direccion" 
+                                      MaxLength="500" 
+                                      Name="direccion"
+                                      Placeholder="Ej: Av. Corrientes 1234, Piso 5 Dpto A"
+                                      TValue="string" />
+                    </ChildContent>
+                    <Helper>
+                        <RadzenRequiredValidator Component="direccion" Text="La dirección es requerida" />
+                    </Helper>
+                </RadzenFormField>
+            </RadzenColumn>
+        </RadzenRow>
+    </RadzenFieldset>
+
+    <RadzenFieldset Text="Ubicación" class="mb-4">
+        <RadzenRow class="mb-3">
+            <RadzenColumn Size="4">
+                <RadzenFormField Text="País" Variant="Variant.Outlined" Style="width:100%">
+                    <RadzenTextBox @bind-Value="@Model.Pais" 
+                                  Name="pais" 
+                                  Placeholder="Ej: Argentina" />
+                </RadzenFormField>
+            </RadzenColumn>
+            <RadzenColumn Size="4">
+                <RadzenFormField Text="Estado/Provincia" Variant="Variant.Outlined" Style="width:100%">
+                    <RadzenTextBox @bind-Value="@Model.Estado" 
+                                  Name="estadoProvincia" 
+                                  Placeholder="Ej: Buenos Aires" />
+                </RadzenFormField>
+            </RadzenColumn>
+            <RadzenColumn Size="4">
+                <RadzenFormField Text="Ciudad" Variant="Variant.Outlined" Style="width:100%">
+                    <RadzenTextBox @bind-Value="@Model.Ciudad" 
+                                  Name="ciudad" 
+                                  Placeholder="Ej: La Plata" />
+                </RadzenFormField>
+            </RadzenColumn>
+        </RadzenRow>
+        
+        <RadzenRow class="mb-3">
+            <RadzenColumn>
+                <RadzenFormField Text="Código Postal" Variant="Variant.Outlined" Style="width:100%">
+                    <RadzenTextBox @bind-Value="@Model.CodigoPostal" 
+                                  Name="codigoPostal" 
+                                  Placeholder="Ej: 1900" />
+                </RadzenFormField>
+            </RadzenColumn>
+        </RadzenRow>
+    </RadzenFieldset>
+
+    <RadzenFieldset Text="Estado y Disponibilidad" class="mb-4">
+        <RadzenRow class="mb-3">
+            <!-- Estado del Inmueble -->
+            <RadzenColumn Size="6">
+                <RadzenFormField Text="Estado del Inmueble" Variant="Variant.Outlined" Style="width:100%">
+                    <ChildContent>
+                        <RadzenDropDown @bind-Value="@estadoSeleccionado" 
+                                       Data="@EstadosInmueble" 
+                                       Placeholder="Seleccione el estado del inmueble"
+                                       Name="estadoInmueble"
+                                       Change="@OnEstadoChanged" />
+                    </ChildContent>
+                    <Helper>
+                        <RadzenRequiredValidator Component="estadoInmueble" Text="El estado del inmueble es requerido" />
+                    </Helper>
+                </RadzenFormField>
+            </RadzenColumn>
+
+            <!-- Estado Activo -->
+            <RadzenColumn Size="6">
+                <RadzenFormField Text="Disponibilidad" Variant="Variant.Outlined" Style="width:100%">
+                    <ChildContent>
+                        <RadzenCheckBox @bind-Value="@Model.Activo" Name="activo" />
+                        <RadzenLabel Text="Inmueble Activo" Component="activo" Style="margin-left: 8px;" />
+                    </ChildContent>
+                    <Helper>
+                        <RadzenText TextStyle="TextStyle.Caption" Style="color: #6b7280; margin-top: 4px;">
+                            Un inmueble inactivo no aparecerá en las búsquedas
+                        </RadzenText>
+                    </Helper>
+                </RadzenFormField>
+            </RadzenColumn>
+        </RadzenRow>
+    </RadzenFieldset>
+
+    <RadzenFieldset Text="Información Económica" class="mb-4">
+        <RadzenRow class="mb-3">
+            <!-- Valor del Inmueble -->
+            <RadzenColumn Size="6">
+                <RadzenFormField Text="Valor del Inmueble" Variant="Variant.Outlined" Style="width:100%">
+                    <ChildContent>
+                        <RadzenNumeric @bind-Value="@Model.Valor" 
+                                      Format="C2" 
+                                      Min="0"
+                                      Name="valor"
+                                      Placeholder="0.00"
+                                      TValue="decimal" />
+                    </ChildContent>
+                    <Helper>
+                        <RadzenRequiredValidator Component="valor" Text="El valor es requerido" />
+                        <RadzenNumericRangeValidator Component="valor" Min="1" Text="El valor debe ser mayor a 0" />
+                    </Helper>
+                </RadzenFormField>
+            </RadzenColumn>
+
+            <!-- Renta Mensual -->
+            <RadzenColumn Size="6">
+                <RadzenFormField Text="Renta Mensual" Variant="Variant.Outlined" Style="width:100%">
+                    <ChildContent>
+                        <RadzenNumeric @bind-Value="@Model.RentaMensual" 
+                                      Format="C2" 
+                                      Min="0"
+                                      Name="rentaMensual"
+                                      Placeholder="0.00"
+                                      TValue="decimal" />
+                    </ChildContent>
+                </RadzenFormField>
+            </RadzenColumn>
+        </RadzenRow>
+
+        <RadzenRow class="mb-3">
+            <!-- Moneda -->
+            <RadzenColumn Size="6">
+                <RadzenFormField Text="Moneda" Variant="Variant.Outlined" Style="width:100%">
+                    <ChildContent>
+                        @if (ListaMonedas.Any())
+                        {
+                            <RadzenDropDown @bind-Value="@Model.MonedaId" 
+                                           Data="@ListaMonedas" 
+                                           TextProperty="Nombre" 
+                                           ValueProperty="Id"
+                                           Placeholder="Seleccione una moneda"
+                                           Name="moneda" />
+                        }
+                        else
+                        {
+                            <RadzenTextBox Value="Cargando monedas..." ReadOnly="true" />
+                        }
+                    </ChildContent>
+                    <Helper>
+                        <RadzenRequiredValidator Component="moneda" Text="La moneda es requerida" />
+                    </Helper>
+                </RadzenFormField>
+            </RadzenColumn>
+
+            <!-- Construcción M2 -->
+            <RadzenColumn Size="6">
+                <RadzenFormField Text="Construcción (m²)" Variant="Variant.Outlined" Style="width:100%">
+                    <ChildContent>
+                        <RadzenNumeric @bind-Value="@Model.ConstruccionM2" 
+                                      Format="N2" 
+                                      Min="0"
+                                      Name="construccionM2"
+                                      Placeholder="0.00"
+                                      TValue="decimal" />
+                    </ChildContent>
+                </RadzenFormField>
+            </RadzenColumn>
+        </RadzenRow>
+    </RadzenFieldset>
+
+    <RadzenFieldset Text="Información Adicional" class="mb-4">
+        <RadzenRow class="mb-3">
+            <!-- Administrador -->
+            <RadzenColumn Size="12">
+                <RadzenFormField Text="Administrador" Variant="Variant.Outlined" Style="width:100%">
+                    <ChildContent>
+                        @if (ListaAdministradores.Any())
+                        {
+                            <RadzenDropDown @bind-Value="@Model.AdministradorId" 
+                                           Data="@ListaAdministradores" 
+                                           TextProperty="Nombre" 
+                                           ValueProperty="Id"
+                                           Placeholder="Seleccione un administrador (opcional)"
+                                           AllowClear="true"
+                                           Name="administrador" />
+                        }
+                        else
+                        {
+                            <RadzenTextBox Value="Cargando usuarios..." ReadOnly="true" />
+                        }
+                    </ChildContent>
+                </RadzenFormField>
+            </RadzenColumn>
+        </RadzenRow>
+
+        <!-- Coordenadas Geográficas -->
+        <RadzenRow class="mb-3">
+            <RadzenColumn Size="6">
+                <RadzenFormField Text="Latitud" Variant="Variant.Outlined" Style="width:100%">
+                    <ChildContent>
+                        <RadzenNumeric @bind-Value="@Model.Latitud" 
+                                      Format="N6" 
+                                      Min="-90" 
+                                      Max="90"
+                                      Name="latitud"
+                                      Placeholder="Ej: -34.603722"
+                                      TValue="decimal" />
+                    </ChildContent>
+                </RadzenFormField>
+            </RadzenColumn>
+            <RadzenColumn Size="6">
+                <RadzenFormField Text="Longitud" Variant="Variant.Outlined" Style="width:100%">
+                    <ChildContent>
+                        <RadzenNumeric @bind-Value="@Model.Longitud" 
+                                      Format="N6" 
+                                      Min="-180" 
+                                      Max="180"
+                                      Name="longitud"
+                                      Placeholder="Ej: -58.381592"
+                                      TValue="decimal" />
+                    </ChildContent>
+                </RadzenFormField>
+            </RadzenColumn>
+        </RadzenRow>
+    </RadzenFieldset>
+
+    <!-- Botones de Acción -->
+    <RadzenStack Orientation="Orientation.Horizontal" Gap="1rem" JustifyContent="JustifyContent.End" class="mt-4">
+        <RadzenButton ButtonStyle="ButtonStyle.Secondary" 
+                     Icon="cancel" 
+                     Text="Cancelar" 
+                     Click="@OnCancel" />
+        <RadzenButton ButtonStyle="ButtonStyle.Primary" 
+                     Icon="save" 
+                     Text="@(IsEditMode ? "Actualizar" : "Crear")" 
+                     ButtonType="ButtonType.Submit"
+                     IsBusy="@IsLoading" />
+    </RadzenStack>
+</RadzenTemplateForm>
+
+@code {
+    [Parameter] public Inmueble Model { get; set; } = new();
+    [Parameter] public bool IsEditMode { get; set; } = false;
+    [Parameter] public EventCallback<Inmueble> OnValidSubmit { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    private RadzenTemplateForm<Inmueble>? form;
+    private bool IsLoading = false;
+
+    private List<Moneda> ListaMonedas = new();
+    private List<Usuario> ListaAdministradores = new();
+    
+    // Estados del inmueble
+    private List<string> EstadosInmueble = new()
+    {
+        "Disponible",
+        "Ocupado", 
+        "Reservado",
+        "En reparación",
+        "En mantenimiento"
+    };
+
+    private string estadoSeleccionado = "Disponible";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            Console.WriteLine("=== InmuebleFormComponent OnInitializedAsync ===");
+            
+            // Establecer valores por defecto para nuevos inmuebles
+            if (!IsEditMode && Model.Id == 0)
+            {
+                Model.Activo = true;
+                Model.FechaCreacion = DateTime.Now;
+                Model.FechaModificacion = DateTime.Now;
+                Model.MonedaId = 1;
+                Model.Estado = "Disponible"; // Estado por defecto
+                estadoSeleccionado = "Disponible";
+                Console.WriteLine("Valores por defecto establecidos");
+            }
+            else if (IsEditMode)
+            {
+                // En modo edición, usar el estado actual del modelo
+                estadoSeleccionado = !string.IsNullOrEmpty(Model.Estado) ? Model.Estado : "Disponible";
+            }
+
+            await CargarDatos();
+            Console.WriteLine("=== InmuebleFormComponent Inicializado correctamente ===");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"=== ERROR en InmuebleFormComponent: {ex.Message} ===");
+            throw;
+        }
+        
+        StateHasChanged();
+    }
+
+    private async Task CargarDatos()
+    {
+        try
+        {
+            Console.WriteLine("Iniciando CargarDatos...");
+            
+            // Cargar monedas
+            Console.WriteLine("Cargando monedas...");
+            var resultadoMonedas = await serv_moneda.Obtener_todos();
+            Console.WriteLine($"Resultado monedas: Correcto={resultadoMonedas?.Correcto}, Count={resultadoMonedas?.Datos?.Count()}");
+            
+            if (resultadoMonedas != null && resultadoMonedas.Correcto && resultadoMonedas.Datos != null)
+            {
+                ListaMonedas = resultadoMonedas.Datos.ToList();
+                Console.WriteLine($"Monedas cargadas: {ListaMonedas.Count}");
+            }
+            else
+            {
+                Console.WriteLine("Error cargando monedas o datos nulos");
+                // Crear una moneda por defecto para que el componente funcione
+                ListaMonedas = new List<Moneda> 
+                { 
+                    new Moneda { Id = 1, Nombre = "Peso Argentino", Codigo = "ARS" } 
+                };
+            }
+
+            // Cargar usuarios
+            Console.WriteLine("Cargando usuarios...");
+            var resultadoUsuarios = await serv_usuario.Obtener_todos();
+            Console.WriteLine($"Resultado usuarios: Correcto={resultadoUsuarios?.Correcto}, Count={resultadoUsuarios?.Datos?.Count()}");
+            
+            if (resultadoUsuarios != null && resultadoUsuarios.Correcto && resultadoUsuarios.Datos != null)
+            {
+                ListaAdministradores = resultadoUsuarios.Datos.Where(u => u.Activo).ToList();
+                Console.WriteLine($"Usuarios cargados: {ListaAdministradores.Count}");
+            }
+            else
+            {
+                Console.WriteLine("Error cargando usuarios o datos nulos");
+                ListaAdministradores = new List<Usuario>();
+            }
+            
+            Console.WriteLine("CargarDatos completado");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"ERROR en CargarDatos: {ex.Message}");
+            Console.WriteLine($"StackTrace: {ex.StackTrace}");
+            
+            // Datos por defecto para que el componente funcione
+            ListaMonedas = new List<Moneda> 
+            { 
+                new Moneda { Id = 1, Nombre = "Peso Argentino", Codigo = "ARS" } 
+            };
+            ListaAdministradores = new List<Usuario>();
+            
+            throw;
+        }
+    }
+
+    private void OnEstadoChanged(object value)
+    {
+        if (value != null)
+        {
+            estadoSeleccionado = value.ToString() ?? "Disponible";
+            Model.Estado = estadoSeleccionado;
+            StateHasChanged();
+        }
+    }
+
+    private async Task OnSubmit(Inmueble inmueble)
+    {
+        if (IsLoading) return;
+
+        try
+        {
+            IsLoading = true;
+            Console.WriteLine("Iniciando submit del formulario...");
+            
+            // Asegurar que el estado esté asignado al modelo
+            inmueble.Estado = estadoSeleccionado;
+            
+            // Actualizar fechas
+            if (IsEditMode)
+            {
+                inmueble.FechaModificacion = DateTime.Now;
+            }
+            else
+            {
+                inmueble.FechaCreacion = DateTime.Now;
+                inmueble.FechaModificacion = DateTime.Now;
+            }
+
+            await OnValidSubmit.InvokeAsync(inmueble);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error en submit: {ex.Message}");
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+}}

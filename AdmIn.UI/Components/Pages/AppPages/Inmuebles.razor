@@ -1,0 +1,590 @@
+﻿@page "/inmuebles"
+
+@using Radzen.Blazor
+@using AdmIn.Common.Entidades
+@using AdmIn.UI.Components.Pages.AppPages.Dialogos
+@using AdmIn.UI.Components.Shared
+@using AdmIn.UI.Services
+@using AdmIn.UI.Services.UtilityServices
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IServ_Inmueble InmuebleService
+@inject IServ_InmuebleCondicion CondicionService
+@inject AuthenticationStateProvider AuthStateProvider
+
+@inherits BaseComponent
+
+<div class="inmueble-admin-page">
+    <!-- Header con estilo consistente -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="d-flex align-items-center gap-3">
+            <h3>@(mostrarInactivos ? "Inmuebles Inactivos" : "Inmuebles Activos")</h3>
+            <span class="badge @(mostrarInactivos ? "bg-warning" : "bg-success") fs-6">
+                @(mostrarInactivos ? (InmueblesInactivos?.Count() ?? 0) : (InmueblesActivos?.Count() ?? 0)) inmuebles
+            </span>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn @(mostrarInactivos ? "btn-success" : "btn-warning") btn-sm" @onclick="CambiarVistaInmuebles">
+                <i class="fas @(mostrarInactivos ? "fa-eye" : "fa-eye-slash")"></i>
+                @(mostrarInactivos ? "Ver Activos" : "Ver Inactivos")
+            </button>
+            <button class="btn btn-primary" @onclick="AgregarInmueble">
+                <i class="fas fa-plus"></i> Agregar Inmueble
+            </button>
+        </div>
+    </div>
+
+    @if (!mostrarInactivos)
+    {
+        <!-- Sección de Inmuebles Activos -->
+        <RadzenCard class="section-card">
+            <RadzenStack Gap="1rem">
+                <!-- Filtros por Condición (Estado Operativo) -->
+                <div class="filter-tabs-container">
+                    <button class="filter-tab @GetFilterTabClass(null)" @onclick="() => FiltrarInmueblesPorCondicion(null)">
+                        <i class="fas fa-list me-1"></i>
+                        Todos
+                        @if (InmueblesActivos != null)
+                        {
+                            <span class="filter-count">(@InmueblesActivos.Count())</span>
+                        }
+                    </button>
+                    @if (condicionesDisponibles != null)
+                    {
+                        @foreach (var condicion in condicionesDisponibles.Where(c => c.Activo))
+                        {
+                            <button class="filter-tab @GetFilterTabClass(condicion.Id)" 
+                                    @onclick="@(() => FiltrarInmueblesPorCondicion(condicion.Id))"
+                                    style="@($"border-color: {condicion.Color}; --hover-color: {condicion.Color}")">
+                                @condicion.Nombre
+                                @if (InmueblesActivos != null)
+                                {
+                                    var cantidad = InmueblesActivos.Count(i => i.CondicionId == condicion.Id);
+                                    if (cantidad > 0)
+                                    {
+                                        <span class="filter-count">(@cantidad)</span>
+                                    }
+                                }
+                            </button>
+                        }
+                    }
+                </div>
+
+                <!-- Grid de Inmuebles Activos -->
+                <RadzenRow class="inmueble-grid">
+                    @if (InmueblesActivosFiltrados != null && InmueblesActivosFiltrados.Any())
+                    {
+                        @foreach (var inmueble in InmueblesActivosFiltrados)
+                        {
+                            <RadzenColumn Size="12" SizeMD="6" SizeLG="4" SizeXL="3">
+                                <InmuebleCard Inmueble="inmueble" 
+                                             OnVerDetalle="VerDetalleInmueble"
+                                             OnGestionarCaracteristicas="GestionarCaracteristicas"
+                                             OnGestionarImagenes="GestionarImagenes"
+                                             MostrarBotonesGestion="@puedeGestionarInmuebles" />
+                            </RadzenColumn>
+                        }
+                    }
+                    else
+                    {
+                        <RadzenColumn Size="12">
+                            <RadzenCard class="no-properties-card">
+                                <RadzenStack Orientation="Orientation.Vertical" AlignItems="AlignItems.Center" Gap="var(--spacing-md)">
+                                    <RadzenIcon Icon="info" Style="font-size: 3rem; color: var(--neutral-400);" />
+                                    <RadzenText TextStyle="TextStyle.H6" class="text-center">
+                                        No se encontraron inmuebles activos para este filtro.
+                                    </RadzenText>
+                                    <RadzenText TextStyle="TextStyle.Body1" class="text-center">
+                                        @if (activeFilterCondicion != null)
+                                        {
+                                            var condicionNombre = condicionesDisponibles?.FirstOrDefault(c => c.Id == activeFilterCondicion)?.Nombre;
+                                            <text>No hay inmuebles con condición "@condicionNombre".</text>
+                                        }
+                                        else
+                                        {
+                                            <text>Intenta ajustar tus criterios de búsqueda o agrega nuevas propiedades.</text>
+                                        }
+                                    </RadzenText>
+                                    <RadzenButton Text="Volver a Todos los Inmuebles Activos" Icon="refresh" Click="@(() => FiltrarInmueblesPorCondicion(null))" ButtonStyle="ButtonStyle.Secondary" />
+                                </RadzenStack>
+                            </RadzenCard>
+                        </RadzenColumn>
+                    }
+                </RadzenRow>
+            </RadzenStack>
+        </RadzenCard>
+    }
+    else
+    {
+        <!-- Sección de Inmuebles Inactivos -->
+        <RadzenCard class="section-card inactive-section">
+            <RadzenStack Gap="1rem">
+                <RadzenAlert AlertStyle="AlertStyle.Warning" Variant="Variant.Flat" ShowIcon="true">
+                    <RadzenText TextStyle="TextStyle.Body2">
+                        Estos inmuebles están marcados como inactivos y no aparecen en las búsquedas públicas. 
+                        Puedes reactivarlos editando la propiedad y marcándola como activa.
+                    </RadzenText>
+                </RadzenAlert>
+
+                <!-- Grid de Inmuebles Inactivos -->
+                <RadzenRow class="inmueble-grid">
+                    @if (InmueblesInactivos != null && InmueblesInactivos.Any())
+                    {
+                        @foreach (var inmueble in InmueblesInactivos)
+                        {
+                            <RadzenColumn Size="12" SizeMD="6" SizeLG="4" SizeXL="3">
+                                <div class="inactive-property-wrapper">
+                                    <InmuebleCard Inmueble="inmueble" 
+                                                 OnVerDetalle="VerDetalleInmueble"
+                                                 OnGestionarCaracteristicas="GestionarCaracteristicas"
+                                                 OnGestionarImagenes="GestionarImagenes"
+                                                 MostrarBotonesGestion="@puedeGestionarInmuebles" />
+                                    
+                                    <!-- Overlay de Inactivo -->
+                                    <div class="inactive-overlay">
+                                        <RadzenStack AlignItems="AlignItems.Center" Gap="0.5rem">
+                                            <RadzenIcon Icon="visibility_off" Style="font-size: 2rem; color: var(--rz-warning);" />
+                                            <RadzenText TextStyle="TextStyle.Caption" Text="INACTIVO" Style="color: var(--rz-warning); font-weight: 600;" />
+                                        </RadzenStack>
+                                    </div>
+                                    
+                                    <!-- Botón de Reactivación - Solo para usuarios con permisos -->
+                                    @if (puedeGestionarInmuebles)
+                                    {
+                                        <div class="reactivate-button">
+                                            <RadzenButton Text="Reactivar" 
+                                                         Icon="visibility" 
+                                                         ButtonStyle="ButtonStyle.Success" 
+                                                         Size="ButtonSize.ExtraSmall"
+                                                         Click="@(() => ReactivarInmueble(inmueble))" />
+                                        </div>
+                                    }
+                                </div>
+                            </RadzenColumn>
+                        }
+                    }
+                    else
+                    {
+                        <RadzenColumn Size="12">
+                            <RadzenCard class="no-properties-card">
+                                <RadzenStack Orientation="Orientation.Vertical" AlignItems="AlignItems.Center" Gap="var(--spacing-md)">
+                                    <RadzenIcon Icon="check_circle" Style="font-size: 3rem; color: var(--rz-success);" />
+                                    <RadzenText TextStyle="TextStyle.H6" class="text-center">
+                                        ¡Excelente! No hay inmuebles inactivos.
+                                    </RadzenText>
+                                    <RadzenText TextStyle="TextStyle.Body1" class="text-center">
+                                        Todas tus propiedades están activas y disponibles.
+                                    </RadzenText>
+                                </RadzenStack>
+                            </RadzenCard>
+                        </RadzenColumn>
+                    }
+                </RadzenRow>
+            </RadzenStack>
+        </RadzenCard>
+    }
+</div>
+
+<style>
+    .section-card {
+        margin-bottom: 2rem;
+        border: 1px solid var(--rz-border-color);
+    }
+
+    .inactive-section {
+        background: #fefcf3;
+        border-color: var(--rz-warning);
+    }
+
+    .filter-tabs-container {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        padding: 1rem 0;
+        border-bottom: 1px solid var(--rz-border-color);
+        margin-bottom: 1rem;
+    }
+
+    .filter-tab {
+        padding: 0.5rem 1rem;
+        border: 2px solid var(--rz-border-color);
+        background: white;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-size: 0.875rem;
+        font-weight: 500;
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+
+    .filter-tab:hover {
+        background: var(--hover-color, var(--rz-primary-lighter));
+        border-color: var(--hover-color, var(--rz-primary));
+        transform: translateY(-1px);
+    }
+
+    .filter-tab.active-tab {
+        background: var(--hover-color, var(--rz-primary));
+        color: white;
+        border-color: var(--hover-color, var(--rz-primary));
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .filter-count {
+        background: rgba(255, 255, 255, 0.2);
+        padding: 0.1rem 0.4rem;
+        border-radius: 10px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        margin-left: 0.25rem;
+    }
+
+    .active-tab .filter-count {
+        background: rgba(255, 255, 255, 0.3);
+    }
+
+    .inactive-property-wrapper {
+        position: relative;
+        opacity: 0.8;
+    }
+
+    .inactive-overlay {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        background: rgba(255, 255, 255, 0.95);
+        padding: 8px 12px;
+        border-radius: 6px;
+        border: 2px solid var(--rz-warning);
+        backdrop-filter: blur(4px);
+        z-index: 10;
+    }
+
+    .reactivate-button {
+        position: absolute;
+        bottom: 10px;
+        right: 10px;
+        z-index: 10;
+    }
+
+    .no-properties-card {
+        background: #f8fafc;
+        border: 2px dashed var(--rz-border-color);
+        text-align: center;
+        padding: 2rem;
+    }
+
+    .inmueble-grid {
+        min-height: 200px;
+    }
+
+    /* Estilos para el header consistente */
+    .gap-2 {
+        gap: 0.5rem;
+    }
+
+    .gap-3 {
+        gap: 1rem;
+    }
+
+    .btn-sm {
+        padding: 0.375rem 0.75rem;
+        font-size: 0.875rem;
+    }
+</style>
+
+@code {
+    private IEnumerable<Inmueble>? ListaInmuebles;
+    private IEnumerable<Inmueble>? InmueblesActivos;
+    private IEnumerable<Inmueble>? InmueblesInactivos;
+    private IEnumerable<Inmueble>? InmueblesActivosFiltrados;
+    private List<InmuebleCondicion> condicionesDisponibles = new();
+    private int? activeFilterCondicion = null;
+    private bool mostrarInactivos = false;
+    private bool puedeGestionarInmuebles = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        base.EstablecerTituloPagina("Inmuebles", "Gestión");
+        await VerificarPermisos();
+        await CargarCondicionesDisponibles();
+        await CargarInmuebles();
+    }
+
+    private async Task VerificarPermisos()
+    {
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+            
+            // Verificar si el usuario tiene permisos para gestionar inmuebles
+            // Basado en los roles de tu base de datos:
+            puedeGestionarInmuebles = user.IsInRole("admin_usuario") ||        // Rol ID: 1 - Admin general
+                                     user.IsInRole("admin_propiedad");         // Rol ID: 2 - Admin de propiedades
+            
+            await LogHelper.Info($"Usuario puede gestionar inmuebles: {puedeGestionarInmuebles}");
+            
+            var rolesClaims = user.Claims.Where(c => c.Type == "role" || c.Type == "http://schemas.microsoft.com/ws/2008/06/identity/claims/role").Select(c => c.Value);
+            await LogHelper.Info($"Roles del usuario: {string.Join(", ", rolesClaims)}");
+        }
+        catch (Exception ex)
+        {
+            await LogHelper.Error($"Error al verificar permisos: {ex.Message}");
+            puedeGestionarInmuebles = false;
+        }
+    }
+
+    private async Task CargarCondicionesDisponibles()
+    {
+        try
+        {
+            var resultado = await CondicionService.Obtener_activos();
+            if (resultado.Correcto && resultado.Datos != null)
+            {
+                condicionesDisponibles = resultado.Datos.ToList();
+            }
+            else
+            {
+                await LogHelper.Warn($"No se pudieron cargar las condiciones: {resultado.Mensaje}");
+                condicionesDisponibles = new List<InmuebleCondicion>();
+            }
+        }
+        catch (Exception ex)
+        {
+            await LogHelper.Error($"Error al cargar condiciones: {ex.Message}");
+            condicionesDisponibles = new List<InmuebleCondicion>();
+        }
+    }
+
+    private async Task CargarInmuebles()
+    {
+        try
+        {
+            var result = await InmuebleService.Obtener_todos();
+            if (result.Correcto && result.Datos != null)
+            {
+                ListaInmuebles = result.Datos;
+                
+                // Separar inmuebles activos e inactivos
+                InmueblesActivos = ListaInmuebles.Where(i => i.Activo);
+                InmueblesInactivos = ListaInmuebles.Where(i => !i.Activo);
+                
+                // Inicializar filtrados con todos los activos
+                InmueblesActivosFiltrados = InmueblesActivos;
+                
+                StateHasChanged();
+            }
+            else
+            {
+                MostrarNotificacion(NotificationSeverity.Error, "Error", result.Mensaje ?? "Error al cargar inmuebles");
+            }
+        }
+        catch (Exception ex)
+        {
+            MostrarNotificacion(NotificationSeverity.Error, "Error", $"Error al cargar inmuebles: {ex.Message}");
+        }
+    }
+
+    private void AgregarInmueble()
+    {
+        base.IrA("/inmuebles/nuevo");
+    }
+
+    private void CambiarVistaInmuebles()
+    {
+        mostrarInactivos = !mostrarInactivos;
+        
+        // Resetear filtros cuando cambiamos de vista
+        if (!mostrarInactivos)
+        {
+            activeFilterCondicion = null;
+            InmueblesActivosFiltrados = InmueblesActivos;
+        }
+        
+        StateHasChanged();
+    }
+
+    private void FiltrarInmueblesPorCondicion(int? condicionId)
+    {
+        activeFilterCondicion = condicionId;
+        if (condicionId == null)
+        {
+            InmueblesActivosFiltrados = InmueblesActivos;
+        }
+        else
+        {
+            InmueblesActivosFiltrados = InmueblesActivos?.Where(i => i.CondicionId == condicionId);
+        }
+        StateHasChanged();
+    }
+
+    private async Task ReactivarInmueble(Inmueble inmueble)
+    {
+        if (!puedeGestionarInmuebles)
+        {
+            MostrarNotificacion(NotificationSeverity.Warning, "Sin permisos", "No tienes permisos para realizar esta acción");
+            return;
+        }
+
+        try
+        {
+            var confirmar = await MostrarConfirmacion(
+                $"¿Estás seguro de que quieres reactivar el inmueble '{inmueble.Nombre}'?",
+                "Confirmar Reactivación",
+                "Sí, reactivar",
+                "Cancelar"
+            );
+
+            if (confirmar)
+            {
+                // Crear una copia del inmueble y activarlo
+                var inmuebleActualizado = new Inmueble
+                {
+                    Id = inmueble.Id,
+                    Nombre = inmueble.Nombre,
+                    Direccion = inmueble.Direccion,
+                    Pais = inmueble.Pais,
+                    Estado = inmueble.Estado,
+                    Ciudad = inmueble.Ciudad,
+                    CodigoPostal = inmueble.CodigoPostal,
+                    Latitud = inmueble.Latitud,
+                    Longitud = inmueble.Longitud,
+                    Valor = inmueble.Valor,
+                    ConstruccionM2 = inmueble.ConstruccionM2,
+                    RentaMensual = inmueble.RentaMensual,
+                    AdministradorId = inmueble.AdministradorId,
+                    Descripcion = inmueble.Descripcion,
+                    ImagenPrincipalId = inmueble.ImagenPrincipalId,
+                    MonedaId = inmueble.MonedaId,
+                    CondicionId = inmueble.CondicionId,
+                    Activo = true, // Reactivar
+                    FechaCreacion = inmueble.FechaCreacion,
+                    FechaModificacion = DateTime.Now,
+                    UsuarioCreadorId = inmueble.UsuarioCreadorId,
+                    UsuarioModificadorId = inmueble.UsuarioModificadorId
+                };
+
+                var resultado = await InmuebleService.Actualizar(inmuebleActualizado);
+                
+                if (resultado.Correcto)
+                {
+                    await CargarInmuebles();
+                    MostrarNotificacion(
+                        NotificationSeverity.Success, 
+                        "Inmueble Reactivado", 
+                        $"El inmueble '{inmueble.Nombre}' ha sido reactivado correctamente."
+                    );
+                }
+                else
+                {
+                    MostrarNotificacion(
+                        NotificationSeverity.Error, 
+                        "Error al Reactivar", 
+                        resultado.Mensaje ?? "Error desconocido al reactivar el inmueble"
+                    );
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            MostrarNotificacion(NotificationSeverity.Error, "Error", $"Error al reactivar inmueble: {ex.Message}");
+        }
+    }
+
+    private void VerDetalleInmueble(int inmuebleId)
+    {
+        IrA($"/inmuebles/{inmuebleId}");
+    }
+
+    private async Task GestionarCaracteristicas(Inmueble inmueble)
+    {
+        if (!puedeGestionarInmuebles)
+        {
+            MostrarNotificacion(NotificationSeverity.Warning, "Sin permisos", "No tienes permisos para gestionar características");
+            return;
+        }
+
+        try
+        {
+            var result = await DialogService.OpenAsync<GestionarCaracteristicasDialog>(
+                $"Características - {inmueble.Nombre}",
+                new Dictionary<string, object>() 
+                { 
+                    { "Inmueble", inmueble }
+                },
+                new DialogOptions() 
+                { 
+                    Width = "800px", 
+                    Height = "600px", 
+                    Resizable = true, 
+                    Draggable = true,
+                    CloseDialogOnOverlayClick = false
+                });
+
+            if (result == true)
+            {
+                await CargarInmuebles();
+                MostrarNotificacion(NotificationSeverity.Success, "Éxito", "Características actualizadas correctamente");
+            }
+        }
+        catch (Exception ex)
+        {
+            MostrarNotificacion(NotificationSeverity.Error, "Error", $"Error al abrir gestión de características: {ex.Message}");
+        }
+    }
+
+    private async Task GestionarImagenes(Inmueble inmueble)
+    {
+        if (!puedeGestionarInmuebles)
+        {
+            MostrarNotificacion(NotificationSeverity.Warning, "Sin permisos", "No tienes permisos para gestionar imágenes");
+            return;
+        }
+
+        try
+        {
+            var result = await DialogService.OpenAsync<AgregarImagenesDialog>(
+                $"Gestionar Imágenes - {inmueble.Nombre}",
+                new Dictionary<string, object>() 
+                { 
+                    { "InmuebleId", inmueble.Id },
+                    { "NombreInmueble", inmueble.Nombre }
+                },
+                new DialogOptions() 
+                { 
+                    Width = "900px", 
+                    Height = "700px", 
+                    Resizable = true, 
+                    Draggable = true,
+                    CloseDialogOnOverlayClick = false
+                });
+
+            if (result == true)
+            {
+                await CargarInmuebles();
+                MostrarNotificacion(NotificationSeverity.Success, "Éxito", "Imágenes actualizadas correctamente");
+            }
+        }
+        catch (Exception ex)
+        {
+            MostrarNotificacion(NotificationSeverity.Error, "Error", $"Error al abrir gestión de imágenes: {ex.Message}");
+        }
+    }
+
+    private string GetFilterTabClass(int? condicionId)
+    {
+        if (condicionId == null && activeFilterCondicion == null)
+        {
+            return "active-tab";
+        }
+        if (activeFilterCondicion == condicionId && condicionId != null)
+        {
+            return "active-tab";
+        }
+        return "";
+    }
+}

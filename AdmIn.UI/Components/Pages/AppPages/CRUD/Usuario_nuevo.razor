@@ -1,15 +1,17 @@
 ﻿@page "/usuarios/new"
 @inherits BaseComponent
 
-@using AdmIn.Business.Entidades
+@using AdmIn.Common.Entidades
 @using System.Text.RegularExpressions
 @using AdmIn.Common
 @using AdmIn.UI.Services
 @using AdmIn.UI.Services.UtilityServices
+@using AdmIn.UI.Components.Shared
 
 @inject IServ_Usuario serv_usuario;
 @inject IServ_Rol serv_rol;
-@inject IServ_Permiso serv_permiso;
+@inject IServ_Moneda serv_moneda;
+@inject IServ_Imagen serv_imagen;
 
 <RadzenTemplateForm @ref="form" TItem="Usuario" Data="@usuario">
     <RadzenRow class="rz-mx-2 rz-mb-8">
@@ -51,9 +53,36 @@
         </RadzenColumn>
     </RadzenRow>
 
-    <!-- Nuevo campo Activo -->
     <RadzenRow class="rz-mx-2 rz-mb-8">
-        <RadzenColumn>
+        <RadzenColumn Size="6">
+            <RadzenFormField Text="País" Variant="Variant.Outlined" Style="width:100%">
+                <ChildContent>
+                    <RadzenTextBox @bind-Value=usuario.Pais MaxLength="100" Name="componente_pais" TValue="string" />
+                </ChildContent>
+            </RadzenFormField>
+        </RadzenColumn>
+        <RadzenColumn Size="6">
+            <RadzenFormField Text="Teléfono" Variant="Variant.Outlined" Style="width:100%">
+                <ChildContent>
+                    <RadzenTextBox @bind-Value=usuario.Telefono MaxLength="20" Name="componente_telefono" TValue="string" />
+                </ChildContent>
+            </RadzenFormField>
+        </RadzenColumn>
+    </RadzenRow>
+
+    <RadzenRow class="rz-mx-2 rz-mb-8">
+        <RadzenColumn Size="6">
+            <RadzenFormField Text="Moneda" Variant="Variant.Outlined" Style="width:100%">
+                <ChildContent>
+                    <RadzenDropDown @bind-Value="usuario.MonedaId" Data="@monedas" AllowClear="false"
+                                    TextProperty="Nombre" ValueProperty="Id" Style="width:100%" Name="componente_moneda" />
+                </ChildContent>
+                <Helper>
+                    <RadzenCustomValidator Component="componente_moneda" Validator="@(() => Validar_moneda(usuario.MonedaId))" Text="Seleccione una moneda" Popup=true />
+                </Helper>
+            </RadzenFormField>
+        </RadzenColumn>
+        <RadzenColumn Size="6">
             <RadzenFormField Text="Estado">
                 <Start>
                     <RadzenCheckBox @bind-Value="usuario.Activo" Name="componente_activo" />
@@ -66,22 +95,75 @@
     </RadzenRow>
 
     <RadzenRow class="rz-mx-2 rz-mb-8">
-        <RadzenColumn Size="6">
+        <RadzenColumn>
             <RadzenLabel Text="Roles" />
-            <RadzenListBox @bind-Value="valuesRoles" TValue="IEnumerable<int>" Change="@(args => PermisosRolesSeleccionados(args as IEnumerable<int>))" Data="@roles" AllowSelectAll="false"
+            <RadzenListBox @bind-Value="valuesRoles" TValue="IEnumerable<int>" Data="@roles" AllowSelectAll="false"
                            TextProperty="Nombre" ValueProperty="Id" Style="width:100%" Multiple="true" />
         </RadzenColumn>
-        <RadzenColumn Size="6">
-            <RadzenLabel Text="Permisos asociados a los roles seleccionados" />
-            @if (permisos != null && permisos.Any())
-            {
-                <RadzenListBox TValue="int" Data="@permisos" Style="width: 100%; height:200px"
-                               TextProperty="Nombre" ValueProperty="Id" AllowSelectAll="false" ReadOnly="true" />
-            }
-            else
-            {
-                <RadzenText Text="No existen permisos asociados.-" />
-            }
+    </RadzenRow>
+
+    <!-- Sección de Imagen de Perfil -->
+    <RadzenRow class="rz-mx-2 rz-mb-8">
+        <RadzenColumn>
+            <RadzenCard>
+                <RadzenStack Gap="1rem">
+                    <RadzenText TextStyle="TextStyle.H6" Text="Imagen de Perfil" />
+                    
+                    <div class="text-center">
+                        @if (imagenPerfilSeleccionada != null)
+                        {
+                            <img src="@imagenPerfilSeleccionada.UrlThumb" 
+                                 alt="Vista previa" 
+                                 class="img-fluid rounded-circle mb-3" 
+                                 style="width: 120px; height: 120px; object-fit: cover; border: 3px solid #e9ecef;" />
+                        }
+                        else
+                        {
+                            <div class="bg-light rounded-circle d-flex align-items-center justify-content-center mb-3 mx-auto" 
+                                 style="width: 120px; height: 120px; border: 3px solid #e9ecef;">
+                                <i class="fas fa-user-circle text-muted" style="font-size: 80px;"></i>
+                            </div>
+                        }
+                        
+                        <div class="text-muted small">
+                            @if (imagenPerfilSeleccionada != null)
+                            {
+                                <i class="fas fa-check-circle text-success me-1"></i>
+                                <span>Imagen seleccionada: @imagenPerfilSeleccionada.Nombre</span>
+                            }
+                            else
+                            {
+                                <i class="fas fa-info-circle me-1"></i>
+                                <span>Sin imagen seleccionada</span>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <ImageUploadComponent 
+                            PermitirMultiples="false"
+                            MostrarVistaPrevia="false"
+                            MostrarBotones="true"
+                            OnImagenesSubidas="@OnImagenPerfilSubida"
+                            OnError="@OnErrorSubida" />
+                    </div>
+
+                    @if (imagenPerfilSeleccionada != null)
+                    {
+                        <button type="button" 
+                                class="btn btn-outline-danger btn-sm w-100" 
+                                @onclick="EliminarImagenSeleccionada">
+                            <i class="fas fa-trash me-1"></i>
+                            Quitar Imagen Seleccionada
+                        </button>
+                    }
+
+                    <div class="alert alert-info mt-3 small">
+                        <i class="fas fa-lightbulb me-1"></i>
+                        <strong>Opcional:</strong> La imagen de perfil se mostrará en toda la aplicación. Puedes agregarla ahora o más tarde.
+                    </div>
+                </RadzenStack>
+            </RadzenCard>
         </RadzenColumn>
     </RadzenRow>
 
@@ -97,9 +179,9 @@
     RadzenTemplateForm<Usuario> form;
     Usuario usuario = new Usuario();
 
-    private List<Permiso> permisos { get; set; } = new List<Permiso>();
-
     private List<Rol> roles { get; set; }
+    private List<Moneda> monedas { get; set; }
+    private Imagen? imagenPerfilSeleccionada;
 
     IEnumerable<int> valuesPermisos;
     IEnumerable<int> valuesRoles;
@@ -131,6 +213,11 @@
         return valid && regex.IsMatch(email);
     }
 
+    bool Validar_moneda(int monedaId)
+    {
+        return monedaId > 0;
+    }
+
     #endregion
 
     protected override async Task OnInitializedAsync()
@@ -144,32 +231,44 @@
             usuario.Roles = new List<Rol>();
         }
 
-        var rta_roles = await serv_rol.Obtener_todos();
+        // Inicializar campos por defecto
+        usuario.Activo = true;
+        usuario.MonedaId = 1; // Moneda por defecto
 
+        var rta_roles = await serv_rol.Obtener_todos();
         if (rta_roles.Correcto)
         {
             roles = rta_roles.Datos.ToList();
         }
+
+        var rta_monedas = await serv_moneda.Obtener_todos();
+        if (rta_monedas.Correcto)
+        {
+            monedas = rta_monedas.Datos.ToList();
+        }
     }
 
-    async Task PermisosRolesSeleccionados(IEnumerable<int> idRoles)
+    private async Task OnImagenPerfilSubida(List<Imagen> imagenes)
     {
-        var permisosUnicos = new HashSet<Permiso>();
-
-        foreach (int idRol in idRoles)
+        if (imagenes.Any())
         {
-            var rta_permisos = await serv_permiso.Obtener_por_rol(idRol);
-            if (rta_permisos.Correcto && rta_permisos.Datos != null)
-            {
-                permisosUnicos.UnionWith(rta_permisos.Datos.Where(p => p != null && p.Id > 0));
-            }
-            else
-            {
-                base.MostrarNotificacion(NotificationSeverity.Error, "Error!", "Error al obtener los permisos asociados al rol");
-            }
+            imagenPerfilSeleccionada = imagenes.First();
+            base.MostrarNotificacion(NotificationSeverity.Success, "Éxito", 
+                "Imagen seleccionada. Se asignará después de crear el usuario.");
+            StateHasChanged();
         }
+    }
 
-        permisos = permisosUnicos.ToList();
+    private async Task OnErrorSubida(string error)
+    {
+        base.MostrarNotificacion(NotificationSeverity.Error, "Error", error);
+    }
+
+    private void EliminarImagenSeleccionada()
+    {
+        imagenPerfilSeleccionada = null;
+        base.MostrarNotificacion(NotificationSeverity.Info, "Info", "Imagen removida");
+        StateHasChanged();
     }
 
     async Task OnSubmit()
@@ -189,16 +288,40 @@
                 DTO<Usuario> usuario_respuesta = await serv_usuario.Crear(usuario);
                 if (usuario_respuesta != null && usuario_respuesta.Correcto)
                 {
-                    base.MostrarNotificacion(NotificationSeverity.Success, "Alta correcta", "Se ha agregado un nuevo usuario al sistema", "/usuarios");
+                    // Si hay imagen seleccionada, asignarla al usuario creado
+                    if (imagenPerfilSeleccionada != null && usuario_respuesta.Datos != null)
+                    {
+                        try
+                        {
+                            var resultadoImagen = await serv_imagen.EstablecerImagenPerfil(
+                                imagenPerfilSeleccionada.Id, usuario_respuesta.Datos.Id);
+                                
+                            if (!resultadoImagen.Correcto)
+                            {
+                                base.MostrarNotificacion(NotificationSeverity.Warning, "Advertencia", 
+                                    "Usuario creado, pero no se pudo asignar la imagen de perfil.");
+                            }
+                        }
+                        catch (Exception imgEx)
+                        {
+                            base.MostrarNotificacion(NotificationSeverity.Warning, "Advertencia", 
+                                $"Usuario creado, pero error al asignar imagen: {imgEx.Message}");
+                        }
+                    }
+
+                    base.MostrarNotificacion(NotificationSeverity.Success, "Alta correcta", 
+                        "Se ha agregado un nuevo usuario al sistema", "/usuarios");
                 }
                 else
                 {
-                    base.MostrarNotificacion(NotificationSeverity.Error, "Error!", $"Error al agregar el usuario: {usuario_respuesta.Mensaje}");
+                    base.MostrarNotificacion(NotificationSeverity.Error, "Error!", 
+                        $"Error al agregar el usuario: {usuario_respuesta.Mensaje}");
                 }
             }
             catch (Exception ex)
             {
-                base.MostrarNotificacion(NotificationSeverity.Error, "Error!", $"Error al agregar el usuario: {ex.Message}");
+                base.MostrarNotificacion(NotificationSeverity.Error, "Error!", 
+                    $"Error al agregar el usuario: {ex.Message}");
             }
         }
     }

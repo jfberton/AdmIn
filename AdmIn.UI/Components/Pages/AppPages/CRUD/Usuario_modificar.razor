@@ -1,15 +1,18 @@
 ﻿@page "/usuarios/update/{id}"
 @inherits BaseComponent
 
-@using AdmIn.Business.Entidades
+@using AdmIn.Common.Entidades
 @using System.Text.RegularExpressions
 @using AdmIn.Common
 @using AdmIn.UI.Services
 @using AdmIn.UI.Services.UtilityServices
+@using AdmIn.UI.Components.Shared
 
 @inject IServ_Usuario serv_usuario;
 @inject IServ_Rol serv_rol;
-@inject IServ_Permiso serv_permiso;
+@inject IServ_Moneda serv_moneda;
+@inject IServ_Imagen serv_imagen;
+@inject DialogService dialogService;
 
 <RadzenTemplateForm @ref="form" TItem="Usuario" Data="@usuario">
     <RadzenRow class="rz-mx-2 rz-mb-8">
@@ -21,20 +24,6 @@
                 <Helper>
                     <RadzenCustomValidator Component="componente_nombre" Validator="@(() => Validar_nombre(usuario.Nombre))" Text="Ingrese nombre" Popup=true />
                 </Helper>
-            </RadzenFormField>
-        </RadzenColumn>
-    </RadzenRow>
-    
-    <!-- Nuevo campo Activo -->
-    <RadzenRow class="rz-mx-2 rz-mb-8">
-        <RadzenColumn>
-            <RadzenFormField Text="Estado">
-                <Start>
-                    <RadzenCheckBox @bind-Value="usuario.Activo" Name="componente_activo" />
-                </Start>
-                <ChildContent>
-                    <RadzenLabel Text="Activo" Component="CheckBox1" Class="rz-mx-4" />
-                </ChildContent>
             </RadzenFormField>
         </RadzenColumn>
     </RadzenRow>
@@ -54,20 +43,103 @@
 
     <RadzenRow class="rz-mx-2 rz-mb-8">
         <RadzenColumn Size="6">
-            <RadzenLabel Text="Roles" />
-            <RadzenListBox @bind-Value="valuesRoles" TValue="IEnumerable<int>" Change="@(args => PermisosRolesSeleccionados(args as IEnumerable<int>))" Data="@roles" ons AllowSelectAll="false"
-            TextProperty="Nombre" ValueProperty="Id" Style="width:100%" Multiple="true" />
+            <RadzenFormField Text="País" Variant="Variant.Outlined" Style="width:100%">
+                <ChildContent>
+                    <RadzenTextBox @bind-Value=usuario.Pais MaxLength="100" Name="componente_pais" TValue="string" />
+                </ChildContent>
+            </RadzenFormField>
         </RadzenColumn>
         <RadzenColumn Size="6">
-            <RadzenLabel Text="Permisos asociados a los roles seleccionados" />
-            @if (permisos == null || permisos.Count == 0)
-            {
-                <RadzenText Text="No existen permisos asociados.-" />
-            }
-            else
-            {
-                <RadzenListBox @bind-Value=@valuesPermisos ReadOnly TValue="IEnumerable<int>" Data="@permisos" Style="width: 100%; height:200px" TextProperty="Nombre" ValueProperty="Id" />
-            }
+            <RadzenFormField Text="Teléfono" Variant="Variant.Outlined" Style="width:100%">
+                <ChildContent>
+                    <RadzenTextBox @bind-Value=usuario.Telefono MaxLength="20" Name="componente_telefono" TValue="string" />
+                </ChildContent>
+            </RadzenFormField>
+        </RadzenColumn>
+    </RadzenRow>
+
+    <RadzenRow class="rz-mx-2 rz-mb-8">
+        <RadzenColumn Size="6">
+            <RadzenFormField Text="Moneda" Variant="Variant.Outlined" Style="width:100%">
+                <ChildContent>
+                    <RadzenDropDown @bind-Value="usuario.MonedaId" Data="@monedas" AllowClear="false"
+                                    TextProperty="Nombre" ValueProperty="Id" Style="width:100%" Name="componente_moneda" />
+                </ChildContent>
+                <Helper>
+                    <RadzenCustomValidator Component="componente_moneda" Validator="@(() => Validar_moneda(usuario.MonedaId))" Text="Seleccione una moneda" Popup=true />
+                </Helper>
+            </RadzenFormField>
+        </RadzenColumn>
+        <RadzenColumn Size="6">
+            <RadzenFormField Text="Estado">
+                <Start>
+                    <RadzenCheckBox @bind-Value="usuario.Activo" Name="componente_activo" />
+                </Start>
+                <ChildContent>
+                    <RadzenLabel Text="Activo" Component="CheckBox1" Class="rz-mx-4" />
+                </ChildContent>
+            </RadzenFormField>
+        </RadzenColumn>
+    </RadzenRow>
+
+    <RadzenRow class="rz-mx-2 rz-mb-8">
+        <RadzenColumn>
+            <RadzenLabel Text="Roles" />
+            <RadzenListBox @bind-Value="valuesRoles" TValue="IEnumerable<int>" Data="@roles" AllowSelectAll="false"
+                           TextProperty="Nombre" ValueProperty="Id" Style="width:100%" Multiple="true" />
+        </RadzenColumn>
+    </RadzenRow>
+
+    <!-- Sección de Imagen de Perfil -->
+    <RadzenRow class="rz-mx-2 rz-mb-8">
+        <RadzenColumn>
+            <RadzenCard>
+                <RadzenStack Gap="1rem">
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
+                        <RadzenText TextStyle="TextStyle.H6" Text="Imagen de Perfil" />
+                        <RadzenButton ButtonStyle="ButtonStyle.Primary" 
+                                     Icon="camera" 
+                                     Text="Cambiar Foto" 
+                                     Size="ButtonSize.Small"
+                                     Click="@CambiarImagenPerfil" />
+                    </RadzenStack>
+                    
+                    <div class="text-center">
+                        @if (usuario.ImagenPerfil != null)
+                        {
+                            <img src="@usuario.ObtenerUrlImagenPerfil()" 
+                                 alt="Imagen de perfil actual" 
+                                 class="img-fluid rounded-circle mb-3" 
+                                 style="width: 120px; height: 120px; object-fit: cover; border: 3px solid #e9ecef;" />
+                        }
+                        else
+                        {
+                            <div class="bg-light rounded-circle d-flex align-items-center justify-content-center mb-3 mx-auto" 
+                                 style="width: 120px; height: 120px; border: 3px solid #e9ecef;">
+                                <i class="fas fa-user-circle text-muted" style="font-size: 80px;"></i>
+                            </div>
+                        }
+                        
+                        <div class="text-muted small">
+                            @if (usuario.ImagenPerfil != null)
+                            {
+                                <i class="fas fa-check-circle text-success me-1"></i>
+                                <span>Imagen actual del perfil</span>
+                            }
+                            else
+                            {
+                                <i class="fas fa-info-circle me-1"></i>
+                                <span>Sin imagen de perfil</span>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info mt-3 small">
+                        <i class="fas fa-lightbulb me-1"></i>
+                        <strong>Gestionar Imagen:</strong> Haz clic en "Cambiar Foto" para actualizar la imagen de perfil.
+                    </div>
+                </RadzenStack>
+            </RadzenCard>
         </RadzenColumn>
     </RadzenRow>
 
@@ -83,11 +155,9 @@
     RadzenTemplateForm<Usuario> form;
     Usuario usuario = new Usuario();
 
-    private List<Permiso> permisos { get; set; }
-
     private List<Rol> roles { get; set; }
+    private List<Moneda> monedas { get; set; }
 
-    IEnumerable<int> valuesPermisos;
     IEnumerable<int> valuesRoles;
 
     [Parameter]
@@ -97,7 +167,6 @@
 
     public bool Is_valid()
     {
-
         form.EditContext.Validate();
         return form.IsValid;
     }
@@ -122,6 +191,11 @@
         return valid && regex.IsMatch(email);
     }
 
+    bool Validar_moneda(int monedaId)
+    {
+        return monedaId > 0;
+    }
+
     #endregion
 
     protected override async Task OnInitializedAsync()
@@ -133,10 +207,15 @@
         int id_usuario;
 
         var rta_roles = await serv_rol.Obtener_todos();
-
         if (rta_roles.Correcto)
         {
             roles = rta_roles.Datos.ToList();
+        }
+
+        var rta_monedas = await serv_moneda.Obtener_todos();
+        if (rta_monedas.Correcto)
+        {
+            monedas = rta_monedas.Datos.ToList();
         }
 
         if (int.TryParse(id, out id_usuario))
@@ -147,38 +226,50 @@
                 usuario = rta_usuario.Datos;
                 valuesRoles = usuario.Roles.Select(r => r.Id).AsEnumerable();
 
-                await PermisosRolesSeleccionados(valuesRoles);
-
                 StateHasChanged();
             }
         }
     }
 
-    async Task PermisosRolesSeleccionados(IEnumerable<int> idRoles)
+    private async Task CambiarImagenPerfil()
     {
-        // HashSet para evitar duplicados
-        var permisosUnicos = new HashSet<Permiso>();
+        if (usuario == null) return;
 
-        foreach (int idRol in idRoles)
+        try
         {
-            var rta_permisos = await serv_permiso.Obtener_por_rol(idRol);
-            if (rta_permisos.Correcto)
-            {
-                foreach (var permiso in rta_permisos.Datos) // Suponiendo que Data contiene la lista de permisos
+            var resultado = await dialogService.OpenAsync<CambiarFotoDialog>("Cambiar Imagen de Perfil",
+                new Dictionary<string, object>
                 {
-                    permisosUnicos.Add(permiso); // HashSet evita duplicados automáticamente
-                }
-            }
-            else
+                    { "Usuario", usuario }
+                },
+                new DialogOptions { 
+                    Width = "600px", 
+                    Height = "500px",
+                    Resizable = true,
+                    Draggable = true,
+                    CloseDialogOnOverlayClick = false
+                });
+
+            if (resultado is bool cambiado && cambiado)
             {
-                base.MostrarNotificacion(NotificationSeverity.Error, "Error!", "Error al obtener los permisos asociados al rol");
+                // Recargar el usuario para mostrar la nueva imagen
+                var rta_usuario = await serv_usuario.Obtener_por_id(usuario.Id);
+                if (rta_usuario.Correcto)
+                {
+                    usuario = rta_usuario.Datos;
+                    StateHasChanged();
+                }
+                
+                NotificationService.Notify(NotificationSeverity.Success, "Éxito", 
+                    "Imagen de perfil actualizada correctamente");
             }
         }
-
-        // Convertir HashSet a List si es necesario
-        permisos = permisosUnicos.ToList();
+        catch (Exception ex)
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "Error", 
+                $"Error al cambiar imagen: {ex.Message}");
+        }
     }
-
 
     async Task OnSubmit()
     {
@@ -216,4 +307,4 @@
         base.IrA("/usuarios");
     }
 
-}
+}}
