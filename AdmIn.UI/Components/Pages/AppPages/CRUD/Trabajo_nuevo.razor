@@ -1,0 +1,115 @@
+@page "/inmuebles/{InmuebleId:int}/trabajos/nuevo"
+@using AdmIn.Common.Entidades
+@using AdmIn.Common
+@using AdmIn.UI.Services
+@inject IServ_TrabajoProveedor ServicioTrabajo
+@inject IServ_Proveedor ServicioProveedor
+@inject IServ_Imagen ServicioImagen
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Nuevo Trabajo</PageTitle>
+
+<div class="card">
+    <div class="card-body">
+        <EditForm Model="trabajo" OnValidSubmit="Guardar">
+            <DataAnnotationsValidator />
+            <div class="mb-3">
+                <label class="form-label">Proveedor</label>
+                <select class="form-select" @bind="trabajo.ProveedorId">
+                    <option value="0">-- Seleccionar proveedor --</option>
+                    @foreach (var p in proveedores)
+                    {
+                        <option value="@p.Id">@p.Nombre</option>
+                    }
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Fecha solicitada</label>
+                <InputDate class="form-control" @bind-Value="trabajo.Fecha" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Descripción</label>
+                <InputTextArea class="form-control" @bind-Value="trabajo.Descripcion" Rows="4" />
+            </div>
+
+            <!-- REMOVED: Costo aproximado (lo carga el proveedor al aceptar) -->
+
+            <!-- Imagenes: usar ImageUploadComponent para subir imágenes asociadas al trabajo -->
+            <div class="mb-3">
+                <label class="form-label">Imágenes del trabajo (opcional)</label>
+                <ImageUploadComponent PermitirMultiples="true"
+                                      MostrarVistaPrevia="true"
+                                      MostrarBotones="true"
+                                      OnImagenesSubidas="@OnImagenesSubidas" />
+            </div>
+
+            <div class="d-flex justify-content-end">
+                <button class="btn btn-secondary me-2" @onclick="Cancelar">Cancelar</button>
+                <button class="btn btn-primary" type="submit">Crear Trabajo</button>
+            </div>
+        </EditForm>
+    </div>
+</div>
+
+@code{
+    [Parameter]
+    public int InmuebleId { get; set; }
+
+    TrabajoProveedor trabajo = new()
+    {
+        Fecha = DateTime.Now,
+        Estado = "Solicitado"
+    };
+
+    List<Proveedor> proveedores = new();
+    List<Imagen> imagenes = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        trabajo.InmuebleId = InmuebleId;
+        await CargarProveedores();
+    }
+
+    private async Task CargarProveedores()
+    {
+        var r = await ServicioProveedor.Obtener_todos();
+        if (r.Correcto && r.Datos != null)
+        {
+            proveedores = r.Datos.ToList();
+        }
+        else
+        {
+            proveedores = new List<Proveedor>();
+        }
+    }
+
+    private async Task Guardar()
+    {
+        // Asociar imágenes cargadas antes de enviar
+        trabajo.Imagenes = imagenes;
+        var r = await ServicioTrabajo.Crear(trabajo);
+        if (r.Correcto)
+        {
+            Navigation.NavigateTo($"/inmuebles/{InmuebleId}");
+        }
+        else
+        {
+            await JSRuntime.InvokeVoidAsync("alert", r.Mensaje);
+        }
+    }
+
+    private void Cancelar()
+    {
+        Navigation.NavigateTo($"/inmuebles/{InmuebleId}");
+    }
+
+    private async Task OnImagenesSubidas(List<Imagen> imgs)
+    {
+        if (imgs == null) return;
+        imagenes.AddRange(imgs);
+        await InvokeAsync(StateHasChanged);
+    }
+}

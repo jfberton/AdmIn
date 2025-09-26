@@ -43,6 +43,8 @@ builder.Services.AddScoped<IServ_Caracteristica, Serv_Caracteristica>();
 builder.Services.AddScoped<IServ_TipoServicio, Serv_TipoServicio>();
 builder.Services.AddScoped<IServ_Proveedor, Serv_Proveedor>();
 builder.Services.AddScoped<IServ_Imagen, Serv_Imagen>();
+builder.Services.AddScoped<IServ_TrabajoProveedor, Serv_TrabajoProveedor>();
+builder.Services.AddScoped<IServ_Notificacion, Serv_Notificacion>();
 
 //Utility Services
 builder.Services.AddHttpContextAccessor();

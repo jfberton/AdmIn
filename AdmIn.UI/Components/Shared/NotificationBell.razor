@@ -1,0 +1,290 @@
+@using System.Text.Json
+@using AdmIn.Common.Entidades
+@using Microsoft.AspNetCore.Components
+@using System.Linq
+@using Radzen
+@inject AdmIn.UI.Services.IServ_Notificacion servNotificacion
+@inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider authStateProvider
+@inject IJSRuntime JSRuntime
+@inject NavigationManager Navigation
+
+<div class="notification-bell">
+    <button class="btn btn-link position-relative" @onclick="ToggleDropdown" aria-label="Notificaciones">
+        <RadzenIcon Icon="notifications" Style="font-size:20px;color:inherit;" />
+        @if (unreadCount > 0)
+        {
+            <span class="badge bg-danger position-absolute top-0 start-100 translate-middle">@unreadCount</span>
+        }
+    </button>
+
+    @if (showDropdown)
+    {
+        <div class="dropdown-notifications card p-2">
+            @if (notifications?.Any() != true)
+            {
+                <div class="p-2">No hay notificaciones</div>
+            }
+            else
+            {
+                @foreach (var n in notifications.Take(10))
+                {
+                    <div class="notification-item d-flex justify-content-between align-items-start p-2">
+                        <div>
+                            <div class="fw-bold">@n.Tipo</div>
+                            <div class="small text-muted">@n.Mensaje</div>
+                            <div class="small text-muted">@n.Fecha.ToString("g")</div>
+                        </div>
+                        <div class="ms-2">
+                            <button class="btn btn-sm btn-outline-primary" @onclick="() => AbrirNotificacion(n)">Ver</button>
+                            <button class="btn btn-sm btn-outline-secondary ms-1" @onclick="() => MarcarLeida(n)">OK</button>
+                        </div>
+                    </div>
+                    <hr />
+                }
+            }
+            <div class="d-flex justify-content-end mt-2">
+                <button class="btn btn-sm btn-outline-secondary" @onclick="VerTodas">Ver todas</button>
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+    .notification-bell {
+        position: relative;
+        display: inline-block;
+    }
+
+    .notification-bell .btn {
+        padding: 0.25rem 0.5rem;
+        height: 36px;
+        width: 36px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .dropdown-notifications {
+        position: absolute;
+        right: 0;
+        top: calc(100% + 8px);
+        width: 340px;
+        max-width: 90vw;
+        max-height: 60vh;
+        overflow-y: auto;
+        z-index: 3000;
+        box-shadow: 0 6px 18px rgba(0,0,0,0.12);
+        border-radius: 6px;
+    }
+
+    .dropdown-notifications .notification-item {
+        min-width: 0; /* evitar que el contenido estire el contenedor */
+    }
+
+    @@media (max-width: 576px) {
+        .dropdown-notifications {
+            right: 8px;
+            left: 8px;
+            width: auto;
+            max-width: calc(100% - 16px);
+        }
+    }
+</style>
+
+@code{
+    private List<Notificacion> notifications = new();
+    private int unreadCount = 0;
+    private bool showDropdown = false;
+    private DotNetObjectReference<NotificationBell>? _dotNetRef;
+    private bool _signalrInitialized = false;
+
+    protected override void OnInitialized()
+    {
+        // avoid JS interop during prerender
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // subscribe to auth changes (inline handler)
+            authStateProvider.AuthenticationStateChanged += async _ => await CargarNotificacionesInicial();
+
+            await CargarNotificacionesInicial();
+            await InitSignalRClient();
+        }
+    }
+
+    private async Task InitSignalRClient()
+    {
+        if (_signalrInitialized) return;
+
+        try
+        {
+            var authState = await authStateProvider.GetAuthenticationStateAsync();
+            var userIdClaim = authState.User.FindFirst("Id");
+            if (userIdClaim == null) return;
+
+            var token = await (TokenServiceExists() ? GetTokenAsync() : Task.FromResult<string?>(null));
+            var baseUri = new Uri(Navigation.BaseUri);
+            var hubUrl = baseUri.Scheme + "://" + baseUri.Host + (baseUri.Port > 0 ? ":" + baseUri.Port : "") + "/hubs/notifications";
+
+            _dotNetRef = DotNetObjectReference.Create(this);
+            await JSRuntime.InvokeVoidAsync("signalrNotifications.start", hubUrl, token);
+            await JSRuntime.InvokeVoidAsync("signalrNotifications.onNewNotification", _dotNetRef);
+
+            _signalrInitialized = true;
+        }
+        catch
+        {
+            // ignore, signalr optional
+        }
+    }
+
+    private bool TokenServiceExists()
+    {
+        try
+        {
+            var svc = (object?)ServiceProviderAccessor.ServiceProvider?.GetService(typeof(AdmIn.UI.Services.UtilityServices.ITokenService));
+            return svc != null;
+        }
+        catch { return false; }
+    }
+
+    private Task<string?> GetTokenAsync()
+    {
+        var svc = (AdmIn.UI.Services.UtilityServices.ITokenService)ServiceProviderAccessor.ServiceProvider.GetService(typeof(AdmIn.UI.Services.UtilityServices.ITokenService));
+        return svc.GetTokenAsync();
+    }
+
+    [JSInvokable]
+    public async Task HandleNewNotification(JsonElement notificationJson)
+    {
+        try
+        {
+            var not = System.Text.Json.JsonSerializer.Deserialize<Notificacion>(notificationJson.GetRawText());
+            if (not != null)
+            {
+                notifications.Insert(0, not);
+                if (!not.Leida) unreadCount++;
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch { }
+    }
+
+    private async Task CargarNotificacionesInicial()
+    {
+        try
+        {
+            var authState = await authStateProvider.GetAuthenticationStateAsync();
+            var userIdClaim = authState.User.FindFirst("Id");
+            if (userIdClaim == null)
+            {
+                notifications = new List<Notificacion>();
+                unreadCount = 0;
+                return;
+            }
+
+            if (!int.TryParse(userIdClaim.Value, out int usuarioId))
+            {
+                notifications = new List<Notificacion>();
+                unreadCount = 0;
+                return;
+            }
+
+            var cnt = await servNotificacion.Contar_no_leidas(usuarioId);
+            if (cnt != null && cnt.Correcto) unreadCount = cnt.Datos;
+
+            var listado = await servNotificacion.Obtener_por_usuario(usuarioId);
+            if (listado != null && listado.Correcto && listado.Datos != null)
+            {
+                notifications = listado.Datos.ToList();
+            }
+            else
+            {
+                notifications = new List<Notificacion>();
+            }
+
+            StateHasChanged();
+        }
+        catch
+        {
+            notifications = new List<Notificacion>();
+            unreadCount = 0;
+        }
+    }
+
+    private void ToggleDropdown()
+    {
+        showDropdown = !showDropdown;
+    }
+
+    private async Task AbrirNotificacion(Notificacion n)
+    {
+        // Marcar como leida y navegar segun payload si corresponde
+        await servNotificacion.MarcarComoLeida(n.NotificacionId);
+        if (!n.Leida) unreadCount = Math.Max(0, unreadCount - 1);
+        n.Leida = true;
+
+        try
+        {
+            if (!string.IsNullOrEmpty(n.Payload))
+            {
+                using var doc = System.Text.Json.JsonDocument.Parse(n.Payload);
+                if (doc.RootElement.TryGetProperty("TrabajoId", out var trabajoElem) && trabajoElem.ValueKind == System.Text.Json.JsonValueKind.Number)
+                {
+                    var trabajoId = trabajoElem.GetInt32();
+                    showDropdown = false;
+                    Navigation.NavigateTo($"/trabajos/{trabajoId}");
+                }
+            }
+        }
+        catch { }
+    }
+
+    private async Task MarcarLeida(Notificacion n)
+    {
+        await servNotificacion.MarcarComoLeida(n.NotificacionId);
+        if (!n.Leida) unreadCount = Math.Max(0, unreadCount - 1);
+        n.Leida = true;
+    }
+
+    private void VerTodas()
+    {
+        showDropdown = false;
+        Navigation.NavigateTo("/notificaciones");
+    }
+
+    public void Dispose()
+    {
+        // no unsubscribe because we used inline handler; component lives for app lifetime
+        _dotNetRef?.Dispose();
+    }
+
+    // Helper objects to obtain service provider in razor component
+    static class ServiceProviderAccessor
+    {
+        public static IServiceProvider? ServiceProvider => _serviceProvider;
+        internal static IServiceProvider? _serviceProvider;
+    }
+
+    [Inject]
+    private IServiceProvider? _serviceProvider { get { return ServiceProviderAccessor._serviceProvider; } set { ServiceProviderAccessor._serviceProvider = value; } }
+
+    // wrapper para callback js->dotnet
+    public class NotificationCallback
+    {
+        private readonly NotificationBell _parent;
+        public NotificationCallback(NotificationBell parent)
+        {
+            _parent = parent;
+        }
+
+        [JSInvokable]
+        public Task Invoke(JsonElement notification)
+        {
+            return _parent.HandleNewNotification(notification);
+        }
+    }
+}

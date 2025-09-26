@@ -19,6 +19,8 @@ namespace AdmIn.Common.Entidades
         public string? FacturaURL { get; set; }
         public DateTime FechaCreacion { get; set; }
         public int? UsuarioCreador { get; set; }
-
+        public DateTime? FechaInicio { get; set; }
+        public decimal? CostoAproximado { get; set; }
+        public List<Imagen> Imagenes { get; set; } = new();
     }
 }

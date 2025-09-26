@@ -1,0 +1,112 @@
+@page "/notificaciones"
+@using AdmIn.Common.Entidades
+@using Microsoft.AspNetCore.Components.Authorization
+@using AdmIn.UI.Services
+@inject AdmIn.UI.Services.IServ_Notificacion servNotificacion
+@inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider authStateProvider
+
+<PageTitle>Notificaciones</PageTitle>
+
+<div class="card p-4">
+    <h3>Notificaciones</h3>
+    <hr />
+    @if (loading)
+    {
+        <div class="d-flex align-items-center">
+            <RadzenProgressBarCircular ProgressBarStyle="ProgressBarStyle.Primary" Value="100" ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
+            <span class="ms-2">Cargando...</span>
+        </div>
+    }
+    else if (notifications == null || !notifications.Any())
+    {
+        <p>No hay notificaciones.</p>
+    }
+    else
+    {
+        <ul class="list-group">
+            @foreach (var n in notifications)
+            {
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="fw-bold">@n.Tipo</div>
+                        <div>@n.Mensaje</div>
+                        <div class="small text-muted">@n.Fecha.ToString("g")</div>
+                    </div>
+                    <div>
+                        @if (!n.Leida)
+                        {
+                            <button class="btn btn-sm btn-primary me-2" @onclick="() => Marcar(n)">Marcar como leída</button>
+                        }
+                    </div>
+                </li>
+            }
+        </ul>
+    }
+</div>
+
+@code{
+    private List<Notificacion>? notifications;
+    private bool loading = true;
+    private bool _initialized = false;
+    private int _retryCount = 0;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_initialized)
+        {
+            _initialized = true;
+            await LoadNotifications();
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadNotifications()
+    {
+        loading = true;
+        try
+        {
+            var auth = await authStateProvider.GetAuthenticationStateAsync();
+            var claim = auth.User.FindFirst("Id");
+            if (claim == null)
+            {
+                notifications = new List<Notificacion>();
+                return;
+            }
+            if (!int.TryParse(claim.Value, out int userId))
+            {
+                notifications = new List<Notificacion>();
+                return;
+            }
+
+            var result = await servNotificacion.Obtener_por_usuario(userId);
+            if (result != null && result.Correcto)
+                notifications = result.Datos.ToList();
+            else
+                notifications = new List<Notificacion>();
+        }
+        catch (Exception ex)
+        {
+            // Si la excepción es causada por prerender JS interop, reintenta después de unos segundos
+            if (ex.Message != null && ex.Message.Contains("statically rendered") && _retryCount < 5)
+            {
+                _retryCount++;
+                await Task.Delay(500);
+                await LoadNotifications();
+                return;
+            }
+
+            // en caso de fallo: mostrar lista vacía
+            notifications = new List<Notificacion>();
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private async Task Marcar(Notificacion n)
+    {
+        await servNotificacion.MarcarComoLeida(n.NotificacionId);
+        n.Leida = true;
+    }
+}

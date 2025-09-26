@@ -30,9 +30,23 @@ namespace AdmIn.UI.Services
             _auth = auth;
             _tokenService = tokenService;
 
-            _pathApi = env.IsDevelopment()
-                ? $"{config["Path_api_dev"]}{recurso}/"
-                : $"{config["Path_api_prod"]}{recurso}/";
+            // Prefer configured absolute paths, otherwise fall back to relative API path
+            var pathDev = config["Path_api_dev"];
+            var pathProd = config["Path_api_prod"];
+
+            if (env.IsDevelopment() && !string.IsNullOrWhiteSpace(pathDev))
+            {
+                _pathApi = pathDev.TrimEnd('/') + "/" + recurso + "/";
+            }
+            else if (!env.IsDevelopment() && !string.IsNullOrWhiteSpace(pathProd))
+            {
+                _pathApi = pathProd.TrimEnd('/') + "/" + recurso + "/";
+            }
+            else
+            {
+                // Fallback to relative API route served by the same host
+                _pathApi = $"/api/{recurso}/";
+            }
         }
 
         public async Task<DTO<T>> Crear(T entidad)
@@ -69,7 +83,10 @@ namespace AdmIn.UI.Services
         {
             var clienteHttp = _httpClientFactory.CreateClient();
             var token = await ObtenerToken();
-            clienteHttp.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            if (!string.IsNullOrEmpty(token))
+            {
+                clienteHttp.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            }
 
             HttpRequestMessage request = new(metodo, _pathApi + endpoint);
             if (contenido != null)

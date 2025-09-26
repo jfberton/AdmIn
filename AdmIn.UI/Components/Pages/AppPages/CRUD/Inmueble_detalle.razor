@@ -8,6 +8,7 @@
 
 @inject IServ_Inmueble serv_inmueble
 @inject IServ_Imagen serv_imagen
+@inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider authStateProvider
 
 <PageTitle>@(inmueble?.Nombre ?? "Inmueble")</PageTitle>
 
@@ -45,6 +46,15 @@
                          Icon="category" 
                          Text="Gestionar Características" 
                          Click="@(() => GestionarCaracteristicas())" />
+
+            @if (canRequestWork)
+            {
+                <RadzenButton ButtonStyle="ButtonStyle.Success"
+                              Icon="build"
+                              Text="Solicitar Trabajo"
+                              Size="ButtonSize.Medium"
+                              Click="@(() => IrA($"/inmuebles/{inmueble.Id}/trabajos/nuevo"))" />
+            }
         </RadzenStack>
 
         <!-- Información Principal -->
@@ -261,6 +271,9 @@ else
     private bool cargando = true;
     private CaracteristicasViewer? caracteristicasViewer;
     private List<Imagen> imagenesInmueble = new();
+    private bool canRequestWork = false;
+    private List<string> userRoles = new();
+    private string currentUserIdDisplay = "(no autenticado)";
 
     protected override async Task OnInitializedAsync()
     {
@@ -298,6 +311,59 @@ else
                 inmueble = resultado.Datos;
                 EstablecerTituloPagina("Inmuebles", inmueble.Nombre);
                 await LogHelper.Info($"Inmueble cargado exitosamente: {inmueble.Nombre}");
+
+                // Calcular si el usuario puede solicitar trabajo: administrador del inmueble o inquilino con contrato activo
+                try
+                {
+                    var authState = await authStateProvider.GetAuthenticationStateAsync();
+                    var user = authState.User;
+                    var userIdClaim = user.FindFirst("Id");
+                    int userId = 0;
+
+                    // gather roles claims using common claim types
+                    userRoles = user.Claims.Where(c => c.Type == "role" || c.Type == "roles" || c.Type == "http://schemas.microsoft.com/ws/2008/06/identity/claims/role").Select(c => c.Value).ToList();
+
+                    // Allow admin roles even if Id claim is missing
+                    var isAdminRole = userRoles.Contains("admin_usuario") || userRoles.Contains("admin_propiedad") || userRoles.Contains("admin_reparacion") || user.IsInRole("admin_usuario") || user.IsInRole("admin_propiedad") || user.IsInRole("admin_reparacion");
+
+                    if (user.Identity.IsAuthenticated && isAdminRole)
+                    {
+                        // user has an administrative role, allow requesting work
+                        canRequestWork = true;
+                        currentUserIdDisplay = user.FindFirst("Id")?.Value ?? "(no claim Id)";
+                    }
+                    else
+                    {
+                        // fallback: try to parse user id and evaluate admin/tenant checks
+                        if (userIdClaim != null && int.TryParse(userIdClaim.Value, out userId))
+                        {
+                            currentUserIdDisplay = userId.ToString();
+
+                            var isAdminOfProperty = inmueble.AdministradorId.HasValue && inmueble.AdministradorId.Value == userId;
+
+                            var now = DateTime.UtcNow;
+                            var isTenantWithActiveContract = false;
+                            if (inmueble.Contratos != null && inmueble.Contratos.Any())
+                            {
+                                isTenantWithActiveContract = inmueble.Contratos.Any(c => c.InquilinoId == userId &&
+                                    (string.IsNullOrEmpty(c.Estado) || c.Estado.Equals("Activo", StringComparison.OrdinalIgnoreCase) ||
+                                     (c.FechaInicio.HasValue && c.FechaInicio.Value <= now && (!c.FechaFin.HasValue || c.FechaFin.Value >= now))));
+                            }
+
+                            canRequestWork = (user.Identity.IsAuthenticated && (isAdminOfProperty || isTenantWithActiveContract));
+                        }
+                        else
+                        {
+                            currentUserIdDisplay = "(claim Id ausente o no numérico)";
+                            canRequestWork = false;
+                        }
+                    }
+                }
+                catch (Exception exAuth)
+                {
+                    await LogHelper.Error($"Error verificando permisos de solicitud de trabajo: {exAuth.Message}");
+                    canRequestWork = false;
+                }
             }
             else
             {

@@ -1,7 +1,8 @@
-using AdmIn.Business.Servicios;
+using AdmIn.Common.Entidades;
 using AdmIn.Common;
-using AdmIn.Data.Repositorios;
 using AdmIn.Common.Repositorios;
+using AdmIn.Data.Repositorios;
+using AdmIn.Business.Servicios;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Microsoft.AspNetCore.StaticFiles;
@@ -120,6 +121,34 @@ builder.Services.AddScoped<IPasswordService, PasswordService>();
 // Static Files and File Content Type Provider
 builder.Services.AddSingleton<IContentTypeProvider, FileExtensionContentTypeProvider>();
 
+// Repositorios y servicios para trabajos
+builder.Services.AddScoped<IDetalleTrabajoRepository, DetalleTrabajoRepository>();
+builder.Services.AddScoped<IHistorialTrabajoRepository, HistorialTrabajoRepository>();
+builder.Services.AddScoped<IHistorialDetalleTrabajoRepository, HistorialDetalleTrabajoRepository>();
+builder.Services.AddScoped<ICalificacionProveedorRepository, CalificacionProveedorRepository>();
+builder.Services.AddScoped<ITrabajoProveedorRepository, TrabajoProveedorRepository>();
+
+builder.Services.AddScoped<IServ_DetalleTrabajo, Serv_DetalleTrabajo>();
+builder.Services.AddScoped<IServ_HistorialTrabajo, Serv_HistorialTrabajo>();
+builder.Services.AddScoped<IServ_HistorialDetalleTrabajo, Serv_HistorialDetalleTrabajo>();
+builder.Services.AddScoped<IServ_CalificacionProveedor, Serv_CalificacionProveedor>();
+
+// Register Notificacion services
+builder.Services.AddScoped<INotificacionRepository, NotificacionRepository>();
+builder.Services.AddScoped<IServ_Notificacion, Serv_Notificacion>();
+
+// Ensure Serv_TrabajoProveedor DI has IServ_Notificacion
+builder.Services.AddScoped<IServ_TrabajoProveedor, Serv_TrabajoProveedor>();
+
+// Configure Cloudinary settings from app settings
+builder.Services.Configure<CloudinarySettings>(builder.Configuration.GetSection("Cloudinary"));
+
+// Registrar SignalR hub
+builder.Services.AddSignalR();
+
+// Register Service bus hub context dependency for business services (so they can use IHubContext)
+builder.Services.AddSingleton(typeof(Microsoft.AspNetCore.SignalR.IHubContext<AdmIn.API.Hubs.NotificationHub>), sp => sp.GetService<Microsoft.AspNetCore.SignalR.IHubContext<AdmIn.API.Hubs.NotificationHub>>());
+
 var app = builder.Build();
 
 // Helper method for file logging optimizado para IIS usando el servicio centralizado
@@ -228,6 +257,7 @@ app.UseAuthentication(); // Validación de tokens JWT
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHub<AdmIn.API.Hubs.NotificationHub>("/hubs/notifications");
 
 app.Run();
 

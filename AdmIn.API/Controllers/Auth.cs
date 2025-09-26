@@ -187,6 +187,10 @@ namespace AdmIn.API.Controllers
                         var key = Encoding.ASCII.GetBytes(_config.GetSection("Jwt:Key").Value);
                         var claims = new List<Claim>() { new Claim(ClaimTypes.Name, respuesta.Datos.Nombre ?? "") };
 
+                        // Add user id claims for clients and SignalR
+                        claims.Add(new Claim(ClaimTypes.NameIdentifier, respuesta.Datos.Id.ToString()));
+                        claims.Add(new Claim("Id", respuesta.Datos.Id.ToString()));
+
                         Console.WriteLine($"[AUTH API] ✅ Claims base creados - Name: {respuesta.Datos.Nombre ?? "null"}");
 
                         foreach (var permiso in respuesta.Datos.Roles ?? new List<Rol>())
