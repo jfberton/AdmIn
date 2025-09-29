@@ -20,5 +20,9 @@ namespace AdmIn.Common.Entidades
         public DateTime FechaModificacion { get; set; } = DateTime.Now;
         public int? UsuarioCreadorId { get; set; }
         public int? UsuarioModificadorId { get; set; }
+
+        // Propiedades calculadas (no almacenadas en la base de datos): Calificación promedio y trabajos realizados
+        public decimal CalificacionPromedio { get; set; } = 0m;
+        public int TrabajosRealizados { get; set; } = 0;
     }
 }

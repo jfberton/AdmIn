@@ -4,14 +4,13 @@
 <RadzenCard class="modern-property-card">
     <Header>
         <div class="property-image-container">
-            @if (Inmueble.ImagenPrincipal != null)
+            @* Static carousel: show current image (falls back to principal or first), allow left/right navigation *@
+            @if (Inmueble.Imagenes != null && Inmueble.Imagenes.Any())
             {
-                <img src="@Inmueble.ImagenPrincipal.Url" 
-                     class="property-image" 
-                     alt="@Inmueble.Nombre" />
+                var imgToShow = Inmueble.Imagenes.ElementAtOrDefault(currentImageIndex) ?? Inmueble.Imagenes.First();
+                <img src="@imgToShow.Url" class="property-image" alt="@Inmueble.Nombre" />
                 <div class="image-overlay">
                     <div class="overlay-gradient"></div>
-                    <!-- Mostrar condición en overlay solo si existe -->
                     @if (Inmueble.Condicion != null && !string.IsNullOrEmpty(Inmueble.Condicion.Nombre))
                     {
                         <div class="property-status-overlay">
@@ -20,6 +19,12 @@
                                          class="status-badge-overlay" 
                                          style="@GetBadgeStyle()" />
                         </div>
+                    }
+                    @* Carousel controls *@
+                    @if (Inmueble.Imagenes.Count > 1)
+                    {
+                        <button type="button" class="carousel-control prev" @onclick="PrevImage">&#10094;</button>
+                        <button type="button" class="carousel-control next" @onclick="NextImage">&#10095;</button>
                     }
                 </div>
             }
@@ -30,7 +35,6 @@
                         <RadzenIcon Icon="home" class="placeholder-icon" />
                         <span class="placeholder-text">Sin imagen disponible</span>
                     </div>
-                    <!-- Mostrar condición en placeholder solo si existe -->
                     @if (Inmueble.Condicion != null && !string.IsNullOrEmpty(Inmueble.Condicion.Nombre))
                     {
                         <div class="property-status-overlay">
@@ -42,22 +46,22 @@
                     }
                 </div>
             }
-            
-            <!-- Indicador de precio destacado -->
-            <div class="price-tag">
-                <span class="price-amount">@Inmueble.Valor.ToString("C")</span>
-            </div>
+             
+             <!-- Indicador de precio destacado -->
+             <div class="price-tag">
+                 <span class="price-amount">@Inmueble.Valor.ToString("C")</span>
+             </div>
 
-            <!-- Indicador de múltiples imágenes -->
-            @if (Inmueble.Imagenes?.Count > 1)
-            {
-                <div class="images-count-badge">
-                    <RadzenIcon Icon="photo_library" class="images-icon" />
-                    <span>@Inmueble.Imagenes.Count</span>
-                </div>
-            }
-        </div>
-    </Header>
+             <!-- Indicador de múltiples imágenes -->
+             @if (Inmueble.Imagenes?.Count > 1)
+             {
+                 <div class="images-count-badge">
+                     <RadzenIcon Icon="photo_library" class="images-icon" />
+                     <span>@Inmueble.Imagenes.Count</span>
+                 </div>
+             }
+         </div>
+     </Header>
     
     <Content>
         <div class="property-content">
@@ -86,7 +90,16 @@
             {
                 <div class="property-characteristics">
                     <RadzenIcon Icon="featured_play_list" class="characteristics-icon" />
-                    <span class="characteristics-count">@Inmueble.Caracteristicas.Count características</span>
+                    <div class="characteristics-list">
+                        @foreach (var c in Inmueble.Caracteristicas.Take(3))
+                        {
+                            <span class="char-item">@c.Caracteristica?.Nombre</span>
+                        }
+                        @if (Inmueble.Caracteristicas.Count > 3)
+                        {
+                            <span class="char-more">+@((Inmueble.Caracteristicas.Count)-3)</span>
+                        }
+                    </div>
                 </div>
             }
             
@@ -267,11 +280,11 @@
         font-size: 1rem;
     }
 
-    .characteristics-count {
-        font-size: 0.875rem;
-        font-weight: 500;
-        color: var(--rz-info-dark, #1976d2);
-    }
+    .characteristics-list { display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap; }
+
+    .char-item { background:#eef2ff; color:#1e3a8a; padding:0.25rem 0.5rem; border-radius:6px; font-size:0.8rem; }
+
+    .char-more { color:#6b7280; font-size:0.8rem; }
 
     .property-status-section {
         margin-bottom: 1rem;
@@ -363,6 +376,26 @@
         overflow: hidden;
     }
 
+    /* Carousel controls */
+    .carousel-control {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        background: rgba(0,0,0,0.35);
+        color: #fff;
+        border: none;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        z-index: 30;
+    }
+    .carousel-control.prev { left: 12px; }
+    .carousel-control.next { right: 12px; }
+
     .property-image {
         width: 100%;
         height: 100%;
@@ -418,7 +451,8 @@
         left: 0;
         right: 0;
         bottom: 0;
-        pointer-events: none;
+        /* allow interaction for controls inside the overlay */
+        pointer-events: auto;
     }
 
     .overlay-gradient {
@@ -428,6 +462,8 @@
         right: 0;
         height: 50%;
         background: linear-gradient(transparent, rgba(0,0,0,0.6));
+        /* gradient shouldn't intercept pointer events */
+        pointer-events: none;
     }
 
     .property-status-overlay {
@@ -465,6 +501,7 @@
     // Variables para evitar múltiples clicks
     private bool gestionandoCaracteristicas = false;
     private bool gestionandoImagenes = false;
+    private int currentImageIndex = 0;
 
     private async Task VerDetalle(int inmuebleId)
     {
@@ -505,6 +542,20 @@
             gestionandoImagenes = false;
             StateHasChanged();
         }
+    }
+
+    private void PrevImage()
+    {
+        if (Inmueble?.Imagenes == null || !Inmueble.Imagenes.Any()) return;
+        currentImageIndex = (currentImageIndex - 1 + Inmueble.Imagenes.Count) % Inmueble.Imagenes.Count;
+        StateHasChanged();
+    }
+
+    private void NextImage()
+    {
+        if (Inmueble?.Imagenes == null || !Inmueble.Imagenes.Any()) return;
+        currentImageIndex = (currentImageIndex + 1) % Inmueble.Imagenes.Count;
+        StateHasChanged();
     }
 
     private string GetCondicionTexto()

@@ -1,0 +1,161 @@
+@page "/trabajos/{Id:int}"
+@using AdmIn.Common.Entidades
+@using AdmIn.UI.Services
+@using AdmIn.UI.Components.Pages.AppPages.Dialogos
+@inject IServ_TrabajoProveedor TrabajoService
+@inject IServ_HistorialTrabajo HistorialService
+@inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider authStateProvider
+@inject NotificationService NotificationService
+@inject DialogService DialogService
+@inject NavigationManager Navigation
+
+<PageTitle>Detalle Trabajo</PageTitle>
+
+<RadzenCard>
+    @if (trabajo == null)
+    {
+        <div>Cargando...</div>
+    }
+    else
+    {
+        <RadzenStack Gap="1rem">
+            <RadzenText TextStyle="TextStyle.H5" Text=$"Trabajo #{trabajo.Id} - {trabajo.Estado}" />
+            <RadzenPanelMenu>
+                <MenuItem Text="Detalles" Icon="info" />
+            </RadzenPanelMenu>
+
+            <div>
+                <p><strong>Inmueble:</strong> @trabajo.InmuebleId</p>
+                <p><strong>Proveedor:</strong> @trabajo.ProveedorId</p>
+                <p><strong>Fecha Solicitud:</strong> @trabajo.Fecha.ToString("g")</p>
+                <p><strong>Descripción:</strong> @trabajo.Descripcion</p>
+                <p><strong>Costo:</strong> @trabajo.Costo</p>
+                <p><strong>Fecha Inicio:</strong> @(trabajo.FechaInicio?.ToString("g") ?? "-")</p>
+                <p><strong>Costo aproximado:</strong> @(trabajo.CostoAproximado?.ToString() ?? "-")</p>
+            </div>
+
+            <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem">
+                @if (puedeAceptar)
+                {
+                    <RadzenButton ButtonStyle="ButtonStyle.Success" Click="Aceptar">Aceptar</RadzenButton>
+                }
+                @if (puedeAgregarDetalle)
+                {
+                    <RadzenButton Click="AgregarDetalle">Agregar detalle</RadzenButton>
+                }
+                @if (puedeFinalizar)
+                {
+                    <RadzenButton ButtonStyle="ButtonStyle.Primary" Click="Finalizar">Finalizar</RadzenButton>
+                }
+            </RadzenStack>
+
+            <RadzenText TextStyle="TextStyle.H6" Text="Historial" />
+            @if (historial == null || !historial.Any())
+            {
+                <div>No hay historial</div>
+            }
+            else
+            {
+                @foreach (var h in historial)
+                {
+                    <div class="historial-item">
+                        <div><strong>@h.Fecha.ToString("g")</strong> - @h.Estado</div>
+                        <div>@h.Comentario</div>
+                    </div>
+                }
+            }
+        </RadzenStack>
+    }
+</RadzenCard>
+
+@code{
+    [Parameter] public int Id { get; set; }
+
+    private TrabajoProveedor? trabajo;
+    private List<HistorialTrabajo>? historial = new();
+    private bool puedeAceptar = false;
+    private bool puedeAgregarDetalle = false;
+    private bool puedeFinalizar = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Cargar();
+    }
+
+    private async Task Cargar()
+    {
+        var res = await TrabajoService.Obtener_por_id(Id);
+        if (res != null && res.Correcto && res.Datos != null)
+        {
+            trabajo = res.Datos;
+            // cargar historial
+            var h = await HistorialService.Obtener_por_trabajo(Id);
+            if (h != null && h.Correcto && h.Datos != null)
+            {
+                historial = h.Datos.ToList();
+            }
+
+            var auth = await authStateProvider.GetAuthenticationStateAsync();
+            var user = auth.User;
+            var userIdClaim = user.FindFirst("Id");
+            if (userIdClaim != null && int.TryParse(userIdClaim.Value, out int uid))
+            {
+                puedeAceptar = (trabajo.ProveedorId == uid && trabajo.Estado != "En ejecución" && trabajo.Estado != "Finalizado");
+                puedeAgregarDetalle = trabajo.Estado == "En ejecución" && trabajo.ProveedorId == uid;
+                puedeFinalizar = trabajo.ProveedorId == uid && trabajo.Estado == "En ejecución";
+            }
+        }
+        else
+        {
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Error", Detail = "No se pudo cargar el trabajo" });
+            Navigation.NavigateTo("/reparaciones");
+        }
+    }
+
+    private async Task Aceptar()
+    {
+        var auth = await authStateProvider.GetAuthenticationStateAsync();
+        var user = auth.User;
+        var userIdClaim = user.FindFirst("Id");
+        if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out int uid))
+        {
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Warning, Summary = "Sin usuario", Detail = "No se pudo identificar el usuario autenticado." });
+            return;
+        }
+
+        var req = new AceptarTrabajoRequest { TrabajoId = trabajo.Id, UsuarioId = uid, FechaInicio = DateTime.Now, CostoAproximado = 0m };
+        var r = await TrabajoService.AceptarTrabajo(req);
+        if (r != null && r.Correcto)
+        {
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = "Aceptado", Detail = r.Mensaje });
+            await Cargar();
+        }
+        else
+        {
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Error", Detail = r?.Mensaje ?? "Error aceptando trabajo" });
+        }
+    }
+
+    private async Task AgregarDetalle()
+    {
+        var result = await DialogService.OpenAsync<AgregarDetalleDialog>("Agregar Detalle", new Dictionary<string, object> { { "TrabajoId", trabajo.Id } }, new DialogOptions { Width = "600px", Height = "400px" });
+        if (result == true) await Cargar();
+    }
+
+    private async Task Finalizar()
+    {
+        // Cambiar estado a Finalizado
+        if (trabajo == null) return;
+        trabajo.Estado = "Finalizado";
+        var r = await TrabajoService.Actualizar(trabajo);
+        if (r != null && r.Correcto)
+        {
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = "Finalizado", Detail = r.Mensaje });
+            await Cargar();
+        }
+        else
+        {
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Error", Detail = r?.Mensaje ?? "Error finalizando trabajo" });
+        }
+    }
+}

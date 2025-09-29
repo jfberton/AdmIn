@@ -1,0 +1,177 @@
+@page "/reparaciones"
+@using AdmIn.Common.Entidades
+@using AdmIn.Common
+@using AdmIn.UI.Services
+@using AdmIn.UI.Components.Pages.AppPages.Dialogos
+@using Radzen
+@inject IServ_TrabajoProveedor TrabajoService
+@inject IServ_Proveedor ProveedorService
+@inject NavigationManager Navigation
+@inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider authStateProvider
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+
+<PageTitle>Mis Reparaciones</PageTitle>
+
+<RadzenCard>
+    <RadzenStack Gap="1rem">
+        <RadzenText TextStyle="TextStyle.H5" Text="Mis Reparaciones" />
+
+        <RadzenDataGrid @ref="grid" TItem="TrabajoProveedor" Data="trabajos" Count="@total" LoadData="LoadData" Pageable="true" PageSize="10">
+            <Columns>
+                <RadzenDataGridColumn TItem="TrabajoProveedor" Property="Id" Title="#" Width="60px" />
+                <RadzenDataGridColumn TItem="TrabajoProveedor" Property="Fecha" Title="Fecha" FormatString="{0:g}" />
+                <RadzenDataGridColumn TItem="TrabajoProveedor" Property="Descripcion" Title="Descripción" />
+                <RadzenDataGridColumn TItem="TrabajoProveedor" Property="Estado" Title="Estado" />
+                <RadzenDataGridColumn TItem="TrabajoProveedor" Title="Acciones">
+                    <Template Context="t">
+                        <RadzenButton Size="ButtonSize.Small" Icon="visibility" Click="@(()=> VerDetalle(t.Id))">Ver</RadzenButton>
+                        @if (esProveedor && t.Estado != "En ejecución" && t.Estado != "Finalizado")
+                        {
+                            <RadzenButton Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Success" Icon="check" Click="@(()=> AbrirAceptarDialog(t))">Aceptar</RadzenButton>
+                        }
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+    </RadzenStack>
+</RadzenCard>
+
+@code{
+    private IEnumerable<TrabajoProveedor> trabajos = new List<TrabajoProveedor>();
+    private int total = 0;
+    private bool esProveedor = false;
+    private int? proveedorId = null;
+    private RadzenDataGrid<TrabajoProveedor>? grid;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Console.WriteLine("[MisReparaciones] OnInitializedAsync called");
+        // Force an initial load so we can debug when DataGrid doesn't call LoadData
+        try
+        {
+            await LoadData(new Radzen.LoadDataArgs { Skip = 0, Top = 10 });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[MisReparaciones] Error during forced LoadData: {ex.Message}");
+        }
+    }
+
+    protected override Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            Console.WriteLine("[MisReparaciones] OnAfterRenderAsync firstRender");
+            // Force the Radzen grid to trigger LoadData so breakpoints in LoadData fire
+            _ = InvokeAsync(async () => { try { if (grid != null) await grid.Reload(); } catch { } });
+        }
+        return base.OnAfterRenderAsync(firstRender);
+    }
+
+    private async Task LoadData(LoadDataArgs args)
+    {
+        try
+        {
+            var auth = await authStateProvider.GetAuthenticationStateAsync();
+            var user = auth.User;
+            esProveedor = user.IsInRole("proveedor") || user.Claims.Any(c => c.Type == "role" && c.Value == "proveedor");
+
+            // obtener id de proveedor si es proveedor
+            if (esProveedor)
+            {
+                // Try common claim names for email
+                string? email = user.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value
+                                ?? user.FindFirst("email")?.Value
+                                ?? user.FindFirst("Email")?.Value
+                                ?? user.Identity?.Name;
+
+                if (!string.IsNullOrEmpty(email))
+                {
+                    var p = await ProveedorService.Obtener_por_email(email);
+                    if (p != null && p.Correcto && p.Datos != null)
+                    {
+                        proveedorId = p.Datos.Id;
+                    }
+                }
+
+                // If still null, try to match provider by UsuarioId claim against all providers
+                if (!proveedorId.HasValue)
+                {
+                    var userIdClaim = user.FindFirst("Id")?.Value ?? user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                    if (!string.IsNullOrEmpty(userIdClaim) && int.TryParse(userIdClaim, out int userId))
+                    {
+                        // get all providers and find one with matching UsuarioId
+                        var allProv = await ProveedorService.Obtener_todos();
+                        if (allProv != null && allProv.Correcto && allProv.Datos != null)
+                        {
+                            var match = allProv.Datos.FirstOrDefault(pr => pr.UsuarioId.HasValue && pr.UsuarioId.Value == userId);
+                            if (match != null)
+                            {
+                                proveedorId = match.Id;
+                            }
+                        }
+                    }
+                }
+            }
+
+            var filtros = new Filtros_paginado { Skip = args.Skip ?? 0, Top = args.Top ?? 10, Filter = args.Filter, OrderBy = args.OrderBy };
+            var res = await TrabajoService.Obtener_paginado_filtrado(filtros);
+            if (res != null && res.Correcto && res.Datos != null && res.Datos.Items != null)
+            {
+                // si es proveedor, filtrar cliente-side por ProveedorId
+                var items = res.Datos.Items.ToList();
+                if (esProveedor && proveedorId.HasValue)
+                {
+                    items = items.Where(t => t.ProveedorId == proveedorId.Value).ToList();
+                    trabajos = items;
+                    total = items.Count(); // total after filtering
+                }
+                else
+                {
+                    trabajos = items;
+                    total = res.Datos.Total_items;
+                }
+            }
+            else
+            {
+                // Fallback: intentar obtener todos los trabajos si el endpoint paginado no responde correctamente
+                var all = await TrabajoService.Obtener_todos();
+                if (all != null && all.Correcto && all.Datos != null)
+                {
+                    var items = all.Datos.ToList();
+                    if (esProveedor && proveedorId.HasValue)
+                    {
+                        items = items.Where(t => t.ProveedorId == proveedorId.Value).ToList();
+                    }
+                    trabajos = items;
+                    total = items.Count();
+                }
+                else
+                {
+                    trabajos = new List<TrabajoProveedor>();
+                    total = 0;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Error", Detail = ex.Message });
+        }
+    }
+
+    private void VerDetalle(int id)
+    {
+        Navigation.NavigateTo($"/trabajos/{id}");
+    }
+
+    private async Task AbrirAceptarDialog(TrabajoProveedor t)
+    {
+        // use lowercase parameter key to avoid invalid HTML attribute names when Radzen sets attributes
+        var result = await DialogService.OpenAsync<AceptarTrabajoDialog>($"Aceptar Trabajo #{t.Id}", new Dictionary<string, object> { { "trabajo", t } }, new DialogOptions { Width = "500px", Height = "300px" });
+        if (result == true)
+        {
+            await LoadData(new LoadDataArgs { Skip = 0, Top = 10 });
+        }
+    }
+}

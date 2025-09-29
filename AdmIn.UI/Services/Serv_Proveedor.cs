@@ -2,6 +2,9 @@ using AdmIn.Common;
 using AdmIn.Common.Entidades;
 using AdmIn.UI.Services.UtilityServices;
 using Microsoft.AspNetCore.Components.Authorization;
+using System;
+using System.Linq;
+using System.Collections.Generic;
 
 namespace AdmIn.UI.Services
 {
@@ -27,6 +30,12 @@ namespace AdmIn.UI.Services
             {
                 var resultado = await EjecutarPeticion<DTO<IEnumerable<Proveedor>>>(HttpMethod.Get, "obtener_activos");
                 
+                if (resultado == null)
+                {
+                    Console.WriteLine("[UI SERVICE] ERROR: respuesta nula al obtener proveedores activos");
+                    return new DTO<IEnumerable<Proveedor>> { Correcto = false, Mensaje = "No se obtuvo respuesta del servidor", Datos = new List<Proveedor>() };
+                }
+
                 Console.WriteLine($"[UI SERVICE] Respuesta del API - Correcto: {resultado.Correcto}, Mensaje: {resultado.Mensaje}");
                 Console.WriteLine($"[UI SERVICE] Proveedores recibidos: {resultado.Datos?.Count() ?? 0}");
                 

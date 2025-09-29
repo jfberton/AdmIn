@@ -207,8 +207,16 @@ namespace AdmIn.Data.Repositorios
                 await conexion.OpenAsync();
                 Console.WriteLine("[REPOSITORY] Conexión abierta exitosamente");
 
-                var sqlProveedor = @"SELECT ProveedorID as Id, Nombre, RFC, Email, Telefono, Direccion, UsuarioId, Activo, FechaCreacion, FechaModificacion, UsuarioCreadorId, UsuarioModificadorId 
-                                   FROM Proveedor WHERE ProveedorID = @Id;";
+                var sqlProveedor = @"SELECT p.ProveedorID as Id, p.Nombre, p.RFC, p.Email, p.Telefono, p.Direccion, p.UsuarioId, p.Activo, p.FechaCreacion, p.FechaModificacion, p.UsuarioCreadorId, p.UsuarioModificadorId,
+                                       ISNULL(a.CalificacionPromedio, 0) as CalificacionPromedio,
+                                       ISNULL(a.TrabajosRealizados, 0) as TrabajosRealizados
+                                   FROM Proveedor p
+                                   LEFT JOIN (
+                                       SELECT ProveedorId, AVG(CAST(Valor AS DECIMAL(18,2))) AS CalificacionPromedio, COUNT(*) AS TrabajosRealizados
+                                       FROM CalificacionProveedor
+                                       GROUP BY ProveedorId
+                                   ) a ON a.ProveedorId = p.ProveedorID
+                                   WHERE p.ProveedorID = @Id;";
 
                 Console.WriteLine($"[REPOSITORY] Ejecutando query: {sqlProveedor}");
                 Console.WriteLine($"[REPOSITORY] Parámetro ID: {proveedor.Id}");
@@ -251,8 +259,16 @@ namespace AdmIn.Data.Repositorios
                 await conexion.OpenAsync();
                 Console.WriteLine("[REPOSITORY] Conexión abierta exitosamente");
 
-                var sqlProveedores = @"SELECT ProveedorID as Id, Nombre, RFC, Email, Telefono, Direccion, UsuarioId, Activo, FechaCreacion, FechaModificacion, UsuarioCreadorId, UsuarioModificadorId 
-                                     FROM Proveedor ORDER BY Nombre;";
+                var sqlProveedores = @"SELECT p.ProveedorID as Id, p.Nombre, p.RFC, p.Email, p.Telefono, p.Direccion, p.UsuarioId, p.Activo, p.FechaCreacion, p.FechaModificacion, p.UsuarioCreadorId, p.UsuarioModificadorId,
+                                           ISNULL(a.CalificacionPromedio, 0) as CalificacionPromedio,
+                                           ISNULL(a.TrabajosRealizados, 0) as TrabajosRealizados
+                                     FROM Proveedor p
+                                     LEFT JOIN (
+                                         SELECT ProveedorId, AVG(CAST(Valor AS DECIMAL(18,2))) AS CalificacionPromedio, COUNT(*) AS TrabajosRealizados
+                                         FROM CalificacionProveedor
+                                         GROUP BY ProveedorId
+                                     ) a ON a.ProveedorId = p.ProveedorID
+                                     ORDER BY p.Nombre;";
 
                 Console.WriteLine($"[REPOSITORY] Ejecutando query: {sqlProveedores}");
 
@@ -303,18 +319,21 @@ namespace AdmIn.Data.Repositorios
 
                 var sql = @"SELECT 
                                 COUNT(*) OVER() AS TotalItems,
-                                ProveedorID as Id, Nombre, RFC, Email, Telefono, Direccion, UsuarioId, Activo, FechaCreacion, FechaModificacion, UsuarioCreadorId, UsuarioModificadorId
-                            FROM Proveedor
-                            WHERE 
-                                (@FiltroBusqueda IS NULL OR 
-                                 Nombre LIKE '%' + @FiltroBusqueda + '%' OR 
-                                 RFC LIKE '%' + @FiltroBusqueda + '%' OR 
-                                 Email LIKE '%' + @FiltroBusqueda + '%')
-                            ORDER BY
-                                CASE WHEN @OrdenarPor = 'Nombre' THEN Nombre END,
-                                CASE WHEN @OrdenarPor = 'RFC' THEN RFC END,
-                                CASE WHEN @OrdenarPor = 'Email' THEN Email END,
-                                CASE WHEN @OrdenarPor IS NULL THEN Nombre END
+                                p.ProveedorID as Id, p.Nombre, p.RFC, p.Email, p.Telefono, p.Direccion, p.UsuarioId, p.Activo, p.FechaCreacion, p.FechaModificacion, p.UsuarioCreadorId, p.UsuarioModificadorId,
+                                ISNULL(a.CalificacionPromedio, 0) as CalificacionPromedio,
+                                ISNULL(a.TrabajosRealizados, 0) as TrabajosRealizados
+                            FROM Proveedor p
+                            LEFT JOIN (
+                                SELECT ProveedorId, AVG(CAST(Valor AS DECIMAL(18,2))) AS CalificacionPromedio, COUNT(*) AS TrabajosRealizados
+                                FROM CalificacionProveedor
+                                GROUP BY ProveedorId
+                            ) a ON a.ProveedorId = p.ProveedorID
+                            WHERE (@FiltroBusqueda IS NULL OR p.Nombre LIKE '%' + @FiltroBusqueda + '%' OR p.RFC LIKE '%' + @FiltroBusqueda + '%' OR p.Email LIKE '%' + @FiltroBusqueda + '%')
+                            ORDER BY 
+                                CASE WHEN @OrdenarPor = 'Nombre' THEN p.Nombre END,
+                                CASE WHEN @OrdenarPor = 'RFC' THEN p.RFC END,
+                                CASE WHEN @OrdenarPor = 'Email' THEN p.Email END,
+                                CASE WHEN @OrdenarPor IS NULL THEN p.Nombre END
                             OFFSET @Skip ROWS FETCH NEXT @Top ROWS ONLY;";
 
                 Console.WriteLine($"[REPOSITORY] Ejecutando query paginado...");
@@ -350,7 +369,9 @@ namespace AdmIn.Data.Repositorios
                         FechaCreacion = row.FechaCreacion,
                         FechaModificacion = row.FechaModificacion,
                         UsuarioCreadorId = row.UsuarioCreadorId,
-                        UsuarioModificadorId = row.UsuarioModificadorId
+                        UsuarioModificadorId = row.UsuarioModificadorId,
+                        CalificacionPromedio = row.CalificacionPromedio,
+                        TrabajosRealizados = row.TrabajosRealizados
                     });
                 }
 
@@ -400,8 +421,17 @@ namespace AdmIn.Data.Repositorios
                 await conexion.OpenAsync();
                 Console.WriteLine("[REPOSITORY] Conexión abierta exitosamente");
 
-                var sqlProveedores = @"SELECT ProveedorID as Id, Nombre, RFC, Email, Telefono, Direccion, UsuarioId, Activo, FechaCreacion, FechaModificacion, UsuarioCreadorId, UsuarioModificadorId 
-                                     FROM Proveedor WHERE Activo = 1 ORDER BY Nombre;";
+                var sqlProveedores = @"SELECT p.ProveedorID as Id, p.Nombre, p.RFC, p.Email, p.Telefono, p.Direccion, p.UsuarioId, p.Activo, p.FechaCreacion, p.FechaModificacion, p.UsuarioCreadorId, p.UsuarioModificadorId,
+                                           ISNULL(a.CalificacionPromedio, 0) as CalificacionPromedio,
+                                           ISNULL(a.TrabajosRealizados, 0) as TrabajosRealizados
+                                     FROM Proveedor p
+                                     LEFT JOIN (
+                                         SELECT ProveedorId, AVG(CAST(Valor AS DECIMAL(18,2))) AS CalificacionPromedio, COUNT(*) AS TrabajosRealizados
+                                         FROM CalificacionProveedor
+                                         GROUP BY ProveedorId
+                                     ) a ON a.ProveedorId = p.ProveedorID
+                                     WHERE p.Activo = 1
+                                     ORDER BY p.Nombre;";
 
                 Console.WriteLine($"[REPOSITORY] Ejecutando query: {sqlProveedores}");
 
@@ -568,7 +598,7 @@ namespace AdmIn.Data.Repositorios
 
             try
             {
-                // Verificar que el proveedor existe
+                // Verificar que el proveedor exists
                 var sqlVerificarProveedor = @"SELECT COUNT(*) FROM Proveedor WHERE ProveedorID = @ProveedorId AND Activo = 1;";
                 var proveedorExiste = await conexion.QuerySingleAsync<int>(sqlVerificarProveedor, new { ProveedorId = proveedorId }, transaccion);
 
@@ -737,8 +767,15 @@ namespace AdmIn.Data.Repositorios
 
                 var sql = $@"SELECT 
                                 COUNT(*) OVER() AS TotalItems,
-                                ProveedorID as Id, Nombre, RFC, Email, Telefono, Direccion, UsuarioId, Activo, FechaCreacion, FechaModificacion, UsuarioCreadorId, UsuarioModificadorId
-                            FROM Proveedor
+                                p.ProveedorID as Id, p.Nombre, p.RFC, p.Email, p.Telefono, p.Direccion, p.UsuarioId, p.Activo, p.FechaCreacion, p.FechaModificacion, p.UsuarioCreadorId, p.UsuarioModificadorId,
+                                ISNULL(a.CalificacionPromedio, 0) as CalificacionPromedio,
+                                ISNULL(a.TrabajosRealizados, 0) as TrabajosRealizados
+                            FROM Proveedor p
+                            LEFT JOIN (
+                                SELECT ProveedorId, AVG(CAST(Valor AS DECIMAL(18,2))) AS CalificacionPromedio, COUNT(*) AS TrabajosRealizados
+                                FROM CalificacionProveedor
+                                GROUP BY ProveedorId
+                            ) a ON a.ProveedorId = p.ProveedorID
                             {whereClauseStr}
                             ORDER BY {ordenarPor}
                             OFFSET @Skip ROWS FETCH NEXT @Top ROWS ONLY;";
@@ -774,7 +811,9 @@ namespace AdmIn.Data.Repositorios
                         FechaCreacion = row.FechaCreacion,
                         FechaModificacion = row.FechaModificacion,
                         UsuarioCreadorId = row.UsuarioCreadorId,
-                        UsuarioModificadorId = row.UsuarioModificadorId
+                        UsuarioModificadorId = row.UsuarioModificadorId,
+                        CalificacionPromedio = row.CalificacionPromedio,
+                        TrabajosRealizados = row.TrabajosRealizados
                     });
                 }
 

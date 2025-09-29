@@ -2,57 +2,139 @@
 @using AdmIn.Common.Entidades
 @using AdmIn.Common
 @using AdmIn.UI.Services
+@using AdmIn.UI.Components.Shared
+@using Microsoft.AspNetCore.Components.Authorization
+
 @inject IServ_TrabajoProveedor ServicioTrabajo
 @inject IServ_Proveedor ServicioProveedor
+@inject IServ_Usuario ServicioUsuario
 @inject IServ_Imagen ServicioImagen
+@inject IServ_Inmueble ServicioInmueble
 @inject NavigationManager Navigation
 @inject IJSRuntime JSRuntime
 
+@inherits BaseComponent
+
 <PageTitle>Nuevo Trabajo</PageTitle>
 
-<div class="card">
-    <div class="card-body">
-        <EditForm Model="trabajo" OnValidSubmit="Guardar">
-            <DataAnnotationsValidator />
-            <div class="mb-3">
-                <label class="form-label">Proveedor</label>
-                <select class="form-select" @bind="trabajo.ProveedorId">
-                    <option value="0">-- Seleccionar proveedor --</option>
-                    @foreach (var p in proveedores)
+<RadzenStack Gap="2rem" Class="p-4">
+    <!-- Header -->
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem">
+        <RadzenButton ButtonStyle="ButtonStyle.Light" Icon="arrow_back" Click="@(() => IrA($"/inmuebles/{InmuebleId}"))" Size="ButtonSize.Medium" />
+        <RadzenText TextStyle="TextStyle.H4" Text="@($"Crear Trabajo{(inmueble != null ? $" - {inmueble.Nombre}" : string.Empty)}")" />
+    </RadzenStack>
+
+    <RadzenBreadCrumb>
+        <RadzenBreadCrumbItem Path="/inmuebles" Text="Inmuebles" Icon="apartment" />
+        <RadzenBreadCrumbItem Path="@($"/inmuebles/{InmuebleId}")" Text="@(inmueble?.Nombre ?? "...")" Icon="home" />
+        <RadzenBreadCrumbItem Text="Nuevo Trabajo" Icon="build" />
+    </RadzenBreadCrumb>
+
+    <div class="card">
+        <div class="card-body">
+            <EditForm Model="trabajo" OnValidSubmit="Guardar">
+                <DataAnnotationsValidator />
+
+                <div class="mb-3">
+                    <label class="form-label">Proveedor</label>
+                    <div class="proveedores-list d-flex gap-2 flex-wrap">
+                        @if (proveedores == null || !proveedores.Any())
+                        {
+                            <div class="text-muted">No hay proveedores disponibles</div>
+                        }
+                        else
+                        {
+                            if (selectedProveedor == null)
+                            {
+                                @foreach (var p in proveedores)
+                                {
+                                    <ProveedorCard Proveedor="p"
+                                                   Selectable="true"
+                                                   Selected="@(trabajo.ProveedorId == p.Id)"
+                                                   OnSelect="@(async (prov) => SelectProveedor(prov))"
+                                                   ImageUrl="@GetImageUrl(p.Id)"
+                                                   Servicios="@GetServicios(p.Id)"
+                                                   Rating="@(GetRatingFor(p.Id))"
+                                                   JobsCount="@(GetJobsFor(p.Id))" />
+                                }
+                            }
+                            else
+                            {
+                                <div class="selected-provider-wrapper">
+                                    <ProveedorCard Proveedor="selectedProveedor"
+                                                   Selectable="true"
+                                                   Selected="true"
+                                                   OnSelect="@(async (prov) => SelectProveedor(prov))"
+                                                   ImageUrl="@GetImageUrl(selectedProveedor.Id)"
+                                                   Servicios="@GetServicios(selectedProveedor.Id)"
+                                                   Rating="@(GetRatingFor(selectedProveedor.Id))"
+                                                   JobsCount="@(GetJobsFor(selectedProveedor.Id))" />
+
+                                    <div class="ms-2 align-self-start">
+                                        <button type="button" class="btn btn-link btn-sm" @onclick="ClearSelected">Cambiar proveedor</button>
+                                    </div>
+                                </div>
+                            }
+                        }
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Descripción</label>
+                    <InputTextArea class="form-control" @bind-Value="trabajo.Descripcion" Rows="4" />
+                </div>
+
+                <!-- Imagenes: usar ImageUploadComponent para subir imágenes asociadas al trabajo -->
+                <div class="mb-3">
+                    <label class="form-label">Imágenes del trabajo (opcional)</label>
+                    <ImageUploadComponent PermitirMultiples="true"
+                                          MostrarVistaPrevia="true"
+                                          MostrarBotones="true"
+                                          OnImagenesSubidas="@OnImagenesSubidas" />
+
+                    @if (imagenes != null && imagenes.Any())
                     {
-                        <option value="@p.Id">@p.Nombre</option>
+                        <div class="uploaded-images d-flex gap-2 mt-3">
+                            @foreach (var img in imagenes)
+                            {
+                                <div class="uploaded-image-item text-center">
+                                    <img src="@ObtenerUrlImagen(img)" alt="@img.Nombre" style="width:120px;height:90px;object-fit:cover;border-radius:6px;border:1px solid #e9ecef;" />
+                                    <div class="mt-1">
+                                        <button type="button" class="btn btn-sm btn-outline-danger" @onclick="() => QuitarImagen(img.Id)">Quitar</button>
+                                    </div>
+                                </div>
+                            }
+                        </div>
                     }
-                </select>
-            </div>
+                </div>
 
-            <div class="mb-3">
-                <label class="form-label">Fecha solicitada</label>
-                <InputDate class="form-control" @bind-Value="trabajo.Fecha" />
-            </div>
-
-            <div class="mb-3">
-                <label class="form-label">Descripción</label>
-                <InputTextArea class="form-control" @bind-Value="trabajo.Descripcion" Rows="4" />
-            </div>
-
-            <!-- REMOVED: Costo aproximado (lo carga el proveedor al aceptar) -->
-
-            <!-- Imagenes: usar ImageUploadComponent para subir imágenes asociadas al trabajo -->
-            <div class="mb-3">
-                <label class="form-label">Imágenes del trabajo (opcional)</label>
-                <ImageUploadComponent PermitirMultiples="true"
-                                      MostrarVistaPrevia="true"
-                                      MostrarBotones="true"
-                                      OnImagenesSubidas="@OnImagenesSubidas" />
-            </div>
-
-            <div class="d-flex justify-content-end">
-                <button class="btn btn-secondary me-2" @onclick="Cancelar">Cancelar</button>
-                <button class="btn btn-primary" type="submit">Crear Trabajo</button>
-            </div>
-        </EditForm>
+                <div class="d-flex justify-content-end">
+                    <button type="button" class="btn btn-secondary me-2" @onclick="Cancelar">Cancelar</button>
+                    <button class="btn btn-primary" type="submit">Crear Trabajo</button>
+                </div>
+            </EditForm>
+        </div>
     </div>
-</div>
+</RadzenStack>
+
+<style>
+    .proveedores-list { max-height: 420px; overflow-y: auto; padding: 0.25rem 0; }
+    .selected-provider-wrapper { display:flex; align-items:flex-start; gap:0.5rem; }
+    /* Radzen datepicker tweaks to match bootstrap form-control look */
+    .rz-datepicker {
+        width: 100%;
+    }
+    .rz-datepicker .rz-inputtext {
+        height: calc(1.5em + .75rem + 2px); /* match bootstrap input height */
+        padding: .375rem .75rem;
+        border-radius: .25rem;
+        border: 1px solid #ced4da;
+    }
+    .rz-datepicker .rz-inputtext:focus {
+        box-shadow: 0 0 0 .2rem rgba(0,123,255,.25);
+        border-color: #80bdff;
+    }
+</style>
 
 @code{
     [Parameter]
@@ -67,27 +149,143 @@
     List<Proveedor> proveedores = new();
     List<Imagen> imagenes = new();
 
+    Proveedor? selectedProveedor = null;
+    private Dictionary<int, decimal> _rating = new();
+    private Dictionary<int, int> _jobs = new();
+    private Dictionary<int, string> _images = new();
+    private Dictionary<int, List<TipoServicio>> _services = new();
+
+    Inmueble? inmueble;
+
     protected override async Task OnInitializedAsync()
     {
         trabajo.InmuebleId = InmuebleId;
+        await CargarInmueble();
         await CargarProveedores();
+    }
+
+    private async Task CargarInmueble()
+    {
+        try
+        {
+            var r = await ServicioInmueble.Obtener_por_id(InmuebleId);
+            if (r.Correcto && r.Datos != null)
+            {
+                inmueble = r.Datos;
+                EstablecerTituloPagina("Nuevo Trabajo", inmueble.Nombre);
+            }
+            else
+            {
+                inmueble = null;
+                EstablecerTituloPagina("Nuevo Trabajo", null);
+            }
+        }
+        catch { inmueble = null; }
     }
 
     private async Task CargarProveedores()
     {
-        var r = await ServicioProveedor.Obtener_todos();
-        if (r.Correcto && r.Datos != null)
+        try
         {
-            proveedores = r.Datos.ToList();
+            var r = await ServicioProveedor.Obtener_todos();
+            if (r.Correcto && r.Datos != null)
+            {
+                proveedores = r.Datos.ToList();
+
+                // Try to load images, services and stats per provider
+                foreach (var p in proveedores)
+                {
+                    // services
+                    try
+                    {
+                        var servRes = await ServicioProveedor.Obtener_servicios_proveedor(p.Id);
+                        if (servRes.Correcto && servRes.Datos != null)
+                        {
+                            _services[p.Id] = servRes.Datos.ToList();
+                        }
+                    }
+                    catch { }
+
+                    // image via associated user
+                    if (p.UsuarioId.HasValue)
+                    {
+                        try
+                        {
+                            var ures = await ServicioUsuario.Obtener_por_id(p.UsuarioId.Value);
+                            if (ures.Correcto && ures.Datos != null && ures.Datos.ImagenPerfil != null)
+                            {
+                                var url = ures.Datos.ImagenPerfil.Url;
+                                _images[p.Id] = string.IsNullOrEmpty(url) ? string.Empty : (url.StartsWith("http") ? url : "/" + url.TrimStart('/'));
+                            }
+                        }
+                        catch { }
+                    }
+
+                    // ratings/jobs from repository-level dictionaries if available from previous flow
+                    // otherwise try to fetch calificaciones via API? We'll rely on ServicioProveedor.Obtener_todos populating decimals via repo.
+                }
+
+                // If estadisticas endpoint still available, prefer it to fill rating/jobs quickly
+                try
+                {
+                    var cliente = new System.Net.Http.HttpClient();
+                    var baseUrl = new Uri(Navigation.BaseUri);
+                    var apiUrl = baseUrl.Scheme + "://" + baseUrl.Host + (baseUrl.Port > 0 ? ":" + baseUrl.Port : "") + "/api/Proveedor/obtener_con_estadisticas";
+                    var resp = await cliente.GetAsync(apiUrl);
+                    if (resp.IsSuccessStatusCode)
+                    {
+                        var data = await resp.Content.ReadFromJsonAsync<DTO<IEnumerable<AdmIn.Common.Entidades.ProveedorConEstadisticas>>>();
+                        if (data != null && data.Correcto && data.Datos != null)
+                        {
+                            foreach (var pc in data.Datos)
+                            {
+                                _rating[pc.Proveedor.Id] = pc.CalificacionPromedio;
+                                _jobs[pc.Proveedor.Id] = pc.JobsCount;
+                            }
+                        }
+                    }
+                }
+                catch { }
+            }
+            else
+            {
+                proveedores = new List<Proveedor>();
+            }
         }
-        else
+        catch (Exception ex)
         {
+            Console.WriteLine($"Error cargando proveedores: {ex.Message}");
             proveedores = new List<Proveedor>();
         }
     }
 
+    private string? GetImageUrl(int proveedorId) => _images.TryGetValue(proveedorId, out var u) && !string.IsNullOrEmpty(u) ? u : null;
+    private List<TipoServicio>? GetServicios(int proveedorId) => _services.TryGetValue(proveedorId, out var s) ? s : null;
+
+    private decimal? GetRatingFor(int proveedorId) => _rating.TryGetValue(proveedorId, out var v) ? v : (decimal?)null;
+    private int? GetJobsFor(int proveedorId) => _jobs.TryGetValue(proveedorId, out var j) ? j : (int?)null;
+
+    private async Task SelectProveedor(Proveedor? p)
+    {
+        if (p == null) return;
+        trabajo.ProveedorId = p.Id;
+        selectedProveedor = p;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void ClearSelected()
+    {
+        selectedProveedor = null;
+        trabajo.ProveedorId = 0;
+        InvokeAsync(StateHasChanged);
+    }
+
     private async Task Guardar()
     {
+        // Fecha de solicitud = momento de creación
+        trabajo.Fecha = DateTime.Now;
+        // Fecha de creación para evitar DateTime.MinValue que provoca overflow en SQL
+        trabajo.FechaCreacion = DateTime.Now;
         // Asociar imágenes cargadas antes de enviar
         trabajo.Imagenes = imagenes;
         var r = await ServicioTrabajo.Crear(trabajo);
@@ -111,5 +309,22 @@
         if (imgs == null) return;
         imagenes.AddRange(imgs);
         await InvokeAsync(StateHasChanged);
+    }
+
+    private string ObtenerUrlImagen(Imagen img)
+    {
+        if (img == null || string.IsNullOrEmpty(img.Url)) return "/images/placeholder.jpg";
+        if (img.Url.StartsWith("http")) return img.Url;
+        return "/" + img.Url.TrimStart('/');
+    }
+
+    private void QuitarImagen(Guid id)
+    {
+        var rem = imagenes.FirstOrDefault(i => i.Id == id);
+        if (rem != null)
+        {
+            imagenes.Remove(rem);
+            StateHasChanged();
+        }
     }
 }

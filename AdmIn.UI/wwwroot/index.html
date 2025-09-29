@@ -6,6 +6,15 @@
     <title>AdmIn UI</title>
     <base href="/" />
     <link href="css/bootstrap.min.css" rel="stylesheet" />
+    <script>
+      // Pre-declare safeSignalr stub so Blazor can call it during early renders without error.
+      window.safeSignalr = window.safeSignalr || {
+        registerClickAwayIfExists: function () { },
+        unregisterClickAwayIfExists: function () { },
+        startIfExists: function () { return Promise.resolve(); },
+        onNewNotificationIfExists: function () { }
+      };
+    </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.6/signalr.min.js"></script>
     <script src="js/signalr-notifications.js"></script>
   </head>

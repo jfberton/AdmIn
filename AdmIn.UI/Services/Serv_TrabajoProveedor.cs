@@ -26,5 +26,10 @@ namespace AdmIn.UI.Services
         {
             return await EjecutarPeticion<DTO<Items_pagina<TrabajoProveedor>>>(HttpMethod.Post, "obtener_paginado", filtros);
         }
+
+        public async Task<DTO<bool>> AceptarTrabajo(AceptarTrabajoRequest request)
+        {
+            return await EjecutarPeticion<DTO<bool>>(HttpMethod.Post, "aceptar", request);
+        }
     }
 }

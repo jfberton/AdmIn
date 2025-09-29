@@ -1,0 +1,58 @@
+@using AdmIn.Common.Entidades
+@using AdmIn.UI.Services
+@inject IServ_TrabajoProveedor TrabajoService
+@inject NotificationService NotificationService
+@inject DialogService DialogService
+
+<RadzenCard>
+    <RadzenTemplateForm TItem="AceptarModel" Data="model" Submit="OnSubmit">
+        <RadzenRow>
+            <RadzenColumn>
+                <RadzenLabel Text="Costo aproximado" />
+                <RadzenNumeric @bind-Value="model.CostoAproximado" Min="0" Step="0.01" />
+            </RadzenColumn>
+            <RadzenColumn>
+                <RadzenLabel Text="Fecha inicio" />
+                <RadzenDatePicker @bind-Value="model.FechaInicio" />
+            </RadzenColumn>
+        </RadzenRow>
+        <RadzenRow class="mt-3">
+            <RadzenColumn>
+                <RadzenButton ButtonStyle="ButtonStyle.Primary" Text="Aceptar" ButtonType="ButtonType.Submit" />
+                <RadzenButton Text="Cancelar" Click="Cancel" Style="margin-left:8px;" />
+            </RadzenColumn>
+        </RadzenRow>
+    </RadzenTemplateForm>
+</RadzenCard>
+
+@code{
+    [Parameter] public TrabajoProveedor trabajo { get; set; }
+
+    class AceptarModel { public decimal CostoAproximado { get; set; } = 0m; public DateTime FechaInicio { get; set; } = DateTime.Now; }
+
+    private AceptarModel model = new();
+
+    private async Task OnSubmit()
+    {
+        if (trabajo == null)
+        {
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Error", Detail = "Trabajo no especificado." });
+            DialogService.Close(false);
+            return;
+        }
+
+        var req = new AceptarTrabajoRequest { TrabajoId = trabajo.Id, UsuarioId = trabajo.ProveedorId, FechaInicio = model.FechaInicio, CostoAproximado = model.CostoAproximado };
+        var r = await TrabajoService.AceptarTrabajo(req);
+        if (r != null && r.Correcto)
+        {
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = "Aceptado", Detail = r.Mensaje });
+            DialogService.Close(true);
+        }
+        else
+        {
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Error", Detail = r?.Mensaje ?? "Error al aceptar" });
+        }
+    }
+
+    private void Cancel() => DialogService.Close(false);
+}

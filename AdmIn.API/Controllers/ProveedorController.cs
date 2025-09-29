@@ -335,7 +335,7 @@ namespace AdmIn.API.Controllers
         }
 
         [HttpGet("obtener_por_email/{email}")]
-        [Authorize(Roles = "admin_usuario")]
+        [Authorize(Roles = "admin_usuario, proveedor")]
         public async Task<DTO<Proveedor>> Obtener_por_email(string email)
         {
             Console.WriteLine($"[API] ===== OBTENER POR EMAIL: {email} =====");
@@ -605,6 +605,59 @@ namespace AdmIn.API.Controllers
                     Correcto = false,
                     Mensaje = $"Error al eliminar proveedor: {ex.Message}"
                 };
+            }
+        }
+
+        [HttpGet("obtener_con_estadisticas")]
+        [Authorize(Roles = "admin_usuario")]
+        public async Task<DTO<IEnumerable<ProveedorConEstadisticas>>> Obtener_con_estadisticas()
+        {
+            try
+            {
+                Console.WriteLine("[API] ===== OBTENER PROVEEDORES CON ESTADISTICAS =====");
+                // Obtener todos los proveedores
+                var resultado = await _servicio.Obtener_todos();
+                if (resultado == null || !resultado.Correcto || resultado.Datos == null)
+                {
+                    return new DTO<IEnumerable<ProveedorConEstadisticas>> { Correcto = false, Mensaje = "Error al obtener proveedores" };
+                }
+
+                var proveedores = resultado.Datos.ToList();
+                var lista = new List<ProveedorConEstadisticas>();
+
+                // Para cada proveedor calcular calificacion promedio y cantidad de trabajos
+                foreach (var p in proveedores)
+                {
+                    try
+                    {
+                        // Obtener calificaciones
+                        var califRepo = new AdmIn.Data.Repositorios.CalificacionProveedorRepository();
+                        var califRes = await califRepo.Obtener_todos();
+                        decimal promedio = 0m;
+                        int jobs = 0;
+
+                        if (califRes != null && califRes.Correcto && califRes.Datos != null)
+                        {
+                            var filtradas = califRes.Datos.Where(c => c.ProveedorId == p.Id).ToList();
+                            jobs = filtradas.Count;
+                            if (filtradas.Any()) promedio = (decimal)filtradas.Average(c => c.Valor);
+                        }
+
+                        lista.Add(new ProveedorConEstadisticas { Proveedor = p, CalificacionPromedio = promedio, JobsCount = jobs });
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"[API] Error calculando estadisticas para proveedor {p.Id}: {ex.Message}");
+                        lista.Add(new ProveedorConEstadisticas { Proveedor = p, CalificacionPromedio = 0m, JobsCount = 0 });
+                    }
+                }
+
+                return new DTO<IEnumerable<ProveedorConEstadisticas>> { Correcto = true, Datos = lista, Mensaje = "Proveedores con estadisticas obtenidos" };
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[API] ERROR en obtener_con_estadisticas: {ex.Message}");
+                return new DTO<IEnumerable<ProveedorConEstadisticas>> { Correcto = false, Mensaje = ex.Message };
             }
         }
     }

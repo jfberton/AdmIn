@@ -1,21 +1,233 @@
-﻿ @page "/home"
+﻿@page "/home"
 
+@using AdmIn.Common.Entidades
+@using Radzen
+@using AdmIn.UI.Services
+@inject IServ_Inmueble serv_inmueble
+@inject IServ_Proveedor serv_proveedor
+@inject IServ_TrabajoProveedor serv_trabajo
+@inject NavigationManager Navigation
 @inject NotificationService NotificationService
+@inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider authStateProvider
 
-<PageTitle>Home</PageTitle>
+<PageTitle>Inicio - AdmIn</PageTitle>
 
-<h1>Hello, world!</h1>
-
-Welcome to your new app.
-
-<RadzenButton Text="Show success notification" Style="width: 100%;"
-                ButtonStyle="ButtonStyle.Success"
-                Click=@(args => ShowNotification(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = "Success Summary", Detail = "Success Detail", Duration = 4000 })) />
-@code {
-
-    void ShowNotification(NotificationMessage message)
+<RadzenStack Gap="2rem" Class="p-4">
+    @if (isAdminContext)
     {
-        NotificationService.Notify(message);
+        <RadzenRow Gap="1rem">
+            <RadzenColumn Size="4">
+                <RadzenCard>
+                    <RadzenStack>
+                        <RadzenText TextStyle="TextStyle.H6" Text="Inmuebles" />
+                        <RadzenText TextStyle="TextStyle.H3" Text="@totalInmuebles.ToString()" />
+                        <RadzenButton Text="Ver Inmuebles" Icon="apartment" Click="@(()=> Navigation.NavigateTo("/inmuebles"))" Style="width:100%;" />
+                    </RadzenStack>
+                </RadzenCard>
+            </RadzenColumn>
+
+            <RadzenColumn Size="4">
+                <RadzenCard>
+                    <RadzenStack>
+                        <RadzenText TextStyle="TextStyle.H6" Text="Proveedores" />
+                        <RadzenText TextStyle="TextStyle.H3" Text="@totalProveedores.ToString()" />
+                        <RadzenButton Text="Ver Proveedores" Icon="business" Click="@(()=> Navigation.NavigateTo("/proveedores"))" Style="width:100%;" />
+                    </RadzenStack>
+                </RadzenCard>
+            </RadzenColumn>
+
+            <RadzenColumn Size="4">
+                <RadzenCard>
+                    <RadzenStack>
+                        <RadzenText TextStyle="TextStyle.H6" Text="Trabajos" />
+                        <RadzenText TextStyle="TextStyle.H3" Text="@totalTrabajos.ToString()" />
+                        <RadzenButton Text="Ver Trabajos" Icon="build" Click="@(()=> Navigation.NavigateTo("/reparaciones"))" Style="width:100%;" />
+                    </RadzenStack>
+                </RadzenCard>
+            </RadzenColumn>
+        </RadzenRow>
+    }
+    else
+    {
+        <RadzenRow>
+            <RadzenColumn>
+                <RadzenCard>
+                    <RadzenText TextStyle="TextStyle.H6" Text="Bienvenido" />
+                    <RadzenText TextStyle="TextStyle.Body1" Text="Vista para proveedores: aquí verás solo los trabajos asignados a tu cuenta." />
+                </RadzenCard>
+            </RadzenColumn>
+        </RadzenRow>
+    }
+
+    <RadzenRow>
+        <RadzenColumn Size="8">
+            <RadzenCard>
+                <RadzenText TextStyle="TextStyle.H6" Text="Últimos trabajos" />
+                @if (recientes == null || !recientes.Any())
+                {
+                    <div class="p-3 text-muted">No hay trabajos recientes.</div>
+                }
+                else
+                {
+                    <div class="list-group">
+                        @foreach (var t in recientes)
+                        {
+                            <div class="list-group-item d-flex justify-content-between align-items-start">
+                                <div>
+                                    <div style="font-weight:600">Trabajo #@t.Id - @t.Estado</div>
+                                    <div class="small text-muted">Inmueble: @t.InmuebleId • Proveedor: @t.ProveedorId • @t.Fecha.ToString("g")</div>
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <RadzenButton Text="Ver" Icon="visibility" Size="ButtonSize.Small" Click="@(()=> ViewTrabajo(t.Id))" />
+                                    @if (isProveedorContext && t.Estado != "En ejecución" && t.Estado != "Finalizado")
+                                    {
+                                        <RadzenButton Text="Aceptar" ButtonStyle="ButtonStyle.Success" Size="ButtonSize.Small" Click="@(()=> AceptarTrabajo(t.Id))" />
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </RadzenCard>
+        </RadzenColumn>
+
+        <RadzenColumn Size="4">
+            <RadzenCard>
+                <RadzenText TextStyle="TextStyle.H6" Text="Accesos rápidos" />
+                @if (isAdminContext)
+                {
+                    <RadzenStack Gap="0.5rem">
+                        <RadzenButton Text="Nuevo Inmueble" Icon="add" Click="@(()=> Navigation.NavigateTo("/inmuebles/nuevo"))" Style="width:100%;" />
+                        <RadzenButton Text="Nuevo Proveedor" Icon="person_add" Click="@(()=> Navigation.NavigateTo("/proveedores/nuevo"))" Style="width:100%;" />
+                        <RadzenButton Text="Nuevo Trabajo" Icon="build" Click="@(()=> Navigation.NavigateTo("/inmuebles"))" Style="width:100%;" />
+                    </RadzenStack>
+                }
+                else
+                {
+                    <div class="p-2 text-muted">Accesos rápidos no disponibles para proveedores.</div>
+                }
+             </RadzenCard>
+         </RadzenColumn>
+     </RadzenRow>
+ </RadzenStack>
+
+<style>
+    .list-group-item { border: none; border-radius: 6px; margin-bottom: 6px; background: #fafafa; }
+</style>
+
+@code {
+    private int totalInmuebles = 0;
+    private int totalProveedores = 0;
+    private int totalTrabajos = 0;
+    private List<TrabajoProveedor> recientes = new();
+    private bool isProveedorContext = false;
+    private bool isAdminContext = false;
+    private int? proveedorIdForUser = null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSummary();
+    }
+
+    private async Task LoadSummary()
+    {
+        try
+        {
+            var rInm = await serv_inmueble.Obtener_todos();
+            if (rInm != null && rInm.Correcto && rInm.Datos != null) totalInmuebles = rInm.Datos.Count();
+
+            var rProv = await serv_proveedor.Obtener_activos();
+            if (rProv != null && rProv.Correcto && rProv.Datos != null) totalProveedores = rProv.Datos.Count();
+
+            var rTrab = await serv_trabajo.Obtener_todos();
+            if (rTrab != null && rTrab.Correcto && rTrab.Datos != null)
+            {
+                var trabajos = rTrab.Datos.ToList();
+                totalTrabajos = trabajos.Count;
+                recientes = trabajos.OrderByDescending(t => t.FechaCreacion).Take(5).ToList();
+            }
+
+            // Detectar roles del usuario
+            var authState = await authStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+            isProveedorContext = user.IsInRole("proveedor") || user.Claims.Any(c => c.Type == "role" && c.Value == "proveedor");
+            isAdminContext = user.IsInRole("admin_usuario") || user.IsInRole("admin_propiedad") || user.Claims.Any(c => c.Type == "role" && (c.Value == "admin_usuario" || c.Value == "admin_propiedad"));
+
+            if (isProveedorContext && !isAdminContext)
+            {
+                // obtener proveedor asociado al email para filtrar trabajos
+                try
+                {
+                    var userEmail = user.Identity?.Name;
+                    if (!string.IsNullOrEmpty(userEmail))
+                    {
+                        var provRes = await serv_proveedor.Obtener_por_email(userEmail);
+                        if (provRes != null && provRes.Correcto && provRes.Datos != null)
+                        {
+                            proveedorIdForUser = provRes.Datos.Id;
+                            // filtrar recientes trabajos asignados al proveedor
+                            if (rTrab != null && rTrab.Correcto && rTrab.Datos != null)
+                            {
+                                var trabajos = rTrab.Datos.ToList();
+                                recientes = trabajos.Where(t => t.ProveedorId == proveedorIdForUser).OrderByDescending(t => t.FechaCreacion).Take(5).ToList();
+                                totalTrabajos = trabajos.Count(t => t.ProveedorId == proveedorIdForUser);
+                            }
+                        }
+                        else
+                        {
+                            recientes = new List<TrabajoProveedor>();
+                            totalTrabajos = 0;
+                        }
+                    }
+                }
+                catch { /* ignore */ }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Home] Error cargando resumen: {ex.Message}");
+        }
+        finally
+        {
+            StateHasChanged();
+        }
+    }
+
+    private void ViewTrabajo(int id)
+    {
+        Navigation.NavigateTo($"/trabajos/{id}");
+    }
+
+    private async Task AceptarTrabajo(int trabajoId)
+    {
+        try
+        {
+            // Para aceptar el trabajo, crear request simple (fecha inicio ahora, usuarioId debe venir del claim)
+            var authState = await authStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+            var userIdClaim = user.FindFirst("Id");
+            if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out int usuarioId))
+            {
+                NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Warning, Summary = "Sin usuario", Detail = "No se pudo identificar al usuario autenticado." });
+                return;
+            }
+
+            var req = new AceptarTrabajoRequest { TrabajoId = trabajoId, UsuarioId = usuarioId, FechaInicio = DateTime.Now, CostoAproximado = 0m };
+            // IServ_TrabajoProveedor on UI project exposes AceptarTrabajo
+            var res = await serv_trabajo.AceptarTrabajo(req);
+            if (res != null && res.Correcto)
+            {
+                NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = "Trabajo aceptado", Detail = res.Mensaje, Duration = 4000 });
+                await LoadSummary();
+            }
+            else
+            {
+                NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Error", Detail = res?.Mensaje ?? "Error al aceptar trabajo" });
+            }
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Excepción", Detail = ex.Message });
+        }
     }
 }
- 

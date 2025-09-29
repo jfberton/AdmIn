@@ -1,0 +1,47 @@
+@using AdmIn.Common.Entidades
+@using AdmIn.UI.Services
+@inject IServ_HistorialDetalleTrabajo HistorialDetalleService
+@inject NotificationService NotificationService
+@inject DialogService DialogService
+
+<RadzenCard>
+    <RadzenTemplateForm TItem="DetalleModel" Data="model" Submit="OnSubmit">
+        <RadzenRow>
+            <RadzenColumn>
+                <RadzenLabel Text="Comentario" />
+                <RadzenTextArea @bind-Value="model.Comentario" Rows="6" />
+            </RadzenColumn>
+        </RadzenRow>
+        <RadzenRow class="mt-3">
+            <RadzenColumn>
+                <RadzenButton ButtonStyle="ButtonStyle.Primary" Text="Guardar" ButtonType="ButtonType.Submit" />
+                <RadzenButton Text="Cancelar" Click="Cancel" Style="margin-left:8px;" />
+            </RadzenColumn>
+        </RadzenRow>
+    </RadzenTemplateForm>
+</RadzenCard>
+
+@code{
+    [Parameter] public int TrabajoId { get; set; }
+
+    class DetalleModel { public string Comentario { get; set; } = ""; }
+    private DetalleModel model = new();
+
+    private async Task OnSubmit()
+    {
+        // HistorialDetalleTrabajo uses DetalleTrabajoId field; set it from TrabajoId
+        var detalle = new HistorialDetalleTrabajo { DetalleTrabajoId = TrabajoId, Comentario = model.Comentario, Fecha = DateTime.Now, Estado = "Detalle", UsuarioId = 0 };
+        var r = await HistorialDetalleService.Crear(detalle);
+        if (r != null && r.Correcto)
+        {
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = "Guardado", Detail = r.Mensaje });
+            DialogService.Close(true);
+        }
+        else
+        {
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Error", Detail = r?.Mensaje ?? "Error al guardar" });
+        }
+    }
+
+    private void Cancel() => DialogService.Close(false);
+}

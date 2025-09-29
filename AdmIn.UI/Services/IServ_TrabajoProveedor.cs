@@ -8,5 +8,6 @@ namespace AdmIn.UI.Services
     public interface IServ_TrabajoProveedor : IServicioBase<TrabajoProveedor>
     {
         Task<DTO<Items_pagina<TrabajoProveedor>>> Obtener_paginado_filtrado(Filtros_paginado filtros);
+        Task<DTO<bool>> AceptarTrabajo(AceptarTrabajoRequest request);
     }
 }

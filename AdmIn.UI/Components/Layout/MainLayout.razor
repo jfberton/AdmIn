@@ -126,7 +126,7 @@
             <MenuItem Text="Proveedores" Icon="business" Path="/proveedores" Roles="admin_usuario" OnMenuItemClick="@OnMenuItemClick" />
             <MenuItem Text="Monedas" Icon="currency_exchange" Path="/monedas" Roles="admin_usuario" OnMenuItemClick="@OnMenuItemClick" />
             <MenuItem Text="Inmuebles" Icon="apartment" Path="/inmuebles" Roles="admin_propiedad" OnMenuItemClick="@OnMenuItemClick" />
-            <MenuItem Text="Reparaciones" Icon="build" Path="/m/reparaciones" Roles="add_reparacion, admin_reparacion" OnMenuItemClick="@OnMenuItemClick" />
+            <MenuItem Text="Reparaciones" Icon="build" Path="/reparaciones" Roles="add_reparacion, admin_reparacion, proveedor" OnMenuItemClick="@OnMenuItemClick" />
         </RadzenPanelMenu>
     </RadzenSidebar>
 
@@ -174,6 +174,23 @@
         
         // Cargar datos completos del usuario incluyendo imagen de perfil
         await CargarUsuarioCompleto();
+        
+        // Si el usuario es un proveedor autenticado y está en la home/root, redirigir a su panel de trabajos
+        try
+        {
+            var isProveedor = user.IsInRole("proveedor") || user.Claims.Any(c => c.Type == "role" && c.Value == "proveedor");
+            if (isProveedor)
+            {
+                var current = navManager.Uri.Replace(navManager.BaseUri, "/");
+                // normalize
+                if (string.IsNullOrEmpty(current) || current == "/" || current.Equals("/home", StringComparison.OrdinalIgnoreCase))
+                {
+                    // navegar al panel de reparaciones para proveedores
+                    navManager.NavigateTo("/reparaciones");
+                }
+            }
+        }
+        catch { }
     }
 
     private async Task CargarUsuarioCompleto()
@@ -186,11 +203,16 @@
             if (!string.IsNullOrEmpty(userEmail))
             {
                 var resultado = await serv_Usuario.Obtener_usuario_por_email(userEmail);
-                if (resultado.Correcto)
+                if (resultado != null && resultado.Correcto && resultado.Datos != null)
                 {
                     usuarioActual = resultado.Datos;
-                    StateHasChanged();
                 }
+                else
+                {
+                    // No usuario completo disponible for this email (e.g. external roles like proveedor)
+                    usuarioActual = null;
+                }
+                StateHasChanged();
             }
         }
         catch (Exception ex)

@@ -169,6 +169,36 @@
                 </div>
             </Template>
         </RadzenDataGridColumn>
+
+        <RadzenDataGridColumn TItem="ProveedorConUsuario" Title="Calif." MinWidth="100px">
+            <Template Context="item">
+                <div class="calif-cell text-center">
+                    @if (item.Proveedor.CalificacionPromedio > 0)
+                    {
+                        @string.Format("{0:0.0}", item.Proveedor.CalificacionPromedio)
+                    }
+                    else
+                    {
+                        <span class="text-muted">-</span>
+                    }
+                </div>
+            </Template>
+        </RadzenDataGridColumn>
+
+        <RadzenDataGridColumn TItem="ProveedorConUsuario" Title="Trabajos" MinWidth="100px">
+            <Template Context="item">
+                <div class="jobs-cell text-center">
+                    @if (item.Proveedor.TrabajosRealizados > 0)
+                    {
+                        @item.Proveedor.TrabajosRealizados
+                    }
+                    else
+                    {
+                        <span class="text-muted">0</span>
+                    }
+                </div>
+            </Template>
+        </RadzenDataGridColumn>
         
         <RadzenDataGridColumn Width="180px" TItem="ProveedorConUsuario" Title="Acciones" MinWidth="180px" Sortable="false">
             <Template Context="item">

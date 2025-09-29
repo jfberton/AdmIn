@@ -8,43 +8,48 @@
 @inject IJSRuntime JSRuntime
 @inject NavigationManager Navigation
 
-<div class="notification-bell">
-    <button class="btn btn-link position-relative" @onclick="ToggleDropdown" aria-label="Notificaciones">
+<div class="notification-bell" id="notification-bell-root">
+    <a href="#" class="btn btn-link position-relative" @onclick:preventDefault="true" @onclick="ToggleDropdown" aria-label="Notificaciones">
         <RadzenIcon Icon="notifications" Style="font-size:20px;color:inherit;" />
         @if (unreadCount > 0)
         {
             <span class="badge bg-danger position-absolute top-0 start-100 translate-middle">@unreadCount</span>
         }
-    </button>
+    </a>
 
     @if (showDropdown)
     {
-        <div class="dropdown-notifications card p-2">
+        <div class="dropdown-notifications card p-2" id="notification-bell-dropdown">
             @if (notifications?.Any() != true)
             {
-                <div class="p-2">No hay notificaciones</div>
+                <div class="p-2">
+                    <div>No hay notificaciones</div>
+                    <div class="mt-2 text-end">
+                        <a class="link-see-all-simple" href="#" @onclick:preventDefault="true" @onclick="VerTodas">Ver todas</a>
+                    </div>
+                </div>
             }
             else
             {
                 @foreach (var n in notifications.Take(10))
                 {
-                    <div class="notification-item d-flex justify-content-between align-items-start p-2">
-                        <div>
+                    <div class="notification-item d-flex justify-content-between align-items-center p-2">
+                        <div class="notification-text flex-grow-1 me-2">
                             <div class="fw-bold">@n.Tipo</div>
                             <div class="small text-muted">@n.Mensaje</div>
                             <div class="small text-muted">@n.Fecha.ToString("g")</div>
                         </div>
-                        <div class="ms-2">
-                            <button class="btn btn-sm btn-outline-primary" @onclick="() => AbrirNotificacion(n)">Ver</button>
-                            <button class="btn btn-sm btn-outline-secondary ms-1" @onclick="() => MarcarLeida(n)">OK</button>
+                        <div class="notification-actions d-flex gap-1 align-items-start">
+                            <a class="btn btn-sm btn-outline-primary" href="#" @onclick:preventDefault="true" @onclick="() => AbrirNotificacion(n)">Ver</a>
+                            <a class="btn btn-sm btn-outline-secondary" href="#" @onclick:preventDefault="true" @onclick="() => MarcarLeida(n)">OK</a>
                         </div>
                     </div>
                     <hr />
                 }
+                <div class="d-flex justify-content-end mt-2">
+                    <a class="link-see-all-simple" href="#" @onclick:preventDefault="true" @onclick="VerTodas">Ver todas</a>
+                </div>
             }
-            <div class="d-flex justify-content-end mt-2">
-                <button class="btn btn-sm btn-outline-secondary" @onclick="VerTodas">Ver todas</button>
-            </div>
         </div>
     }
 </div>
@@ -79,6 +84,47 @@
 
     .dropdown-notifications .notification-item {
         min-width: 0; /* evitar que el contenido estire el contenedor */
+        gap: 0.5rem;
+    }
+
+    .notification-text .small { display:block; }
+
+    /* evitar que los botones de acción hagan wrap */
+    .notification-actions .btn {
+        white-space: nowrap;
+    }
+
+    /* estilo de enlace Ver todas para que no se rompa en dos líneas */
+    .link-see-all {
+        display: inline-block;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        border: 1px solid #d1d5db;
+        color: #374151;
+        background: #ffffff;
+        text-decoration: none;
+        font-size: 0.85rem;
+        white-space: nowrap;
+    }
+
+    /* stronger, high-specificity rule for the simple link inside the dropdown */
+    .dropdown-notifications .link-see-all-simple {
+        display: inline-block;
+        margin-top: 0.5rem;
+        color: #2563eb !important; /* blue, force override */
+        text-decoration: underline !important;
+        background: transparent !important;
+        border: none !important;
+        padding: 0 !important;
+        font-size: 0.95rem;
+        font-weight: 600;
+    }
+
+    /* ensure visibility on dark headers or themes */
+    .dropdown-notifications .link-see-all-simple:focus,
+    .dropdown-notifications .link-see-all-simple:hover {
+        color: #1e40af !important;
+        text-decoration: underline !important;
     }
 
     @@media (max-width: 576px) {
@@ -110,9 +156,57 @@
             // subscribe to auth changes (inline handler)
             authStateProvider.AuthenticationStateChanged += async _ => await CargarNotificacionesInicial();
 
+            // subscribe to location changes to hide dropdown when navigating
+            Navigation.LocationChanged += OnLocationChanged;
+
             await CargarNotificacionesInicial();
             await InitSignalRClient();
         }
+
+        // register/unregister click-away based on dropdown state using safe wrapper
+        if (showDropdown)
+        {
+            if (_dotNetRef == null) _dotNetRef = DotNetObjectReference.Create(this);
+            try
+            {
+                await JSRuntime.InvokeVoidAsync("safeSignalr.registerClickAwayIfExists", "#notification-bell-root", _dotNetRef);
+            }
+            catch
+            {
+                // ignore JS interop errors during prerender or if script not ready
+            }
+        }
+        else
+        {
+            try
+            {
+                await JSRuntime.InvokeVoidAsync("safeSignalr.unregisterClickAwayIfExists");
+            }
+            catch
+            {
+                // ignore
+            }
+        }
+    }
+
+    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        if (showDropdown)
+        {
+            showDropdown = false;
+            InvokeAsync(StateHasChanged);
+        }
+    }
+
+    [JSInvokable]
+    public Task CloseDropdownFromJs()
+    {
+        if (showDropdown)
+        {
+            showDropdown = false;
+            InvokeAsync(StateHasChanged);
+        }
+        return Task.CompletedTask;
     }
 
     private async Task InitSignalRClient()
@@ -129,9 +223,17 @@
             var baseUri = new Uri(Navigation.BaseUri);
             var hubUrl = baseUri.Scheme + "://" + baseUri.Host + (baseUri.Port > 0 ? ":" + baseUri.Port : "") + "/hubs/notifications";
 
-            _dotNetRef = DotNetObjectReference.Create(this);
-            await JSRuntime.InvokeVoidAsync("signalrNotifications.start", hubUrl, token);
-            await JSRuntime.InvokeVoidAsync("signalrNotifications.onNewNotification", _dotNetRef);
+            _dotNetRef ??= DotNetObjectReference.Create(this);
+            // use safeSignalr wrappers to avoid calling undefined functions
+            try
+            {
+                await JSRuntime.InvokeVoidAsync("safeSignalr.startIfExists", hubUrl, token);
+                await JSRuntime.InvokeVoidAsync("safeSignalr.onNewNotificationIfExists", _dotNetRef);
+            }
+            catch
+            {
+                // ignore JS interop errors during prerender or if script not ready
+            }
 
             _signalrInitialized = true;
         }
@@ -248,6 +350,7 @@
         await servNotificacion.MarcarComoLeida(n.NotificacionId);
         if (!n.Leida) unreadCount = Math.Max(0, unreadCount - 1);
         n.Leida = true;
+        StateHasChanged();
     }
 
     private void VerTodas()
@@ -258,8 +361,19 @@
 
     public void Dispose()
     {
-        // no unsubscribe because we used inline handler; component lives for app lifetime
+        // cleanup subscriptions
+        try
+        {
+            Navigation.LocationChanged -= OnLocationChanged;
+        }
+        catch { }
         _dotNetRef?.Dispose();
+        // unregister click away using safe wrapper
+        try
+        {
+            _ = JSRuntime.InvokeVoidAsync("safeSignalr.unregisterClickAwayIfExists");
+        }
+        catch { }
     }
 
     // Helper objects to obtain service provider in razor component
@@ -270,7 +384,7 @@
     }
 
     [Inject]
-    private IServiceProvider? _serviceProvider { get { return ServiceProviderAccessor._serviceProvider; } set { ServiceProviderAccessor._serviceProvider = value; } }
+    private IServiceProvider? ServiceProviderInject { get { return ServiceProviderAccessor._serviceProvider; } set { ServiceProviderAccessor._serviceProvider = value; } }
 
     // wrapper para callback js->dotnet
     public class NotificationCallback
