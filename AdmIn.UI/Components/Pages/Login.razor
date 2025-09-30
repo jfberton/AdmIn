@@ -168,6 +168,7 @@ else
             var customAuthStateProvider = authStateProvider as CustomAuthenticationStateProvider;
             await customAuthStateProvider.UpdateAuthenticationState(new UserSession
             {
+                Id = user.Id,
                 Nombre = user.Nombre,
                 Email = user.Email,
                 Roles = user.RolString,

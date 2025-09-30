@@ -19,5 +19,6 @@ namespace AdmIn.Business.Servicios
         public Task<DTO<HistorialTrabajo>> Obtener_por_id(int historialTrabajoId) => _repo.Obtener_por_id(historialTrabajoId);
         public Task<DTO<IEnumerable<HistorialTrabajo>>> Obtener_todos() => _repo.Obtener_todos();
         public Task<DTO<Items_pagina<HistorialTrabajo>>> Obtener_paginado(Filtros_paginado filtros) => _repo.Obtener_paginado(filtros);
+        public Task<DTO<IEnumerable<HistorialTrabajo>>> Obtener_por_trabajo(int trabajoId) => _repo.Obtener_por_trabajo(trabajoId);
     }
 }

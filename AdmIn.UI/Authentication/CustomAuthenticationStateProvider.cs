@@ -40,6 +40,9 @@ namespace AdmIn.UI.Authentication
                 var claims = new List<Claim>
                 {
                     new Claim(ClaimTypes.Name, userSession.Email),
+                    // Include identifier claims so components can read user id
+                    new Claim(ClaimTypes.NameIdentifier, userSession.Id.ToString()),
+                    new Claim("Id", userSession.Id.ToString()),
                     new Claim("Nombre", userSession.Nombre),
                     new Claim("Token", userSession.Token)
                 };
@@ -73,6 +76,9 @@ namespace AdmIn.UI.Authentication
                     var claims = new List<Claim>
                     {
                         new Claim(ClaimTypes.Name, userSession.Email),
+                        new Claim(ClaimTypes.NameIdentifier, userSession.Id.ToString()),
+                        new Claim("Id", userSession.Id.ToString()),
+                        new Claim("Nombre", userSession.Nombre),
                         new Claim("Token", userSession.Token)
                     };
 

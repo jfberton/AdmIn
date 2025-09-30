@@ -134,5 +134,22 @@ namespace AdmIn.Data.Repositorios
                 Mensaje = "Historiales paginados correctamente."
             };
         }
+
+        public async Task<DTO<IEnumerable<HistorialTrabajo>>> Obtener_por_trabajo(int trabajoId)
+        {
+            using var conexion = new SqlConnection(InfoSQL.Conexion);
+            await conexion.OpenAsync();
+
+            try
+            {
+                var sql = "SELECT * FROM HistorialTrabajo WHERE TrabajoProveedorId = @trabajoId ORDER BY Fecha DESC;";
+                var lista = await conexion.QueryAsync<HistorialTrabajo>(sql, new { trabajoId });
+                return new DTO<IEnumerable<HistorialTrabajo>> { Correcto = true, Datos = lista.ToList(), Mensaje = "Historiales por trabajo obtenidos correctamente" };
+            }
+            catch (Exception ex)
+            {
+                return new DTO<IEnumerable<HistorialTrabajo>> { Correcto = false, Datos = new List<HistorialTrabajo>(), Mensaje = ex.Message };
+            }
+        }
     }
 }

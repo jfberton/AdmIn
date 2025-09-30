@@ -22,7 +22,23 @@
 </RadzenCard>
 
 @code{
-    [Parameter] public int TrabajoId { get; set; }
+    // Backing field to unify parameter names (case-insensitive dialog params)
+    private int _trabajoId;
+
+    [Parameter]
+    public int TrabajoId
+    {
+        get => _trabajoId;
+        set => _trabajoId = value;
+    }
+
+    // Accept lowercase key 'trabajoid' sent from dialog open to avoid invalid HTML attribute names
+    [Parameter]
+    public int trabajoid
+    {
+        get => _trabajoId;
+        set => _trabajoId = value;
+    }
 
     class DetalleModel { public string Comentario { get; set; } = ""; }
     private DetalleModel model = new();

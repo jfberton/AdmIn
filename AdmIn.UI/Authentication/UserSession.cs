@@ -2,6 +2,8 @@
 {
     public class UserSession
     {
+        // Identificador del usuario (se usará en claims)
+        public required int Id { get; set; }
         public required string Email { get; set; }
         public required string Nombre { get; set; }
         public required string Password { get; set; }

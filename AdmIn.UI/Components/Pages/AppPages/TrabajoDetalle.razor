@@ -8,6 +8,7 @@
 @inject NotificationService NotificationService
 @inject DialogService DialogService
 @inject NavigationManager Navigation
+@inject IServ_Proveedor ProveedorService
 
 <PageTitle>Detalle Trabajo</PageTitle>
 
@@ -19,7 +20,7 @@
     else
     {
         <RadzenStack Gap="1rem">
-            <RadzenText TextStyle="TextStyle.H5" Text=$"Trabajo #{trabajo.Id} - {trabajo.Estado}" />
+            <RadzenText TextStyle="TextStyle.H5" Text=@($"Trabajo #{trabajo.Id} - {trabajo.Estado}") />
             <RadzenPanelMenu>
                 <MenuItem Text="Detalles" Icon="info" />
             </RadzenPanelMenu>
@@ -97,12 +98,34 @@
 
             var auth = await authStateProvider.GetAuthenticationStateAsync();
             var user = auth.User;
-            var userIdClaim = user.FindFirst("Id");
-            if (userIdClaim != null && int.TryParse(userIdClaim.Value, out int uid))
+
+            // Obtener proveedor asociado al usuario actual (por email) y comparar con trabajo.ProveedorId
+            var userEmail = user.Identity?.Name;
+            int? proveedorIdFromUser = null;
+            if (!string.IsNullOrEmpty(userEmail))
             {
-                puedeAceptar = (trabajo.ProveedorId == uid && trabajo.Estado != "En ejecución" && trabajo.Estado != "Finalizado");
-                puedeAgregarDetalle = trabajo.Estado == "En ejecución" && trabajo.ProveedorId == uid;
-                puedeFinalizar = trabajo.ProveedorId == uid && trabajo.Estado == "En ejecución";
+                try
+                {
+                    var provRes = await ProveedorService.Obtener_por_email(userEmail);
+                    if (provRes != null && provRes.Correcto && provRes.Datos != null)
+                    {
+                        proveedorIdFromUser = provRes.Datos.Id;
+                    }
+                }
+                catch { /* ignore errors */ }
+            }
+
+            // Determinar permisos usando el proveedor asociado si existe, si no usar claim Id como fallback
+            var userIdClaim = user.FindFirst("Id");
+            int.TryParse(userIdClaim?.Value, out int uid);
+
+            var compareId = proveedorIdFromUser ?? uid;
+
+            if (compareId != 0)
+            {
+                puedeAceptar = (trabajo.ProveedorId == compareId && trabajo.Estado != "En ejecución" && trabajo.Estado != "Finalizado");
+                puedeAgregarDetalle = trabajo.Estado == "En ejecución" && trabajo.ProveedorId == compareId;
+                puedeFinalizar = trabajo.ProveedorId == compareId && trabajo.Estado == "En ejecución";
             }
         }
         else
@@ -138,7 +161,8 @@
 
     private async Task AgregarDetalle()
     {
-        var result = await DialogService.OpenAsync<AgregarDetalleDialog>("Agregar Detalle", new Dictionary<string, object> { { "TrabajoId", trabajo.Id } }, new DialogOptions { Width = "600px", Height = "400px" });
+        // change parameter key to all-lowercase to avoid invalid HTML attribute name errors when Radzen sets attributes
+        var result = await DialogService.OpenAsync<AgregarDetalleDialog>("Agregar Detalle", new Dictionary<string, object> { { "trabajoid", trabajo.Id } }, new DialogOptions { Width = "600px", Height = "400px" });
         if (result == true) await Cargar();
     }
 
