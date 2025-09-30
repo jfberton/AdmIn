@@ -14,5 +14,12 @@ namespace AdmIn.Business.Servicios
         Task<DTO<IEnumerable<TrabajoProveedor>>> Obtener_todos();
         Task<DTO<Items_pagina<TrabajoProveedor>>> Obtener_paginado(Filtros_paginado filtros);
         Task<DTO<bool>> AceptarTrabajo(AceptarTrabajoRequest request);
+
+        // Nuevas acciones para las transiciones de estado
+        Task<DTO<bool>> SolicitarTrabajo(TrabajoAccionRequest request);
+        Task<DTO<bool>> RechazarTrabajo(TrabajoAccionRequest request);
+        Task<DTO<bool>> MarcarFinalizado(TrabajoAccionRequest request);
+        Task<DTO<bool>> RevisarFinalizacion(RevisarFinalizacionRequest request);
+        Task<DTO<bool>> CancelarTrabajo(TrabajoAccionRequest request);
     }
 }

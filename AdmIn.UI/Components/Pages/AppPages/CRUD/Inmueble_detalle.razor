@@ -392,13 +392,45 @@ else
         {
             await LogHelper.Info($"Iniciando carga de imágenes para inmueble ID: {Id}");
             var resultado = await serv_imagen.ObtenerPorInmueble(Id);
-            
+
+            // Protección: si la respuesta es null, evitar NRE y manejar de forma segura
+            if (resultado == null)
+            {
+                await LogHelper.Warn($"Servicio de imágenes devolvió null para inmueble ID: {Id}");
+
+                // Fallback: si el inmueble ya tiene imágenes cargadas desde el servicio de inmuebles, úsalas
+                if (inmueble?.Imagenes != null && inmueble.Imagenes.Any())
+                {
+                    imagenesInmueble = inmueble.Imagenes.ToList();
+                    StateHasChanged();
+                }
+                else if (imagenesInmueble.Any())
+                {
+                    imagenesInmueble = new List<Imagen>();
+                    StateHasChanged();
+                }
+
+                return;
+            }
+
             await LogHelper.Info($"Resultado de carga de imágenes - Correcto: {resultado.Correcto}, Datos count: {resultado.Datos?.Count() ?? 0}");
-            
-            if (resultado.Correcto && resultado.Datos != null)
+
+            // Si la llamada fue correcta y devolvió datos, úsalos
+            if (resultado.Correcto && resultado.Datos != null && resultado.Datos.Any())
             {
                 var nuevasImagenes = resultado.Datos.ToList();
-                
+
+                // Si el servicio devolvió menos imágenes que las que ya vienen embebidas en el inmueble,
+                // es probable que el endpoint esté devolviendo solo la principal por algún motivo.
+                // En ese caso preferimos usar las imágenes que ya vinieron con el objeto inmueble (que en el listado sí cargan todas).
+                if (inmueble?.Imagenes != null && inmueble.Imagenes.Count > nuevasImagenes.Count)
+                {
+                    await LogHelper.Warn($"El servicio de imágenes devolvió {nuevasImagenes.Count} imágenes pero el Inmueble tiene {inmueble.Imagenes.Count}. Usando imágenes embebidas en Inmueble.");
+                    imagenesInmueble = inmueble.Imagenes.ToList();
+                    StateHasChanged();
+                    return;
+                }
+
                 // Solo actualizar si hay cambios
                 if (!ImagenesIguales(imagenesInmueble, nuevasImagenes))
                 {
@@ -410,21 +442,38 @@ else
                 {
                     await LogHelper.Info("No hay cambios en las imágenes, saltando actualización");
                 }
+
+                return;
             }
-            else
+
+            // Si llegamos aquí, la llamada devolvió Correcto=false o no hay datos.
+            await LogHelper.Warn($"No se pudieron cargar las imágenes desde servicio: {resultado.Mensaje}");
+
+            // FALLBACK: intentar usar las imágenes que ya vinieron con el objeto inmueble (posible que el listado las haya cargado)
+            if (inmueble?.Imagenes != null && inmueble.Imagenes.Any())
             {
-                await LogHelper.Warn($"No se pudieron cargar las imágenes: {resultado.Mensaje}");
-                if (imagenesInmueble.Any()) // Solo limpiar si había imágenes antes
-                {
-                    imagenesInmueble = new List<Imagen>();
-                    StateHasChanged();
-                }
+                imagenesInmueble = inmueble.Imagenes.ToList();
+                await LogHelper.Info($"Usando imágenes embebidas en Inmueble: {imagenesInmueble.Count}");
+                StateHasChanged();
+                return;
+            }
+
+            // Si no hay imágenes en ningún lado, limpiar
+            if (imagenesInmueble.Any())
+            {
+                imagenesInmueble = new List<Imagen>();
+                StateHasChanged();
             }
         }
         catch (Exception ex)
         {
             await LogHelper.Error($"Error al cargar imágenes: {ex.Message}");
-            if (imagenesInmueble.Any()) // Solo limpiar si había imágenes antes
+            if (inmueble?.Imagenes != null && inmueble.Imagenes.Any())
+            {
+                imagenesInmueble = inmueble.Imagenes.ToList();
+                StateHasChanged();
+            }
+            else if (imagenesInmueble.Any()) // Solo limpiar si había imágenes antes
             {
                 imagenesInmueble = new List<Imagen>();
                 StateHasChanged();

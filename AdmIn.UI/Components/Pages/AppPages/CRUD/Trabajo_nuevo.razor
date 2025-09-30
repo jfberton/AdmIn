@@ -12,6 +12,7 @@
 @inject IServ_Inmueble ServicioInmueble
 @inject NavigationManager Navigation
 @inject IJSRuntime JSRuntime
+@inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthenticationStateProvider
 
 @inherits BaseComponent
 
@@ -90,6 +91,8 @@
                     <ImageUploadComponent PermitirMultiples="true"
                                           MostrarVistaPrevia="true"
                                           MostrarBotones="true"
+                                          EntidadTipo="trabajo"
+                                          EstablecerComoPrincipal="false"
                                           OnImagenesSubidas="@OnImagenesSubidas" />
 
                     @if (imagenes != null && imagenes.Any())
@@ -286,6 +289,20 @@
         trabajo.Fecha = DateTime.Now;
         // Fecha de creación para evitar DateTime.MinValue que provoca overflow en SQL
         trabajo.FechaCreacion = DateTime.Now;
+
+        // Obtener usuario autenticado y guardar como UsuarioCreador
+        try
+        {
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+            var userIdClaim = user.FindFirst("Id");
+            if (userIdClaim != null && int.TryParse(userIdClaim.Value, out int uid))
+            {
+                trabajo.UsuarioCreador = uid;
+            }
+        }
+        catch { /* noop */ }
+
         // Asociar imágenes cargadas antes de enviar
         trabajo.Imagenes = imagenes;
         var r = await ServicioTrabajo.Crear(trabajo);

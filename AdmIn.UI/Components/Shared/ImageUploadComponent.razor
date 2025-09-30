@@ -201,7 +201,20 @@
     [Parameter] public bool MostrarVistaPrevia { get; set; } = true;
     [Parameter] public bool MostrarBotones { get; set; } = true;
     [Parameter] public bool MostrarProgreso { get; set; } = true;
-    [Parameter] public int? InmuebleId { get; set; }
+
+    // Nuevo: soporte genérico para tipos de entidad
+    [Parameter] public string EntidadTipo { get; set; } = "inmueble"; // values: "inmueble", "usuario", "trabajo", etc.
+    [Parameter] public int? EntidadId { get; set; }
+
+    // Compatibilidad hacia atrás (deprecated)
+    [Parameter]
+    [Obsolete("Use EntidadId instead")]
+    public int? InmuebleId
+    {
+        get => EntidadId;
+        set => EntidadId = value;
+    }
+
     [Parameter] public bool EstablecerComoPrincipal { get; set; } = false;
     [Parameter] public EventCallback<List<Imagen>> OnImagenesSubidas { get; set; }
     [Parameter] public EventCallback<string> OnError { get; set; }
@@ -318,17 +331,31 @@
                 using var stream = archivo.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024);
                 
                 DTO<Imagen> resultado;
-                if (InmuebleId.HasValue)
+
+                // Lógica de subida según tipo de entidad
+                if (EntidadTipo?.Equals("inmueble", StringComparison.OrdinalIgnoreCase) == true && EntidadId.HasValue)
                 {
+                    // Asociar la imagen directamente al inmueble
                     resultado = await servImagen.SubirImagenParaInmueble(
-                        stream, 
-                        archivo.Name, 
-                        InmuebleId.Value, 
-                        null, 
+                        stream,
+                        archivo.Name,
+                        EntidadId.Value,
+                        null,
                         EstablecerComoPrincipal && i == 0); // Solo la primera como principal
+                }
+                else if (EntidadTipo?.Equals("usuario", StringComparison.OrdinalIgnoreCase) == true && EntidadId.HasValue)
+                {
+                    // Subir y (opcional) establecer como perfil
+                    resultado = await servImagen.SubirImagenParaUsuario(
+                        stream,
+                        archivo.Name,
+                        EntidadId.Value,
+                        null,
+                        EstablecerComoPrincipal && i == 0);
                 }
                 else
                 {
+                    // Para trabajos u otras entidades, crear imagen sin asociarla
                     resultado = await servImagen.SubirImagen(stream, archivo.Name);
                 }
 

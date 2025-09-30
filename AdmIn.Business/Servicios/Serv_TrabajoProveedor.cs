@@ -32,6 +32,44 @@ namespace AdmIn.Business.Servicios
 
             if (resultado != null && resultado.Correcto && resultado.Datos != null)
             {
+                // Crear historial 'Creado' y, si hay proveedor, crear historial 'Solicitado'
+                try
+                {
+                    var creadorId = trabajo.UsuarioCreador ?? 0;
+
+                    var historialCreado = new HistorialTrabajo
+                    {
+                        TrabajoProveedorId = resultado.Datos.Id,
+                        Fecha = DateTime.Now,
+                        Estado = TrabajoEstados.Creado,
+                        UsuarioId = creadorId,
+                        Comentario = "Trabajo creado"
+                    };
+
+                    var h1 = await _repoHistorial.Crear(historialCreado);
+                    // No bloquear si falla
+                }
+                catch { /* no bloquear si falla historial creado */ }
+
+                if (trabajo.ProveedorId != 0)
+                {
+                    try
+                    {
+                        var solicitanteId = trabajo.UsuarioCreador ?? 0;
+                        var historialSolicitado = new HistorialTrabajo
+                        {
+                            TrabajoProveedorId = resultado.Datos.Id,
+                            Fecha = DateTime.Now,
+                            Estado = TrabajoEstados.Solicitado,
+                            UsuarioId = solicitanteId,
+                            Comentario = $"Trabajo solicitado y asignado al proveedor {trabajo.ProveedorId}"
+                        };
+
+                        var h2 = await _repoHistorial.Crear(historialSolicitado);
+                    }
+                    catch { /* no bloquear si falla historial solicitado */ }
+                }
+
                 try
                 {
                     // Intentar cambiar la condición del inmueble a 'En reparacion'
@@ -97,14 +135,14 @@ namespace AdmIn.Business.Servicios
             {
                 // Asumimos UsuarioId es Id del proveedor asociado al Usuario; en modelos reales haría otra comprobación
                 // pero dejar mensaje claro
-                // No bloqueamos, devolvemos error
+                // No bloquear, devolvemos error
                 return new DTO<bool> { Correcto = false, Mensaje = "El usuario no está autorizado para aceptar este trabajo" };
             }
 
             // 2. Actualizar fecha inicio, costo aproximado y estado a 'En ejecución'
             trabajo.FechaInicio = request.FechaInicio;
             trabajo.CostoAproximado = request.CostoAproximado;
-            trabajo.Estado = "En ejecución";
+            trabajo.Estado = TrabajoEstados.EnEjecucion;
 
             var upd = await _repo.Actualizar(trabajo);
             if (!upd.Correcto)
@@ -140,6 +178,180 @@ namespace AdmIn.Business.Servicios
             await _servNotificacion.Crear(not);
 
             return new DTO<bool> { Correcto = true, Mensaje = "Trabajo aceptado correctamente" };
+        }
+
+        // New actions
+        public async Task<DTO<bool>> SolicitarTrabajo(TrabajoAccionRequest request)
+        {
+            var tDto = await _repo.Obtener_por_id(new TrabajoProveedor { Id = request.TrabajoId });
+            if (!tDto.Correcto || tDto.Datos == null)
+                return new DTO<bool> { Correcto = false, Mensaje = "Trabajo no encontrado" };
+
+            var trabajo = tDto.Datos;
+
+            if (trabajo.ProveedorId == 0)
+                return new DTO<bool> { Correcto = false, Mensaje = "No hay proveedor asignado para solicitar." };
+
+            // Sólo permitir solicitar si está en Creado o Rechazado
+            if (trabajo.Estado != TrabajoEstados.Creado && trabajo.Estado != TrabajoEstados.Rechazado)
+                return new DTO<bool> { Correcto = false, Mensaje = $"No se puede solicitar desde el estado actual: {trabajo.Estado}" };
+
+            trabajo.Estado = TrabajoEstados.Solicitado;
+            var upd = await _repo.Actualizar(trabajo);
+            if (!upd.Correcto) return new DTO<bool> { Correcto = false, Mensaje = "No se pudo actualizar trabajo" };
+
+            var historial = new HistorialTrabajo { TrabajoProveedorId = trabajo.Id, Fecha = DateTime.Now, Estado = TrabajoEstados.Solicitado, UsuarioId = request.UsuarioId, Comentario = request.Comentario };
+            await _repoHistorial.Crear(historial);
+
+            try
+            {
+                var provRes = await _servProveedor.Obtener_por_id(new Proveedor { Id = trabajo.ProveedorId });
+                if (provRes != null && provRes.Correcto && provRes.Datos != null && provRes.Datos.UsuarioId.HasValue)
+                {
+                    await _servNotificacion.Crear(new Notificacion { UsuarioId = provRes.Datos.UsuarioId.Value, Tipo = "TrabajoSolicitado", Mensaje = $"Se te ha solicitado el trabajo ID {trabajo.Id}", Payload = System.Text.Json.JsonSerializer.Serialize(new { TrabajoId = trabajo.Id }) });
+                }
+            }
+            catch { }
+
+            return new DTO<bool> { Correcto = true, Datos = true, Mensaje = "Trabajo solicitado correctamente" };
+        }
+
+        public async Task<DTO<bool>> RechazarTrabajo(TrabajoAccionRequest request)
+        {
+            var tDto = await _repo.Obtener_por_id(new TrabajoProveedor { Id = request.TrabajoId });
+            if (!tDto.Correcto || tDto.Datos == null)
+                return new DTO<bool> { Correcto = false, Mensaje = "Trabajo no encontrado" };
+
+            var trabajo = tDto.Datos;
+
+            // Solo el proveedor asignado puede rechazar
+            if (trabajo.ProveedorId != request.UsuarioId)
+                return new DTO<bool> { Correcto = false, Mensaje = "El usuario no está autorizado para rechazar este trabajo" };
+
+            if (trabajo.Estado != TrabajoEstados.Solicitado)
+                return new DTO<bool> { Correcto = false, Mensaje = "Solo se puede rechazar cuando está en estado Solicitado" };
+
+            trabajo.Estado = TrabajoEstados.Rechazado;
+            var upd = await _repo.Actualizar(trabajo);
+            if (!upd.Correcto) return new DTO<bool> { Correcto = false, Mensaje = "No se pudo actualizar trabajo" };
+
+            var historial = new HistorialTrabajo { TrabajoProveedorId = trabajo.Id, Fecha = DateTime.Now, Estado = TrabajoEstados.Rechazado, UsuarioId = request.UsuarioId, Comentario = request.Comentario };
+            await _repoHistorial.Crear(historial);
+
+            return new DTO<bool> { Correcto = true, Datos = true, Mensaje = "Trabajo rechazado" };
+        }
+
+        public async Task<DTO<bool>> MarcarFinalizado(TrabajoAccionRequest request)
+        {
+            var tDto = await _repo.Obtener_por_id(new TrabajoProveedor { Id = request.TrabajoId });
+            if (!tDto.Correcto || tDto.Datos == null)
+                return new DTO<bool> { Correcto = false, Mensaje = "Trabajo no encontrado" };
+
+            var trabajo = tDto.Datos;
+
+            // Solo proveedor puede marcar finalizado y debe estar en ejecución
+            if (trabajo.ProveedorId != request.UsuarioId)
+                return new DTO<bool> { Correcto = false, Mensaje = "El usuario no está autorizado para marcar finalizado" };
+
+            if (trabajo.Estado != TrabajoEstados.EnEjecucion)
+                return new DTO<bool> { Correcto = false, Mensaje = "Solo se puede marcar finalizado cuando está en ejecución" };
+
+            trabajo.Estado = TrabajoEstados.FinalizadoPorAprobar;
+            var upd = await _repo.Actualizar(trabajo);
+            if (!upd.Correcto) return new DTO<bool> { Correcto = false, Mensaje = "No se pudo actualizar trabajo" };
+
+            var historial = new HistorialTrabajo { TrabajoProveedorId = trabajo.Id, Fecha = DateTime.Now, Estado = TrabajoEstados.FinalizadoPorAprobar, UsuarioId = request.UsuarioId, Comentario = request.Comentario };
+            await _repoHistorial.Crear(historial);
+
+            // Notificar al creador/usuario responsable
+            try
+            {
+                var not = new Notificacion { UsuarioId = trabajo.UsuarioCreador ?? 0, Tipo = "TrabajoFinalizado", Mensaje = $"El proveedor ha marcado como finalizado el trabajo ID {trabajo.Id}", Payload = System.Text.Json.JsonSerializer.Serialize(new { TrabajoId = trabajo.Id }) };
+                await _servNotificacion.Crear(not);
+            }
+            catch { }
+
+            return new DTO<bool> { Correcto = true, Datos = true, Mensaje = "Trabajo marcado como finalizado y pendiente de aprobación" };
+        }
+
+        public async Task<DTO<bool>> RevisarFinalizacion(RevisarFinalizacionRequest request)
+        {
+            var tDto = await _repo.Obtener_por_id(new TrabajoProveedor { Id = request.TrabajoId });
+            if (!tDto.Correcto || tDto.Datos == null)
+                return new DTO<bool> { Correcto = false, Mensaje = "Trabajo no encontrado" };
+
+            var trabajo = tDto.Datos;
+
+            if (trabajo.Estado != TrabajoEstados.FinalizadoPorAprobar)
+                return new DTO<bool> { Correcto = false, Mensaje = "No hay finalización pendiente de revisión" };
+
+            if (request.Aprobado)
+            {
+                if (!string.IsNullOrEmpty(request.Comentario))
+                {
+                    trabajo.Estado = TrabajoEstados.FinalizacionAceptadaConObservaciones;
+                }
+                else
+                {
+                    trabajo.Estado = TrabajoEstados.Finalizado;
+                }
+
+                var upd = await _repo.Actualizar(trabajo);
+                if (!upd.Correcto) return new DTO<bool> { Correcto = false, Mensaje = "No se pudo actualizar trabajo" };
+
+                var historial = new HistorialTrabajo { TrabajoProveedorId = trabajo.Id, Fecha = DateTime.Now, Estado = trabajo.Estado, UsuarioId = request.UsuarioId, Comentario = request.Comentario };
+                await _repoHistorial.Crear(historial);
+
+                // Notificar proveedor
+                try
+                {
+                    var provRes = await _servProveedor.Obtener_por_id(new Proveedor { Id = trabajo.ProveedorId });
+                    if (provRes != null && provRes.Correcto && provRes.Datos != null && provRes.Datos.UsuarioId.HasValue)
+                    {
+                        await _servNotificacion.Crear(new Notificacion { UsuarioId = provRes.Datos.UsuarioId.Value, Tipo = "FinalizacionAprobada", Mensaje = $"La finalización del trabajo ID {trabajo.Id} fue aprobada.", Payload = System.Text.Json.JsonSerializer.Serialize(new { TrabajoId = trabajo.Id }) });
+                    }
+                }
+                catch { }
+
+                return new DTO<bool> { Correcto = true, Datos = true, Mensaje = "Finalización aprobada" };
+            }
+            else
+            {
+                // Rechazado -> registrar y volver a En ejecución automáticamente
+                var historialRechazo = new HistorialTrabajo { TrabajoProveedorId = trabajo.Id, Fecha = DateTime.Now, Estado = TrabajoEstados.FinalizacionRechazada, UsuarioId = request.UsuarioId, Comentario = request.Comentario };
+                await _repoHistorial.Crear(historialRechazo);
+
+                trabajo.Estado = TrabajoEstados.EnEjecucion;
+                var upd = await _repo.Actualizar(trabajo);
+                if (!upd.Correcto) return new DTO<bool> { Correcto = false, Mensaje = "No se pudo actualizar trabajo tras rechazo" };
+
+                var historialResume = new HistorialTrabajo { TrabajoProveedorId = trabajo.Id, Fecha = DateTime.Now, Estado = TrabajoEstados.EnEjecucion, UsuarioId = request.UsuarioId, Comentario = "Reanudar trabajo tras rechazo de finalización" };
+                await _repoHistorial.Crear(historialResume);
+
+                return new DTO<bool> { Correcto = true, Datos = true, Mensaje = "Finalización rechazada; trabajo reanudado" };
+            }
+        }
+
+        public async Task<DTO<bool>> CancelarTrabajo(TrabajoAccionRequest request)
+        {
+            var tDto = await _repo.Obtener_por_id(new TrabajoProveedor { Id = request.TrabajoId });
+            if (!tDto.Correcto || tDto.Datos == null)
+                return new DTO<bool> { Correcto = false, Mensaje = "Trabajo no encontrado" };
+
+            var trabajo = tDto.Datos;
+
+            // Permitimos cancelar desde cualquier estado excepto Finalizado
+            if (trabajo.Estado == TrabajoEstados.Finalizado)
+                return new DTO<bool> { Correcto = false, Mensaje = "No se puede cancelar un trabajo finalizado" };
+
+            trabajo.Estado = TrabajoEstados.Cancelado;
+            var upd = await _repo.Actualizar(trabajo);
+            if (!upd.Correcto) return new DTO<bool> { Correcto = false, Mensaje = "No se pudo cancelar trabajo" };
+
+            var historial = new HistorialTrabajo { TrabajoProveedorId = trabajo.Id, Fecha = DateTime.Now, Estado = TrabajoEstados.Cancelado, UsuarioId = request.UsuarioId, Comentario = request.Comentario };
+            await _repoHistorial.Crear(historial);
+
+            return new DTO<bool> { Correcto = true, Datos = true, Mensaje = "Trabajo cancelado" };
         }
     }
 }

@@ -106,28 +106,28 @@ namespace AdmIn.API.Controllers
         }
 
         [HttpGet("obtener_por_id/{imagenId}")]
-        [Authorize(Roles = "admin_usuario")]
+        [Authorize]
         public async Task<DTO<Imagen>> ObtenerPorId(Guid imagenId)
         {
             return await _imagenRepo.Obtener_por_id(new Imagen { Id = imagenId });
         }
 
         [HttpGet("obtener_todos")]
-        [Authorize(Roles = "admin_usuario")]
+        [Authorize]
         public async Task<DTO<IEnumerable<Imagen>>> ObtenerTodas()
         {
             return await _imagenRepo.Obtener_todos();
         }
 
         [HttpPost("obtener_paginado")]
-        [Authorize(Roles = "admin_usuario")]
+        [Authorize]
         public async Task<DTO<Items_pagina<Imagen>>> ObtenerPaginado([FromBody] Filtros_paginado filtros)
         {
             return await _imagenRepo.Obtener_paginado(filtros);
         }
-
+        
         [HttpGet("obtener_por_inmueble/{inmuebleId}")]
-        [Authorize(Roles = "admin_usuario")]
+        [Authorize]
         public async Task<DTO<IEnumerable<Imagen>>> ObtenerPorInmueble(int inmuebleId)
         {
             try

@@ -316,73 +316,93 @@ namespace AdmIn.Data.Repositorios
             using var conexion = new SqlConnection(InfoSQL.Conexion);
             await conexion.OpenAsync();
 
-            // Intentar obtener imágenes usando la tabla de relación InmuebleImagen
-            var sql = @"
-                SELECT DISTINCT 
-                    img.Id, 
-                    img.Nombre, 
-                    img.Descripcion, 
-                    img.FechaCreacion, 
-                    img.Url, 
-                    img.UrlThumb,
-                    CASE WHEN img.Id = (SELECT ImagenPrincipalId FROM Inmueble WHERE InmuebleID = @InmuebleId) THEN 0 ELSE 1 END AS OrdenPrincipal
-                FROM Imagen img
-                WHERE img.Id IN (
-                    -- Imagen principal del inmueble
-                    SELECT ImagenPrincipalId 
-                    FROM Inmueble 
-                    WHERE InmuebleID = @InmuebleId AND ImagenPrincipalId IS NOT NULL
-                    
-                    UNION
-                    
-                    -- Imágenes asociadas a través de la tabla InmuebleImagen (si existe)
-                    SELECT ii.ImagenId
-                    FROM InmuebleImagen ii
-                    WHERE ii.InmuebleId = @InmuebleId
-                )
-                ORDER BY OrdenPrincipal, img.FechaCreacion DESC;";
-
             try
             {
-                var imagenes = await conexion.QueryAsync<Imagen>(sql, new { InmuebleId = inmuebleId });
-                
-                return new DTO<IEnumerable<Imagen>>
-                {
-                    Correcto = true,
-                    Datos = imagenes,
-                    Mensaje = "Imágenes del inmueble obtenidas correctamente"
-                };
-            }
-            catch (Exception ex)
-            {
-                // Si falla (tabla InmuebleImagen no existe), usar solo la imagen principal
-                var sqlFallback = @"
-                    SELECT img.Id, img.Nombre, img.Descripcion, img.FechaCreacion, img.Url, img.UrlThumb 
-                    FROM Imagen img
-                    INNER JOIN Inmueble i ON img.Id = i.ImagenPrincipalId
-                    WHERE i.InmuebleID = @InmuebleId;";
+                // Verificar si existe la tabla de relación InmuebleImagen
+                var sqlVerificarTabla = @"SELECT COUNT(*) FROM sysobjects WHERE name='InmuebleImagen' AND xtype='U'";
+                var existeTabla = await conexion.QuerySingleAsync<int>(sqlVerificarTabla);
 
-                try
+                var imagenes = new List<Imagen>();
+
+                if (existeTabla > 0)
                 {
-                    var imagenes = await conexion.QueryAsync<Imagen>(sqlFallback, new { InmuebleId = inmuebleId });
-                    
+                    // Obtener todas las imágenes asociadas a través de InmuebleImagen
+                    var sqlImgs = @"
+                        SELECT i.Id, i.Nombre, i.Descripcion, i.FechaCreacion, i.Url, i.UrlThumb, ii.Orden
+                        FROM InmuebleImagen ii
+                        INNER JOIN Imagen i ON ii.ImagenId = i.Id
+                        WHERE ii.InmuebleId = @InmuebleId
+                        ORDER BY ii.Orden, i.FechaCreacion DESC;";
+
+                    var imgsFromRel = (await conexion.QueryAsync<dynamic>(sqlImgs, new { InmuebleId = inmuebleId })).ToList();
+
+                    foreach (var row in imgsFromRel)
+                    {
+                        imagenes.Add(new Imagen
+                        {
+                            Id = row.Id,
+                            Nombre = row.Nombre,
+                            Descripcion = row.Descripcion,
+                            FechaCreacion = row.FechaCreacion,
+                            Url = row.Url,
+                            UrlThumb = row.UrlThumb
+                        });
+                    }
+
+                    // Asegurar que la imagen principal esté incluida y al inicio
+                    var principalId = await conexion.QuerySingleOrDefaultAsync<Guid?>("SELECT ImagenPrincipalId FROM Inmueble WHERE InmuebleID = @InmuebleId", new { InmuebleId = inmuebleId });
+                    if (principalId.HasValue)
+                    {
+                        if (!imagenes.Any(i => i.Id == principalId.Value))
+                        {
+                            var sqlPrincipal = @"SELECT Id, Nombre, Descripcion, FechaCreacion, Url, UrlThumb FROM Imagen WHERE Id = @Id";
+                            var principalImg = await conexion.QuerySingleOrDefaultAsync<Imagen>(sqlPrincipal, new { Id = principalId.Value });
+                            if (principalImg != null)
+                            {
+                                imagenes.Insert(0, principalImg);
+                            }
+                        }
+                        else
+                        {
+                            // Reordenar para poner principal primero
+                            imagenes = imagenes.OrderBy(i => i.Id == principalId.Value ? 0 : 1).ThenBy(i => i.FechaCreacion).ToList();
+                        }
+                    }
+
                     return new DTO<IEnumerable<Imagen>>
                     {
                         Correcto = true,
                         Datos = imagenes,
-                        Mensaje = "Imagen principal del inmueble obtenida correctamente"
+                        Mensaje = "Imágenes del inmueble obtenidas correctamente"
                     };
                 }
-                catch (Exception ex2)
+                else
                 {
-                    // Si todo falla, devolver lista vacía
+                    // Si no existe la tabla de relación, devolver solo la imagen principal (si existe)
+                    var sqlFallback = @"
+                        SELECT img.Id, img.Nombre, img.Descripcion, img.FechaCreacion, img.Url, img.UrlThumb 
+                        FROM Imagen img
+                        INNER JOIN Inmueble i ON img.Id = i.ImagenPrincipalId
+                        WHERE i.InmuebleID = @InmuebleId;";
+
+                    var imagenesFallback = await conexion.QueryAsync<Imagen>(sqlFallback, new { InmuebleId = inmuebleId });
                     return new DTO<IEnumerable<Imagen>>
                     {
                         Correcto = true,
-                        Datos = new List<Imagen>(),
-                        Mensaje = $"No se pudieron obtener imágenes para el inmueble. Error: {ex2.Message}"
+                        Datos = imagenesFallback,
+                        Mensaje = "Imagen principal del inmueble obtenida correctamente"
                     };
                 }
+            }
+            catch (Exception ex)
+            {
+                // En caso de error, devolver lista vacía pero indicar mensaje para facilitar diagnóstico
+                return new DTO<IEnumerable<Imagen>>
+                {
+                    Correcto = false,
+                    Datos = new List<Imagen>(),
+                    Mensaje = $"Error al obtener imágenes del inmueble: {ex.Message}"
+                };
             }
         }
 

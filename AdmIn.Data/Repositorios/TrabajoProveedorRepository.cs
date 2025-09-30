@@ -6,7 +6,6 @@ using Microsoft.Data.SqlClient;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System;
-using System.Linq;
 
 namespace AdmIn.Data.Repositorios
 {
@@ -39,9 +38,10 @@ namespace AdmIn.Data.Repositorios
                 if (creado == null)
                     throw new Exception("No se pudo crear el trabajo.");
 
-                // Si se subieron imágenes junto al trabajo, asociarlas en la tabla de relación
+                // Si se subieron imágenes junto al trabajo, asegurarse de que exista la tabla de relación
                 if (trabajo.Imagenes != null && trabajo.Imagenes.Any())
                 {
+
                     var insertRelSql = "INSERT INTO TrabajoProveedor_Imagen (TrabajoProveedorId, ImagenId) VALUES (@TrabajoProveedorId, @ImagenId);";
                     foreach (var img in trabajo.Imagenes)
                     {
@@ -127,6 +127,27 @@ namespace AdmIn.Data.Repositorios
             var encontrado = await conexion.QuerySingleOrDefaultAsync<TrabajoProveedor>(sql, new { Id = trabajo.Id });
             if (encontrado == null)
                 return new DTO<TrabajoProveedor> { Correcto = false, Mensaje = "Trabajo no encontrado" };
+
+            // Cargar imágenes asociadas (si existen)
+            try
+            {
+                var sqlImgs = @"SELECT i.Id, i.Nombre, i.Descripcion, i.FechaCreacion, i.Url, i.UrlThumb
+                                FROM TrabajoProveedor_Imagen tpi
+                                INNER JOIN Imagen i ON tpi.ImagenId = i.Id
+                                WHERE tpi.TrabajoProveedorId = @Id
+                                ORDER BY i.FechaCreacion;";
+
+                var imgs = (await conexion.QueryAsync<Imagen>(sqlImgs, new { Id = trabajo.Id })).AsList();
+                if (imgs != null && imgs.Count > 0)
+                {
+                    encontrado.Imagenes = imgs;
+                }
+            }
+            catch
+            {
+                // Si la tabla no existe o hay error, ignorar y devolver el trabajo sin imágenes
+            }
+
             return new DTO<TrabajoProveedor> { Correcto = true, Datos = encontrado, Mensaje = "Trabajo obtenido correctamente" };
         }
 
@@ -183,6 +204,93 @@ namespace AdmIn.Data.Repositorios
                 Datos = new Items_pagina<TrabajoProveedor> { Total_items = totalItems, Items = trabajos },
                 Mensaje = "Trabajos paginados correctamente."
             };
+        }
+
+        public async Task<DTO<TrabajoProveedorDocumento>> CrearDocumento(TrabajoProveedorDocumento doc)
+        {
+            using var conexion = new SqlConnection(InfoSQL.Conexion);
+            await conexion.OpenAsync();
+            using var trans = conexion.BeginTransaction();
+            try
+            {
+                // Crear tabla si no existe
+                var sqlCrearTabla = @"
+                    IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='TrabajoProveedor_Documento' AND xtype='U')
+                    CREATE TABLE TrabajoProveedor_Documento (
+                        TrabajoProveedor_DocumentoId INT IDENTITY(1,1) PRIMARY KEY,
+                        TrabajoProveedorId INT NOT NULL,
+                        NombreSubidor NVARCHAR(200) NOT NULL,
+                        Descripcion NVARCHAR(500) NULL,
+                        FechaSubida DATETIME NOT NULL,
+                        NombreArchivo NVARCHAR(260) NOT NULL,
+                        ContentType NVARCHAR(100) NOT NULL,
+                        Contenido VARBINARY(MAX) NULL,
+                        FOREIGN KEY (TrabajoProveedorId) REFERENCES TrabajoProveedor(TrabajoProveedorId)
+                    );";
+                await conexion.ExecuteAsync(sqlCrearTabla, transaction: trans);
+
+                var sqlInsert = @"INSERT INTO TrabajoProveedor_Documento (TrabajoProveedorId, NombreSubidor, Descripcion, FechaSubida, NombreArchivo, ContentType, Contenido)
+                                   OUTPUT INSERTED.TrabajoProveedor_DocumentoId, INSERTED.TrabajoProveedorId, INSERTED.NombreSubidor, INSERTED.Descripcion, INSERTED.FechaSubida, INSERTED.NombreArchivo, INSERTED.ContentType
+                                   VALUES (@TrabajoProveedorId, @NombreSubidor, @Descripcion, @FechaSubida, @NombreArchivo, @ContentType, @Contenido);";
+
+                var parametros = new
+                {
+                    doc.TrabajoProveedorId,
+                    doc.NombreSubidor,
+                    doc.Descripcion,
+                    FechaSubida = doc.FechaSubida == default ? DateTime.Now : doc.FechaSubida,
+                    doc.NombreArchivo,
+                    doc.ContentType,
+                    Contenido = doc.Contenido ?? (object)DBNull.Value
+                };
+
+                var creado = await conexion.QuerySingleOrDefaultAsync<TrabajoProveedorDocumento>(sqlInsert, parametros, trans);
+                trans.Commit();
+                return new DTO<TrabajoProveedorDocumento> { Correcto = true, Datos = creado, Mensaje = "Documento creado" };
+            }
+            catch (Exception ex)
+            {
+                trans.Rollback();
+                return new DTO<TrabajoProveedorDocumento> { Correcto = false, Mensaje = $"Error creando documento: {ex.Message}" };
+            }
+        }
+
+        public async Task<DTO<TrabajoProveedorDocumento>> ObtenerDocumentoPorId(int documentoId)
+        {
+            using var conexion = new SqlConnection(InfoSQL.Conexion);
+            await conexion.OpenAsync();
+            var sql = "SELECT TrabajoProveedor_DocumentoId, TrabajoProveedorId, NombreSubidor, Descripcion, FechaSubida, NombreArchivo, ContentType, Contenido FROM TrabajoProveedor_Documento WHERE TrabajoProveedor_DocumentoId=@Id;";
+            var encontrado = await conexion.QuerySingleOrDefaultAsync<TrabajoProveedorDocumento>(sql, new { Id = documentoId });
+            if (encontrado == null) return new DTO<TrabajoProveedorDocumento> { Correcto = false, Mensaje = "Documento no encontrado" };
+            return new DTO<TrabajoProveedorDocumento> { Correcto = true, Datos = encontrado, Mensaje = "Documento obtenido" };
+        }
+
+        public async Task<DTO<IEnumerable<TrabajoProveedorDocumento>>> ObtenerDocumentosPorTrabajo(int trabajoId)
+        {
+            using var conexion = new SqlConnection(InfoSQL.Conexion);
+            await conexion.OpenAsync();
+            var sql = "SELECT TrabajoProveedor_DocumentoId, TrabajoProveedorId, NombreSubidor, Descripcion, FechaSubida, NombreArchivo, ContentType FROM TrabajoProveedor_Documento WHERE TrabajoProveedorId=@TrabajoId ORDER BY FechaSubida DESC;";
+            var lista = await conexion.QueryAsync<TrabajoProveedorDocumento>(sql, new { TrabajoId = trabajoId });
+            return new DTO<IEnumerable<TrabajoProveedorDocumento>> { Correcto = true, Datos = lista, Mensaje = "Documentos obtenidos" };
+        }
+
+        public async Task<DTO<bool>> EliminarDocumento(int documentoId)
+        {
+            using var conexion = new SqlConnection(InfoSQL.Conexion);
+            await conexion.OpenAsync();
+            using var trans = conexion.BeginTransaction();
+            try
+            {
+                var sql = "DELETE FROM TrabajoProveedor_Documento WHERE TrabajoProveedor_DocumentoId=@Id;";
+                var filas = await conexion.ExecuteAsync(sql, new { Id = documentoId }, trans);
+                trans.Commit();
+                return new DTO<bool> { Correcto = true, Datos = filas > 0, Mensaje = filas > 0 ? "Documento eliminado" : "Documento no encontrado" };
+            }
+            catch (Exception ex)
+            {
+                trans.Rollback();
+                return new DTO<bool> { Correcto = false, Mensaje = $"Error eliminando documento: {ex.Message}" };
+            }
         }
     }
 }

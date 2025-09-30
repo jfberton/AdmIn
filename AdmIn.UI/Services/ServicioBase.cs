@@ -2,6 +2,7 @@
 using AdmIn.UI.Services.UtilityServices;
 using Microsoft.AspNetCore.Components.Authorization;
 using System.Net.Http.Headers;
+using System.Net.Http.Json;
 
 namespace AdmIn.UI.Services
 {
@@ -88,21 +89,35 @@ namespace AdmIn.UI.Services
                 clienteHttp.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
             }
 
-            HttpRequestMessage request = new(metodo, _pathApi + endpoint);
+            var requestUrl = _pathApi + endpoint;
+
+            HttpRequestMessage request = new(metodo, requestUrl);
             if (contenido != null)
             {
                 request.Content = JsonContent.Create(contenido);
             }
 
-            var response = await clienteHttp.SendAsync(request);
-
-            if (response.IsSuccessStatusCode)
+            try
             {
-                return await response.Content.ReadFromJsonAsync<TResult>();
-            }
+                _logger.LogInformation("Ejecutando petición HTTP: {Method} {Url}. TokenPresent={HasToken}", metodo, requestUrl, !string.IsNullOrEmpty(token));
+                var response = await clienteHttp.SendAsync(request);
 
-            _logger.LogError($"Error al realizar la petición: {response.StatusCode}");
-            return default;
+                if (response.IsSuccessStatusCode)
+                {
+                    var result = await response.Content.ReadFromJsonAsync<TResult>();
+                    _logger.LogInformation("Respuesta exitosa: {StatusCode} para {Url}", response.StatusCode, requestUrl);
+                    return result!;
+                }
+
+                var responseContent = await response.Content.ReadAsStringAsync();
+                _logger.LogError("Error en la petición HTTP: {StatusCode} {Url} - {Content}", response.StatusCode, requestUrl, responseContent);
+                return default!;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Excepción llamando a {Url}: {Message}", requestUrl, ex.Message);
+                throw; // rethrow so callers can catch and log or handle
+            }
         }
 
         protected async Task<string> ObtenerToken()
