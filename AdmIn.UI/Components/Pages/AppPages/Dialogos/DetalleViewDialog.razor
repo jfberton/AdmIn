@@ -1,0 +1,258 @@
+@using AdmIn.Common.Entidades
+@using AdmIn.UI.Services
+@inject IServ_DetalleTrabajo DetalleService
+@inject IServ_HistorialDetalleTrabajo HistorialDetalleService
+@inject IServ_TrabajoProveedor TrabajoService
+@inject NotificationService NotificationService
+@inject DialogService DialogService
+@inject IJSRuntime JSRuntime
+@inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthenticationStateProvider
+
+<RadzenCard>
+    <RadzenStack Gap="0.5rem">
+        <div class="card-title">Detalle</div>
+
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;">
+            <div style="flex:1">
+                <div style="font-weight:700;color:#374151;">Descripción</div>
+                <div style="white-space:pre-wrap;color:#111827;margin-top:6px;">@detalle.Descripcion</div>
+            </div>
+
+            <div style="min-width:160px;text-align:right;">
+                <div style="color:#6b7280;font-weight:700;">Costo</div>
+                <div style="font-size:1.25rem;font-weight:800;color:#059669;">@detalle.Costo.ToString("C")</div>
+
+                <div style="margin-top:10px;color:#6b7280;font-weight:700;">A cargo de</div>
+                <div style="font-weight:700;color:#111827;">@ResponsableLabel</div>
+            </div>
+        </div>
+
+        <div style="display:flex;justify-content:flex-end;gap:0.5rem;margin-top:12px;">
+            @if (showPasarAPropietario)
+            {
+                <RadzenButton ButtonStyle="ButtonStyle.Secondary" Click="PasarAPropietario">Pasar al proveedor</RadzenButton>
+            }
+
+            @if (showPasarAInquilinoBlocked)
+            {
+                <RadzenButton ButtonStyle="ButtonStyle.Secondary" Click="PasarAInquilinoBloqueado">Devolver al inquilino y bloquear</RadzenButton>
+            }
+
+            <RadzenButton Text="Cerrar" Click="Cerrar" />
+        </div>
+    </RadzenStack>
+</RadzenCard>
+
+@code{
+    [Parameter] public DetalleTrabajo detalle { get; set; } = new DetalleTrabajo();
+
+    private int currentUsuarioId = 0;
+    private TrabajoProveedor? trabajoPadre;
+    private bool showPasarAPropietario = false;
+    private bool showPasarAInquilinoBlocked = false;
+
+    private string ResponsableLabel
+    {
+        get
+        {
+            // if Estado is null/empty assume inquilino
+            var estado = (detalle?.Estado ?? string.Empty).Trim();
+            if (string.IsNullOrEmpty(estado) || estado.Equals("A cargo del inquilino", StringComparison.OrdinalIgnoreCase) || estado.Equals("A cargo del inquilino (bloqueado)", StringComparison.OrdinalIgnoreCase))
+            {
+                return "Inquilino" + (detalle.InquilinoBloqueado ? " (bloqueado)" : string.Empty);
+            }
+
+            if (estado.Equals("A cargo del propietario", StringComparison.OrdinalIgnoreCase))
+            {
+                // try to resolve propietario name from trabajoPadre if available
+                if (trabajoPadre != null && trabajoPadre.UsuarioCreador.HasValue)
+                {
+                    return $"Propietario (usuario #{trabajoPadre.UsuarioCreador.Value})";
+                }
+                return "Propietario";
+            }
+
+            return estado;
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        currentUsuarioId = await GetCurrentUsuarioId();
+        // Load parent trabajo to determine owner
+        try
+        {
+            var tRes = await TrabajoService.Obtener_por_id(detalle.TrabajoProveedorId);
+            if (tRes != null && tRes.Correcto && tRes.Datos != null)
+            {
+                trabajoPadre = tRes.Datos;
+            }
+        }
+        catch { }
+
+        EvaluatePermissions();
+    }
+
+    private void EvaluatePermissions()
+    {
+        // Determine roles: tenant is the detalle.UsuarioId; owner is trabajoPadre.UsuarioCreador
+        var isTenant = detalle.UsuarioId != 0 && detalle.UsuarioId == currentUsuarioId;
+        var ownerId = trabajoPadre?.UsuarioCreador ?? 0;
+        var isOwner = ownerId != 0 && ownerId == currentUsuarioId;
+
+        // treat empty estado as inquilino
+        var estado = (detalle?.Estado ?? string.Empty).Trim();
+        var isAssignedToTenant = string.IsNullOrEmpty(estado) || estado.Equals("A cargo del inquilino", StringComparison.OrdinalIgnoreCase) || estado.Equals("A cargo del inquilino (bloqueado)", StringComparison.OrdinalIgnoreCase);
+        var isAssignedToOwner = estado.Equals("A cargo del propietario", StringComparison.OrdinalIgnoreCase);
+
+        // Tenant can pass to provider only when assigned to tenant and not blocked
+        showPasarAPropietario = isTenant && isAssignedToTenant && !detalle.InquilinoBloqueado;
+
+        // Owner can pass back to tenant only when assigned to owner
+        showPasarAInquilinoBlocked = isOwner && isAssignedToOwner;
+    }
+
+    private async Task<int> GetCurrentUsuarioId()
+    {
+        try
+        {
+            var auth = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var user = auth.User;
+            var idClaim = user.FindFirst("Id")?.Value ?? user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? user.FindFirst("sub")?.Value;
+            if (!string.IsNullOrEmpty(idClaim) && int.TryParse(idClaim, out var parsed)) return parsed;
+        }
+        catch { }
+        return 0;
+    }
+
+    private async Task PasarAPropietario()
+    {
+        try
+        {
+            // double check permissions
+            if (currentUsuarioId == 0 || detalle.UsuarioId != currentUsuarioId || detalle.InquilinoBloqueado)
+            {
+                NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Warning, Summary = "No autorizado", Detail = "No puede realizar esta acción." });
+                return;
+            }
+
+            detalle.Estado = "A cargo del propietario";
+            detalle.InquilinoBloqueado = false; // ensure flag cleared when passed to owner
+            var res = await DetalleService.Actualizar(detalle);
+            if (res != null && res.Correcto)
+            {
+                // crear historial detalle
+                try
+                {
+                    var hist = new HistorialDetalleTrabajo
+                    {
+                        DetalleTrabajoId = detalle.DetalleTrabajoId,
+                        Fecha = DateTime.Now,
+                        Estado = "A cargo del propietario",
+                        UsuarioId = currentUsuarioId,
+                        Comentario = "Transferencia de responsabilidad al proveedor"
+                    };
+
+                    var hres = await HistorialDetalleService.Crear(hist);
+                    if (hres == null || !hres.Correcto)
+                    {
+                        NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Warning, Summary = "Advertencia", Detail = "Detalle actualizado pero no se pudo registrar historial" });
+                    }
+                }
+                catch (Exception exHist)
+                {
+                    await JSRuntime.InvokeVoidAsync("console.error", exHist.Message);
+                    NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Warning, Summary = "Advertencia", Detail = "Detalle actualizado pero fallo al crear historial" });
+                }
+
+                NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = "Actualizado", Detail = "Detalle asignado al proveedor" });
+                DialogService.Close(true);
+            }
+            else
+            {
+                NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Error", Detail = res?.Mensaje ?? "No se pudo actualizar detalle" });
+            }
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("console.error", ex.Message);
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Error", Detail = ex.Message });
+        }
+    }
+
+    private async Task PasarAInquilinoBloqueado()
+    {
+        try
+        {
+            // double check permissions
+            var ownerId = trabajoPadre?.UsuarioCreador ?? 0;
+            if (currentUsuarioId == 0 || ownerId != currentUsuarioId || detalle.Estado != "A cargo del propietario")
+            {
+                NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Warning, Summary = "No autorizado", Detail = "No puede realizar esta acción." });
+                return;
+            }
+
+            // Check if there's already a 'descargo' by tenant to owner
+            try
+            {
+                var allHist = await HistorialDetalleService.Obtener_todos();
+                if (allHist != null && allHist.Correcto && allHist.Datos != null)
+                {
+                    var existeDescargo = allHist.Datos.Any(h => h.DetalleTrabajoId == detalle.DetalleTrabajoId && !string.IsNullOrEmpty(h.Comentario) && h.Comentario.ToLower().Contains("descarg") && h.UsuarioId == detalle.UsuarioId);
+                    if (existeDescargo)
+                    {
+                        NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Warning, Summary = "Operación no permitida", Detail = "Ya existe un descargo del inquilino al propietario; no se puede volver a hacer la transferencia." });
+                        return;
+                    }
+                }
+            }
+            catch { /* ignore and continue */ }
+
+            // Set estado to tenant and mark blocked so tenant cannot change again
+            detalle.Estado = "A cargo del inquilino";
+            detalle.InquilinoBloqueado = true;
+            var res = await DetalleService.Actualizar(detalle);
+            if (res != null && res.Correcto)
+            {
+                // crear historial detalle
+                try
+                {
+                    var hist = new HistorialDetalleTrabajo
+                    {
+                        DetalleTrabajoId = detalle.DetalleTrabajoId,
+                        Fecha = DateTime.Now,
+                        Estado = "A cargo del inquilino (bloqueado)",
+                        UsuarioId = currentUsuarioId,
+                        Comentario = "Cambio de responsable por propietario: a cargo del inquilino (bloqueado)"
+                    };
+
+                    var hres = await HistorialDetalleService.Crear(hist);
+                    if (hres == null || !hres.Correcto)
+                    {
+                        NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Warning, Summary = "Advertencia", Detail = "Detalle actualizado pero no se pudo registrar historial" });
+                    }
+                }
+                catch (Exception exHist)
+                {
+                    await JSRuntime.InvokeVoidAsync("console.error", exHist.Message);
+                    NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Warning, Summary = "Advertencia", Detail = "Detalle actualizado pero fallo al crear historial" });
+                }
+
+                NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = "Actualizado", Detail = "Detalle asignado al inquilino y bloqueado" });
+                DialogService.Close(true);
+            }
+            else
+            {
+                NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Error", Detail = res?.Mensaje ?? "No se pudo actualizar detalle" });
+            }
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("console.error", ex.Message);
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Error", Detail = ex.Message });
+        }
+    }
+
+    private void Cerrar() => DialogService.Close(false);
+}

@@ -122,6 +122,42 @@ namespace AdmIn.UI.Services
             }
         }
 
+        public async Task<DTO<Imagen>> SubirImagenParaTrabajo(Stream archivoStream, string nombreArchivo, int trabajoId, string? descripcion = null)
+        {
+            try
+            {
+                using var content = new MultipartFormDataContent();
+                var streamContent = new StreamContent(archivoStream);
+                streamContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(ObtenerContentType(nombreArchivo));
+                content.Add(streamContent, "archivo", nombreArchivo);
+                if (!string.IsNullOrEmpty(descripcion)) content.Add(new StringContent(descripcion, Encoding.UTF8), "descripcion");
+
+                return await EjecutarPeticionConArchivos<DTO<Imagen>>(HttpMethod.Post, $"upload-for-trabajo/{trabajoId}", content);
+            }
+            catch (Exception ex)
+            {
+                return new DTO<Imagen> { Correcto = false, Mensaje = $"Error al subir imagen para trabajo: {ex.Message}" };
+            }
+        }
+
+        public async Task<DTO<Imagen>> SubirImagenParaDetalle(Stream archivoStream, string nombreArchivo, int detalleId, string? descripcion = null)
+        {
+            try
+            {
+                using var content = new MultipartFormDataContent();
+                var streamContent = new StreamContent(archivoStream);
+                streamContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(ObtenerContentType(nombreArchivo));
+                content.Add(streamContent, "archivo", nombreArchivo);
+                if (!string.IsNullOrEmpty(descripcion)) content.Add(new StringContent(descripcion, Encoding.UTF8), "descripcion");
+
+                return await EjecutarPeticionConArchivos<DTO<Imagen>>(HttpMethod.Post, $"upload-for-detalle/{detalleId}", content);
+            }
+            catch (Exception ex)
+            {
+                return new DTO<Imagen> { Correcto = false, Mensaje = $"Error al subir imagen para detalle: {ex.Message}" };
+            }
+        }
+
         public async Task<DTO<Imagen>> ObtenerPorId(Guid imagenId)
         {
             return await EjecutarPeticion<DTO<Imagen>>(HttpMethod.Get, $"obtener_por_id/{imagenId}");
@@ -162,6 +198,12 @@ namespace AdmIn.UI.Services
             return await EjecutarPeticion<DTO<bool>>(HttpMethod.Delete, $"eliminar/{imagenId}");
         }
 
+        public async Task<DTO<bool>> AsociarA_Detalle(Guid imagenId, int detalleId)
+        {
+            // The API endpoint expects the image Id in the request body (JSON) and detalleId in route
+            return await EjecutarPeticion<DTO<bool>>(HttpMethod.Post, $"asociar-a-detalle/{detalleId}", imagenId);
+        }
+
         #region Métodos auxiliares
 
         protected async Task<T> EjecutarPeticionConArchivos<T>(HttpMethod metodo, string endpoint, MultipartFormDataContent content)
@@ -170,7 +212,10 @@ namespace AdmIn.UI.Services
             {
                 var token = await base.ObtenerToken();
                 var client = _httpClientFactory.CreateClient();
-                client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+                if (!string.IsNullOrEmpty(token))
+                {
+                    client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+                }
 
                 var request = new HttpRequestMessage(metodo, $"{_pathApi}{endpoint}")
                 {

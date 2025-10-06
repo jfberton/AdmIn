@@ -11,27 +11,27 @@
     {
         <div class="image-preview">
             <img src="@imagenPrevia" alt="Vista previa" class="preview-image" />
-            <RadzenButton ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small" 
-                         Icon="close" Click="@LimpiarPrevia" 
+            <RadzenButton ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small"
+                         Icon="close" Click="@LimpiarPrevia"
                          class="remove-preview-btn" />
         </div>
     }
 
-    <div class="upload-area @(IsDragOver ? "drag-over" : "")" 
-         @ondragover="@OnDragOver" 
+    <div class="upload-area @(IsDragOver ? "drag-over" : "")"
+         @ondragover="@OnDragOver"
          @ondragover:preventDefault="true"
-         @ondragleave="@OnDragLeave" 
-         @ondrop="@OnDrop" 
+         @ondragleave="@OnDragLeave"
+         @ondrop="@OnDrop"
          @ondrop:preventDefault="true">
-        
-        <InputFile id="@InputId" 
-                   OnChange="@OnInputFileChange" 
+
+        <InputFile id="@InputId"
+                   OnChange="@OnInputFileChange"
                    accept="@AcceptedTypes"
                    multiple="@PermitirMultiples"
                    class="file-input" />
-        
+
         <label for="@InputId" class="upload-label">
-            <RadzenIcon Icon="@(IsDragOver ? "file_download" : "cloud_upload")" 
+            <RadzenIcon Icon="@(IsDragOver ? "file_download" : "cloud_upload")"
                        Style="font-size: 48px; color: var(--rz-primary);" />
             <p class="upload-text">
                 @if (IsDragOver)
@@ -49,6 +49,18 @@
         </label>
     </div>
 
+    @if (UploadedThumbnails.Any())
+    {
+        <div class="uploaded-thumbs mt-3 d-flex gap-2 flex-wrap">
+            @foreach (var t in UploadedThumbnails)
+            {
+                <div class="thumb-item" style="width:120px; text-align:center;">
+                    <img src="@t.Value" alt="thumb" style="width:120px;height:90px;object-fit:cover;border-radius:6px;border:1px solid #e9ecef;" />
+                </div>
+            }
+        </div>
+    }
+
     @if (ArchivosSeleccionados.Any())
     {
         <div class="selected-files">
@@ -58,7 +70,7 @@
                 <div class="file-item">
                     <RadzenIcon Icon="image" />
                     <span>@archivo.Name (@(FormatearTamaño(archivo.Size)))</span>
-                    <RadzenButton ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.ExtraSmall" 
+                    <RadzenButton ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.ExtraSmall"
                                  Icon="delete" Click="@(() => EliminarArchivo(archivo))" />
                 </div>
             }
@@ -68,7 +80,7 @@
     @if (MostrarProgreso && ProgresoSubida >= 0)
     {
         <div class="upload-progress">
-            <RadzenProgressBar Value="@ProgresoSubida" Max="100" 
+            <RadzenProgressBar Value="@ProgresoSubida" Max="100"
                               ShowValue="true" class="mb-2" />
             <small>@MensajeProgreso</small>
         </div>
@@ -76,7 +88,7 @@
 
     @if (!string.IsNullOrEmpty(MensajeError))
     {
-        <RadzenAlert AlertStyle="AlertStyle.Danger" Variant="Variant.Flat" 
+        <RadzenAlert AlertStyle="AlertStyle.Danger" Variant="Variant.Flat"
                     ShowIcon="true" AllowClose="true" Close="@(() => MensajeError = string.Empty)">
             @MensajeError
         </RadzenAlert>
@@ -85,14 +97,14 @@
     @if (MostrarBotones && ArchivosSeleccionados.Any())
     {
         <div class="upload-actions">
-            <RadzenButton ButtonStyle="ButtonStyle.Primary" 
-                         Icon="cloud_upload" 
+            <RadzenButton ButtonStyle="ButtonStyle.Primary"
+                         Icon="cloud_upload"
                          Text="Subir Imágenes"
                          Click="@SubirArchivos"
                          Disabled="@EstaSubiendo" />
-            
-            <RadzenButton ButtonStyle="ButtonStyle.Secondary" 
-                         Icon="clear" 
+
+            <RadzenButton ButtonStyle="ButtonStyle.Secondary"
+                         Icon="clear"
                          Text="Limpiar"
                          Click="@LimpiarSeleccion" />
         </div>
@@ -100,100 +112,22 @@
 </div>
 
 <style>
-    .image-upload-container {
-        max-width: 600px;
-        margin: 0 auto;
-    }
-
-    .image-preview {
-        position: relative;
-        margin-bottom: 1rem;
-        display: inline-block;
-    }
-
-    .preview-image {
-        max-width: 200px;
-        max-height: 150px;
-        border-radius: 8px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
-
-    .remove-preview-btn {
-        position: absolute;
-        top: -8px;
-        right: -8px;
-        width: 24px;
-        height: 24px;
-        border-radius: 50%;
-    }
-
-    .upload-area {
-        border: 2px dashed #d1d5db;
-        border-radius: 12px;
-        padding: 2rem;
-        text-align: center;
-        transition: all 0.3s ease;
-        cursor: pointer;
-        background: #f9fafb;
-    }
-
-    .upload-area:hover,
-    .upload-area.drag-over {
-        border-color: var(--rz-primary);
-        background: var(--rz-primary-lighter);
-    }
-
-    .file-input {
-        display: none;
-    }
-
-    .upload-label {
-        cursor: pointer;
-        display: block;
-        width: 100%;
-    }
-
-    .upload-text {
-        font-size: 1.1rem;
-        margin: 1rem 0 0.5rem 0;
-        color: #374151;
-    }
-
-    .upload-hint {
-        color: #6b7280;
-    }
-
-    .selected-files {
-        margin-top: 1rem;
-        padding: 1rem;
-        background: #f3f4f6;
-        border-radius: 8px;
-    }
-
-    .file-item {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.5rem;
-        background: white;
-        border-radius: 4px;
-        margin-bottom: 0.5rem;
-    }
-
-    .file-item:last-child {
-        margin-bottom: 0;
-    }
-
-    .upload-progress {
-        margin-top: 1rem;
-    }
-
-    .upload-actions {
-        margin-top: 1rem;
-        display: flex;
-        gap: 0.5rem;
-        justify-content: center;
-    }
+    .image-upload-container { max-width: 600px; margin: 0 auto; }
+    .image-preview { position: relative; margin-bottom: 1rem; display: inline-block; }
+    .preview-image { max-width: 200px; max-height: 150px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .remove-preview-btn { position: absolute; top: -8px; right: -8px; width: 24px; height: 24px; border-radius: 50%; }
+    .upload-area { border: 2px dashed #d1d5db; border-radius: 12px; padding: 2rem; text-align: center; transition: all 0.3s ease; cursor: pointer; background: #f9fafb; }
+    .upload-area:hover, .upload-area.drag-over { border-color: var(--rz-primary); background: var(--rz-primary-lighter); }
+    .file-input { display: none; }
+    .upload-label { cursor: pointer; display: block; width: 100%; }
+    .upload-text { font-size: 1.1rem; margin: 1rem 0 0.5rem 0; color: #374151; }
+    .upload-hint { color: #6b7280; }
+    .selected-files { margin-top: 1rem; padding: 1rem; background: #f3f4f6; border-radius: 8px; }
+    .file-item { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; background: white; border-radius: 4px; margin-bottom: 0.5rem; }
+    .file-item:last-child { margin-bottom: 0; }
+    .upload-progress { margin-top: 1rem; }
+    .upload-actions { margin-top: 1rem; display: flex; gap: 0.5rem; justify-content: center; }
+    .uploaded-thumbs { margin-top: 1rem; }
 </style>
 
 @code {
@@ -202,11 +136,9 @@
     [Parameter] public bool MostrarBotones { get; set; } = true;
     [Parameter] public bool MostrarProgreso { get; set; } = true;
 
-    // Nuevo: soporte genérico para tipos de entidad
-    [Parameter] public string EntidadTipo { get; set; } = "inmueble"; // values: "inmueble", "usuario", "trabajo", etc.
+    [Parameter] public string EntidadTipo { get; set; } = "inmueble";
     [Parameter] public int? EntidadId { get; set; }
 
-    // Compatibilidad hacia atrás (deprecated)
     [Parameter]
     [Obsolete("Use EntidadId instead")]
     public int? InmuebleId
@@ -218,10 +150,10 @@
     [Parameter] public bool EstablecerComoPrincipal { get; set; } = false;
     [Parameter] public EventCallback<List<Imagen>> OnImagenesSubidas { get; set; }
     [Parameter] public EventCallback<string> OnError { get; set; }
-    
+
     private string InputId = $"file-input-{Guid.NewGuid()}";
     private string AcceptedTypes = ".jpg,.jpeg,.png,.gif,.webp";
-    
+
     private List<IBrowserFile> ArchivosSeleccionados = new();
     private bool IsDragOver = false;
     private bool EstaSubiendo = false;
@@ -229,6 +161,8 @@
     private string MensajeProgreso = string.Empty;
     private string MensajeError = string.Empty;
     private string? imagenPrevia = null;
+
+    private List<KeyValuePair<Guid, string>> UploadedThumbnails = new();
 
     private async Task OnInputFileChange(InputFileChangeEventArgs e)
     {
@@ -238,59 +172,41 @@
     private async Task OnDrop(DragEventArgs e)
     {
         IsDragOver = false;
-        
-        // En Blazor, el drag and drop no proporciona IBrowserFile directamente
-        // Por ahora, mostramos un mensaje al usuario para que use el InputFile
         MensajeError = "Por favor, utiliza el botón de selección de archivos o arrastra archivos directamente sobre él.";
+        await LogConsole("OnDrop: drag drop used - advising user to use InputFile");
         StateHasChanged();
     }
 
-    private void OnDragOver(DragEventArgs e)
-    {
-        IsDragOver = true;
-    }
-
-    private void OnDragLeave(DragEventArgs e)
-    {
-        IsDragOver = false;
-    }
+    private void OnDragOver(DragEventArgs e) => IsDragOver = true;
+    private void OnDragLeave(DragEventArgs e) => IsDragOver = false;
 
     private async Task ProcesarArchivos(IEnumerable<IBrowserFile> archivos)
     {
         MensajeError = string.Empty;
-        
         foreach (var archivo in archivos)
         {
-            // Validaciones
-            if (archivo.Size > 10 * 1024 * 1024) // 10MB
+            if (archivo.Size > 10 * 1024 * 1024)
             {
                 MensajeError = $"El archivo {archivo.Name} es demasiado grande (máximo 10MB)";
+                await LogConsole("ProcesarArchivos: file too large", new { archivo.Name, archivo.Size });
                 continue;
             }
 
             var extensionValida = new[] { "jpg", "jpeg", "png", "gif", "webp" }
                 .Contains(Path.GetExtension(archivo.Name).TrimStart('.').ToLowerInvariant());
-            
             if (!extensionValida)
             {
                 MensajeError = $"El archivo {archivo.Name} no es un formato de imagen válido";
+                await LogConsole("ProcesarArchivos: invalid extension", archivo.Name);
                 continue;
             }
 
-            if (!PermitirMultiples)
-            {
-                ArchivosSeleccionados.Clear();
-            }
-            
+            if (!PermitirMultiples) ArchivosSeleccionados.Clear();
             ArchivosSeleccionados.Add(archivo);
+            await LogConsole("ProcesarArchivos: archivo agregado", new { archivo.Name, archivo.Size });
         }
 
-        // Generar vista previa para el primer archivo
-        if (MostrarVistaPrevia && ArchivosSeleccionados.Any())
-        {
-            await GenerarVistaPrevia(ArchivosSeleccionados.First());
-        }
-
+        if (MostrarVistaPrevia && ArchivosSeleccionados.Any()) await GenerarVistaPrevia(ArchivosSeleccionados.First());
         StateHasChanged();
     }
 
@@ -304,18 +220,18 @@
             await stream.CopyToAsync(memoryStream);
             var base64 = Convert.ToBase64String(memoryStream.ToArray());
             imagenPrevia = $"data:image/jpeg;base64,{base64}";
+            await LogConsole("GenerarVistaPrevia: preview generated", new { archivo.Name, Size = memoryStream.Length, PreviewLength = imagenPrevia.Length });
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Error generando vista previa: {ex.Message}");
+            await LogConsole("GenerarVistaPrevia: error", new { ex.Message, ex.StackTrace });
         }
     }
 
     private async Task SubirArchivos()
     {
-        if (!ArchivosSeleccionados.Any())
-            return;
-
+        if (!ArchivosSeleccionados.Any()) return;
         EstaSubiendo = true;
         ProgresoSubida = 0;
         MensajeError = string.Empty;
@@ -323,59 +239,68 @@
 
         try
         {
+            var tipoEntidad = string.IsNullOrWhiteSpace(EntidadTipo) ? string.Empty : EntidadTipo.Split('_')[0].ToLowerInvariant();
+
             for (int i = 0; i < ArchivosSeleccionados.Count; i++)
             {
                 var archivo = ArchivosSeleccionados[i];
                 MensajeProgreso = $"Subiendo {archivo.Name}... ({i + 1}/{ArchivosSeleccionados.Count})";
-                
+                await LogConsole("SubirArchivos: iniciando subida", new { archivo = archivo.Name, Index = i, EntidadTipo, EntidadId });
                 using var stream = archivo.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024);
-                
                 DTO<Imagen> resultado;
 
-                // Lógica de subida según tipo de entidad
-                if (EntidadTipo?.Equals("inmueble", StringComparison.OrdinalIgnoreCase) == true && EntidadId.HasValue)
+                if (tipoEntidad == "inmueble" && EntidadId.HasValue)
                 {
-                    // Asociar la imagen directamente al inmueble
-                    resultado = await servImagen.SubirImagenParaInmueble(
-                        stream,
-                        archivo.Name,
-                        EntidadId.Value,
-                        null,
-                        EstablecerComoPrincipal && i == 0); // Solo la primera como principal
+                    resultado = await servImagen.SubirImagenParaInmueble(stream, archivo.Name, EntidadId.Value, null, EstablecerComoPrincipal && i == 0);
                 }
-                else if (EntidadTipo?.Equals("usuario", StringComparison.OrdinalIgnoreCase) == true && EntidadId.HasValue)
+                else if (tipoEntidad == "usuario" && EntidadId.HasValue)
                 {
-                    // Subir y (opcional) establecer como perfil
-                    resultado = await servImagen.SubirImagenParaUsuario(
-                        stream,
-                        archivo.Name,
-                        EntidadId.Value,
-                        null,
-                        EstablecerComoPrincipal && i == 0);
+                    resultado = await servImagen.SubirImagenParaUsuario(stream, archivo.Name, EntidadId.Value, null, EstablecerComoPrincipal && i == 0);
+                }
+                else if (tipoEntidad == "detalle" && EntidadId.HasValue)
+                {
+                    resultado = await servImagen.SubirImagenParaDetalle(stream, archivo.Name, EntidadId.Value);
+                }
+                else if (tipoEntidad == "trabajo" && EntidadId.HasValue)
+                {
+                    resultado = await servImagen.SubirImagenParaTrabajo(stream, archivo.Name, EntidadId.Value);
                 }
                 else
                 {
-                    // Para trabajos u otras entidades, crear imagen sin asociarla
                     resultado = await servImagen.SubirImagen(stream, archivo.Name);
                 }
 
-                if (resultado.Correcto)
+                await LogConsole("SubirArchivos: resultado de la API", new { archivo = archivo.Name, resultado = resultado });
+
+                if (resultado != null && resultado.Correcto)
                 {
                     imagenesSubidas.Add(resultado.Datos);
+
+                    var urlThumb = resultado.Datos?.UrlThumb ?? resultado.Datos?.Url;
+                    if (!string.IsNullOrEmpty(urlThumb))
+                    {
+                        UploadedThumbnails.Add(new KeyValuePair<Guid, string>(resultado.Datos.Id, urlThumb));
+                    }
+
+                    await LogConsole("SubirArchivos: imagen añadida a lista", resultado.Datos);
                 }
                 else
                 {
-                    MensajeError = $"Error subiendo {archivo.Name}: {resultado.Mensaje}";
+                    var detalle = resultado == null ? "resultado es null" : resultado.Mensaje;
+                    MensajeError = $"Error subiendo {archivo.Name}: {detalle}";
+                    await LogConsole("SubirArchivos: error en resultado", new { archivo = archivo.Name, detalle });
+                    await OnError.InvokeAsync(MensajeError);
                     break;
                 }
 
                 ProgresoSubida = (int)((double)(i + 1) / ArchivosSeleccionados.Count * 100);
                 StateHasChanged();
-                await Task.Delay(100); // Para mostrar progreso
+                await Task.Delay(100);
             }
 
             if (imagenesSubidas.Any())
             {
+                await LogConsole("SubirArchivos: invocando OnImagenesSubidas", imagenesSubidas);
                 await OnImagenesSubidas.InvokeAsync(imagenesSubidas);
                 LimpiarSeleccion();
                 MensajeProgreso = $"¡{imagenesSubidas.Count} imagen(es) subida(s) correctamente!";
@@ -384,22 +309,19 @@
         catch (Exception ex)
         {
             MensajeError = $"Error durante la subida: {ex.Message}";
+            await LogConsole("SubirArchivos: excepción", new { ex.Message, ex.StackTrace });
             await OnError.InvokeAsync(MensajeError);
         }
         finally
         {
             EstaSubiendo = false;
-            if (string.IsNullOrEmpty(MensajeError))
-            {
-                ProgresoSubida = -1;
-            }
+            if (string.IsNullOrEmpty(MensajeError)) ProgresoSubida = -1;
         }
     }
 
     private void EliminarArchivo(IBrowserFile archivo)
     {
         ArchivosSeleccionados.Remove(archivo);
-        
         if (!ArchivosSeleccionados.Any())
         {
             LimpiarPrevia();
@@ -408,7 +330,6 @@
         {
             _ = GenerarVistaPrevia(ArchivosSeleccionados.First());
         }
-        
         StateHasChanged();
     }
 
@@ -438,5 +359,15 @@
             counter++;
         }
         return $"{number:n1} {suffixes[counter]}";
+    }
+
+    private async Task LogConsole(string message, object? data = null)
+    {
+        try
+        {
+            if (data == null) await JSRuntime.InvokeVoidAsync("console.log", message);
+            else await JSRuntime.InvokeVoidAsync("console.log", message, data);
+        }
+        catch { }
     }
 }

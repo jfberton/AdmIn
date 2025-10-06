@@ -1,18 +1,53 @@
-@using AdmIn.Common.Entidades
+﻿@using AdmIn.Common.Entidades
+@using AdmIn.Common
 @using AdmIn.UI.Services
+@using AdmIn.UI.Components.Shared
+@using System.Security.Claims
+
+@inject IServ_DetalleTrabajo DetalleService
 @inject IServ_HistorialDetalleTrabajo HistorialDetalleService
+@inject IServ_HistorialTrabajo HistorialTrabajoService
+@inject IServ_TrabajoProveedor TrabajoService
+@inject IServ_Imagen ImagenService
 @inject NotificationService NotificationService
 @inject DialogService DialogService
+@inject IJSRuntime JSRuntime
+@inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthenticationStateProvider
+
+<style>
+    .field-label { display:block; margin-bottom:8px; font-weight:600; }
+    .full-width-textarea { width:100% !important; min-height:120px; box-sizing:border-box; }
+    .dialog-actions { display:flex; justify-content:flex-end; gap:0.5rem; }
+</style>
 
 <RadzenCard>
     <RadzenTemplateForm TItem="DetalleModel" Data="model" Submit="OnSubmit">
         <RadzenRow>
-            <RadzenColumn>
-                <RadzenLabel Text="Comentario" />
-                <RadzenTextArea @bind-Value="model.Comentario" Rows="6" />
+            <RadzenColumn Size="12">
+                <RadzenLabel Class="field-label" Text="Descripción" />
+                <RadzenTextArea Class="full-width-textarea" @bind-Value="model.Descripcion" Rows="5" />
             </RadzenColumn>
         </RadzenRow>
-        <RadzenRow class="mt-3">
+        <RadzenRow>
+            <RadzenColumn Size="6">
+                <RadzenLabel Text="Costo" />
+                <RadzenNumeric @bind-Value="model.Costo" Min="0" Step="0.01" Style="width:100%;" />
+            </RadzenColumn>
+            <RadzenColumn Size="6">
+                <RadzenLabel Text="Fecha" />
+                <RadzenDatePicker @bind-Value="model.Fecha" Style="width:100%;" />
+            </RadzenColumn>
+        </RadzenRow>
+
+        <RadzenRow>
+            <RadzenColumn>
+                <RadzenLabel Text="Imágenes" />
+                <!-- Subir imágenes sin asociarlas aún; las asociaremos después de crear el Detalle -->
+                <ImageUploadComponent EntidadTipo="detalle" PermitirMultiples="true" MostrarBotones="true" MostrarVistaPrevia="true" OnImagenesSubidas="OnImagenesSubidas" OnError="OnErrorSubida" />
+            </RadzenColumn>
+        </RadzenRow>
+
+        <RadzenRow class="mt-3 dialog-actions">
             <RadzenColumn>
                 <RadzenButton ButtonStyle="ButtonStyle.Primary" Text="Guardar" ButtonType="ButtonType.Submit" />
                 <RadzenButton Text="Cancelar" Click="Cancel" Style="margin-left:8px;" />
@@ -22,42 +57,141 @@
 </RadzenCard>
 
 @code{
-    // Backing field to unify parameter names (case-insensitive dialog params)
-    private int _trabajoId;
-
     [Parameter]
-    public int TrabajoId
-    {
-        get => _trabajoId;
-        set => _trabajoId = value;
-    }
+    public int TrabajoId { get; set; }
 
-    // Accept lowercase key 'trabajoid' sent from dialog open to avoid invalid HTML attribute names
-    [Parameter]
-    public int trabajoid
-    {
-        get => _trabajoId;
-        set => _trabajoId = value;
-    }
-
-    class DetalleModel { public string Comentario { get; set; } = ""; }
+    class DetalleModel { public string Descripcion { get; set; } = ""; public decimal Costo { get; set; } = 0m; public DateTime Fecha { get; set; } = DateTime.Now; }
     private DetalleModel model = new();
+
+    private List<Imagen> imagenesSubidas = new();
+
+    private async Task OnImagenesSubidas(List<Imagen> imgs)
+    {
+        imagenesSubidas.AddRange(imgs);
+        await LogConsole("OnImagenesSubidas: images received", imagenesSubidas.Select(i => new { i.Id, i.Nombre, i.Url, i.UrlThumb }).ToList());
+        StateHasChanged();
+    }
+
+    private async Task OnErrorSubida(string msg)
+    {
+        await LogConsole("OnErrorSubida: ", msg);
+        NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Error", Detail = msg });
+    }
 
     private async Task OnSubmit()
     {
-        // HistorialDetalleTrabajo uses DetalleTrabajoId field; set it from TrabajoId
-        var detalle = new HistorialDetalleTrabajo { DetalleTrabajoId = TrabajoId, Comentario = model.Comentario, Fecha = DateTime.Now, Estado = "Detalle", UsuarioId = 0 };
-        var r = await HistorialDetalleService.Crear(detalle);
-        if (r != null && r.Correcto)
+        try
         {
-            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = "Guardado", Detail = r.Mensaje });
+            // Determine current user id from authentication state
+            int usuarioId = 0;
+            try
+            {
+                var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+                var user = authState.User;
+                var idClaim = user.FindFirst("Id")?.Value ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? user.FindFirst("sub")?.Value;
+                if (!string.IsNullOrEmpty(idClaim) && int.TryParse(idClaim, out var parsedId))
+                {
+                    usuarioId = parsedId;
+                }
+                else
+                {
+                    await LogConsole("OnSubmit: no se encontró claim Id en el usuario autenticado", new { idClaim });
+                }
+            }
+            catch (Exception ex)
+            {
+                await LogConsole("OnSubmit: error obteniendo AuthenticationState", new { ex.Message });
+            }
+
+            // 1) Crear DetalleTrabajo
+            var detalle = new DetalleTrabajo
+            {
+                TrabajoProveedorId = TrabajoId,
+                Fecha = model.Fecha,
+                Descripcion = model.Descripcion,
+                Costo = model.Costo,
+                Estado = "A cargo del inquilino",
+                UsuarioId = usuarioId
+            };
+
+            await LogConsole("OnSubmit: creando detalle", detalle);
+
+            var r = await DetalleService.Crear(detalle);
+            await LogConsole("OnSubmit: resultado crear detalle", r);
+
+            if (r == null || !r.Correcto || r.Datos == null)
+            {
+                await LogConsole("OnSubmit: fallo crear detalle", r?.Mensaje ?? "respuesta nula");
+                NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Error", Detail = r?.Mensaje ?? "Error creando detalle" });
+                return;
+            }
+
+            var creado = r.Datos;
+
+            // 2) Asociar las imágenes subidas (si las hay) al Detalle recién creado
+            await LogConsole("OnSubmit: imagenesSubidas antes asociar", imagenesSubidas.Select(i => new { i.Id, i.Nombre, i.Url, i.UrlThumb }).ToList());
+
+            if (imagenesSubidas.Any())
+            {
+                foreach (var img in imagenesSubidas)
+                {
+                    try
+                    {
+                        var assocRes = await ImagenService.AsociarA_Detalle(img.Id, creado.DetalleTrabajoId);
+                        await LogConsole("OnSubmit: asociar imagen a detalle", new { img.Id, creado.DetalleTrabajoId, assoc = assocRes });
+                    }
+                    catch (Exception ex)
+                    {
+                        await LogConsole("OnSubmit: error asociando imagen a detalle", new { img.Id, ex.Message });
+                    }
+                }
+
+                // Registrar historial con los nombres de imagen
+                var imagenNombres = string.Join(", ", imagenesSubidas.Select(i => i.Nombre));
+                var comentario = $"Imágenes adjuntas: {imagenNombres}";
+
+                var hist = new HistorialDetalleTrabajo { DetalleTrabajoId = creado.DetalleTrabajoId, Fecha = DateTime.Now, Estado = "Detalle Agregado", UsuarioId = usuarioId, Comentario = comentario };
+                await LogConsole("OnSubmit: creando historial detalle", hist);
+                var hr = await HistorialDetalleService.Crear(hist);
+                await LogConsole("OnSubmit: resultado crear historial detalle", hr);
+            }
+            else
+            {
+                var hist = new HistorialDetalleTrabajo { DetalleTrabajoId = creado.DetalleTrabajoId, Fecha = DateTime.Now, Estado = "Detalle Agregado", UsuarioId = usuarioId, Comentario = model.Descripcion };
+                await LogConsole("OnSubmit: creando historial detalle sin imagenes", hist);
+                var hr2 = await HistorialDetalleService.Crear(hist);
+                await LogConsole("OnSubmit: resultado crear historial detalle (sin imagenes)", hr2);
+            }
+
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = "Guardado", Detail = "Detalle agregado correctamente" });
+            await LogConsole("OnSubmit: finalizado con exito", creado);
             DialogService.Close(true);
         }
-        else
+        catch (Exception ex)
         {
-            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Error", Detail = r?.Mensaje ?? "Error al guardar" });
+            await LogConsole("OnSubmit: excepción", new { ex.Message, ex.StackTrace });
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Error", Detail = ex.Message });
         }
     }
 
     private void Cancel() => DialogService.Close(false);
+
+    private async Task LogConsole(string message, object? data = null)
+    {
+        try
+        {
+            if (data == null)
+            {
+                await JSRuntime.InvokeVoidAsync("console.log", message);
+            }
+            else
+            {
+                await JSRuntime.InvokeVoidAsync("console.log", message, data);
+            }
+        }
+        catch
+        {
+            // No bloquear por fallos en el logging
+        }
+    }
 }

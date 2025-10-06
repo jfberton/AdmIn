@@ -51,9 +51,11 @@ namespace AdmIn.API.Controllers
         }
 
         [HttpGet("obtener_por_id/{id}")]
-        [Authorize(Roles = "admin_usuario")]
-        public async Task<DTO<Usuario>> Obtener_por_mail(int id)
+        [Authorize]
+        public async Task<DTO<Usuario>> Obtener_por_id(int id)
         {
+            // Log entry to help debugging when requests arrive
+            Console.WriteLine($"[API] UsuarioController.Obtener_por_id called with id={id}. Caller={User?.Identity?.Name}");
             return await _servicio.Obtener_por_id(new Usuario() { Id = id });
         }
 

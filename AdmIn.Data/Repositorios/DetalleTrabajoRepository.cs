@@ -19,9 +19,9 @@ namespace AdmIn.Data.Repositorios
             using var transaccion = conexion.BeginTransaction();
             try
             {
-                var sql = @"INSERT INTO DetalleTrabajo (TrabajoProveedorId, Fecha, Descripcion, Costo, Estado, UsuarioId)
-                            OUTPUT INSERTED.DetalleTrabajoId, INSERTED.TrabajoProveedorId, INSERTED.Fecha, INSERTED.Descripcion, INSERTED.Costo, INSERTED.Estado, INSERTED.UsuarioId
-                            VALUES (@TrabajoProveedorId, @Fecha, @Descripcion, @Costo, @Estado, @UsuarioId);";
+                var sql = @"INSERT INTO DetalleTrabajo (TrabajoProveedorId, Fecha, Descripcion, Costo, Estado, UsuarioId, InquilinoBloqueado)
+                            OUTPUT INSERTED.DetalleTrabajoId, INSERTED.TrabajoProveedorId, INSERTED.Fecha, INSERTED.Descripcion, INSERTED.Costo, INSERTED.Estado, INSERTED.UsuarioId, INSERTED.InquilinoBloqueado
+                            VALUES (@TrabajoProveedorId, @Fecha, @Descripcion, @Costo, @Estado, @UsuarioId, @InquilinoBloqueado);";
                 var creado = await conexion.QuerySingleOrDefaultAsync<DetalleTrabajo>(sql, detalleTrabajo, transaccion);
                 if (creado == null)
                     throw new Exception("No se pudo crear el detalle de trabajo.");
@@ -42,8 +42,8 @@ namespace AdmIn.Data.Repositorios
             using var transaccion = conexion.BeginTransaction();
             try
             {
-                var sql = @"UPDATE DetalleTrabajo SET TrabajoProveedorId=@TrabajoProveedorId, Fecha=@Fecha, Descripcion=@Descripcion, Costo=@Costo, Estado=@Estado, UsuarioId=@UsuarioId
-                            OUTPUT INSERTED.DetalleTrabajoId, INSERTED.TrabajoProveedorId, INSERTED.Fecha, INSERTED.Descripcion, INSERTED.Costo, INSERTED.Estado, INSERTED.UsuarioId
+                var sql = @"UPDATE DetalleTrabajo SET TrabajoProveedorId=@TrabajoProveedorId, Fecha=@Fecha, Descripcion=@Descripcion, Costo=@Costo, Estado=@Estado, UsuarioId=@UsuarioId, InquilinoBloqueado=@InquilinoBloqueado
+                            OUTPUT INSERTED.DetalleTrabajoId, INSERTED.TrabajoProveedorId, INSERTED.Fecha, INSERTED.Descripcion, INSERTED.Costo, INSERTED.Estado, INSERTED.UsuarioId, INSERTED.InquilinoBloqueado
                             WHERE DetalleTrabajoId=@DetalleTrabajoId;";
                 var actualizado = await conexion.QuerySingleOrDefaultAsync<DetalleTrabajo>(sql, detalleTrabajo, transaccion);
                 if (actualizado == null)
@@ -81,7 +81,7 @@ namespace AdmIn.Data.Repositorios
         {
             using var conexion = new SqlConnection(InfoSQL.Conexion);
             await conexion.OpenAsync();
-            var sql = "SELECT * FROM DetalleTrabajo WHERE DetalleTrabajoId=@detalleTrabajoId;";
+            var sql = "SELECT DetalleTrabajoId, TrabajoProveedorId, Fecha, Descripcion, Costo, Estado, UsuarioId, InquilinoBloqueado FROM DetalleTrabajo WHERE DetalleTrabajoId=@detalleTrabajoId;";
             var encontrado = await conexion.QuerySingleOrDefaultAsync<DetalleTrabajo>(sql, new { detalleTrabajoId });
             if (encontrado == null)
                 return new DTO<DetalleTrabajo> { Correcto = false, Mensaje = "Detalle no encontrado" };
@@ -92,16 +92,65 @@ namespace AdmIn.Data.Repositorios
         {
             using var conexion = new SqlConnection(InfoSQL.Conexion);
             await conexion.OpenAsync();
-            var sql = "SELECT * FROM DetalleTrabajo ORDER BY Fecha DESC;";
+            var sql = "SELECT DetalleTrabajoId, TrabajoProveedorId, Fecha, Descripcion, Costo, Estado, UsuarioId, InquilinoBloqueado FROM DetalleTrabajo ORDER BY Fecha DESC;";
             var lista = await conexion.QueryAsync<DetalleTrabajo>(sql);
             return new DTO<IEnumerable<DetalleTrabajo>> { Correcto = true, Datos = lista, Mensaje = "Detalles obtenidos correctamente" };
+        }
+
+        public async Task<DTO<IEnumerable<DetalleTrabajo>>> Obtener_por_trabajo(int trabajoId)
+        {
+            using var conexion = new SqlConnection(InfoSQL.Conexion);
+            await conexion.OpenAsync();
+            try
+            {
+                var sql = "SELECT DetalleTrabajoId, TrabajoProveedorId, Fecha, Descripcion, Costo, Estado, UsuarioId, InquilinoBloqueado FROM DetalleTrabajo WHERE TrabajoProveedorId = @trabajoId ORDER BY Fecha DESC;";
+                var lista = (await conexion.QueryAsync<DetalleTrabajo>(sql, new { trabajoId })).ToList();
+
+                // Load images for each detalle if exists relation table DetalleTrabajo_Imagen
+                try
+                {
+                    var sqlImgs = @"SELECT dti.DetalleTrabajoId, i.Id, i.Nombre, i.Descripcion, i.FechaCreacion, i.Url, i.UrlThumb
+                                    FROM DetalleTrabajo_Imagen dti
+                                    INNER JOIN Imagen i ON dti.ImagenId = i.Id
+                                    WHERE dti.DetalleTrabajoId IN @Ids
+                                    ORDER BY i.FechaCreacion;";
+
+                    var ids = lista.Select(d => d.DetalleTrabajoId).ToArray();
+                    if (ids.Length > 0)
+                    {
+                        var imgRows = await conexion.QueryAsync<dynamic>(sqlImgs, new { Ids = ids });
+                        var imgsLookup = new Dictionary<int, List<Imagen>>();
+                        foreach (var row in imgRows)
+                        {
+                            int detId = (int)row.DetalleTrabajoId;
+                            if (!imgsLookup.ContainsKey(detId)) imgsLookup[detId] = new List<Imagen>();
+                            imgsLookup[detId].Add(new Imagen { Id = row.Id, Nombre = row.Nombre, Descripcion = row.Descripcion, FechaCreacion = row.FechaCreacion, Url = row.Url, UrlThumb = row.UrlThumb });
+                        }
+
+                        foreach (var d in lista)
+                        {
+                            if (imgsLookup.TryGetValue(d.DetalleTrabajoId, out var imgs))
+                            {
+                                d.Imagenes = imgs;
+                            }
+                        }
+                    }
+                }
+                catch { /* ignore image relations if table not present */ }
+
+                return new DTO<IEnumerable<DetalleTrabajo>> { Correcto = true, Datos = lista, Mensaje = "Detalles por trabajo obtenidos correctamente" };
+            }
+            catch (Exception ex)
+            {
+                return new DTO<IEnumerable<DetalleTrabajo>> { Correcto = false, Datos = new List<DetalleTrabajo>(), Mensaje = ex.Message };
+            }
         }
 
         public async Task<DTO<Items_pagina<DetalleTrabajo>>> Obtener_paginado(Filtros_paginado filtros)
         {
             using var conexion = new SqlConnection(InfoSQL.Conexion);
             await conexion.OpenAsync();
-            var sql = @"SELECT COUNT(*) OVER() AS TotalItems, *
+            var sql = @"SELECT COUNT(*) OVER() AS TotalItems, DetalleTrabajoId, TrabajoProveedorId, Fecha, Descripcion, Costo, Estado, UsuarioId, InquilinoBloqueado
                         FROM DetalleTrabajo
                         WHERE (@FiltroBusqueda IS NULL OR Descripcion LIKE '%' + @FiltroBusqueda + '%' OR Estado LIKE '%' + @FiltroBusqueda + '%')
                         ORDER BY Fecha DESC
@@ -125,7 +174,8 @@ namespace AdmIn.Data.Repositorios
                     Descripcion = row.Descripcion,
                     Costo = row.Costo,
                     Estado = row.Estado,
-                    UsuarioId = row.UsuarioId
+                    UsuarioId = row.UsuarioId,
+                    InquilinoBloqueado = row.InquilinoBloqueado
                 });
             }
             return new DTO<Items_pagina<DetalleTrabajo>>

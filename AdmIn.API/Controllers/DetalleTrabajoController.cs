@@ -43,6 +43,11 @@ namespace AdmIn.API.Controllers
         public async Task<DTO<IEnumerable<DetalleTrabajo>>> ObtenerTodos()
             => await _servicio.Obtener_todos();
 
+        [HttpGet("obtener_por_trabajo/{trabajoId}")]
+        [Authorize]
+        public async Task<DTO<IEnumerable<DetalleTrabajo>>> ObtenerPorTrabajo(int trabajoId)
+            => await _servicio.Obtener_por_trabajo(trabajoId);
+
         [HttpPost("obtener_paginado")]
         [Authorize]
         public async Task<DTO<Items_pagina<DetalleTrabajo>>> ObtenerPaginado([FromBody] Filtros_paginado filtros)

@@ -430,7 +430,7 @@ namespace AdmIn.Data.Repositorios
 
                 await conexion.ExecuteAsync(sqlVerificarTabla, transaction: transaccion);
 
-                // Insertar la asociación
+                // Insertar la asociaci?n
                 var sqlInsertar = @"
                     IF NOT EXISTS (SELECT 1 FROM InmuebleImagen WHERE InmuebleId = @InmuebleId AND ImagenId = @ImagenId)
                     INSERT INTO InmuebleImagen (InmuebleId, ImagenId, Orden)
@@ -459,6 +459,57 @@ namespace AdmIn.Data.Repositorios
                 {
                     Correcto = false,
                     Mensaje = $"Error al asociar imagen al inmueble: {ex.Message}"
+                };
+            }
+        }
+
+        public async Task<DTO<bool>> Asociar_a_detalle(Guid imagenId, int detalleTrabajoId)
+        {
+            using var conexion = new SqlConnection(InfoSQL.Conexion);
+            await conexion.OpenAsync();
+            using var transaccion = conexion.BeginTransaction();
+
+            try
+            {
+                // Asegurar que la tabla DetalleTrabajo_Imagen existe (seguramente ya existe según el esquema), si no, crearla
+                var sqlVerificarTabla = @"
+                    IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='DetalleTrabajo_Imagen' AND xtype='U')
+                    CREATE TABLE DetalleTrabajo_Imagen (
+                        DetalleTrabajoId INT NOT NULL,
+                        ImagenId UNIQUEIDENTIFIER NOT NULL,
+                        PRIMARY KEY (DetalleTrabajoId, ImagenId)
+                    );";
+
+                await conexion.ExecuteAsync(sqlVerificarTabla, transaction: transaccion);
+
+                // Insertar la asociaci?n evitando duplicados
+                var sqlInsertar = @"
+                    IF NOT EXISTS (SELECT 1 FROM DetalleTrabajo_Imagen WHERE DetalleTrabajoId = @DetalleTrabajoId AND ImagenId = @ImagenId)
+                    INSERT INTO DetalleTrabajo_Imagen (DetalleTrabajoId, ImagenId)
+                    VALUES (@DetalleTrabajoId, @ImagenId);";
+
+                var filasAfectadas = await conexion.ExecuteAsync(sqlInsertar, new
+                {
+                    DetalleTrabajoId = detalleTrabajoId,
+                    ImagenId = imagenId
+                }, transaccion);
+
+                transaccion.Commit();
+
+                return new DTO<bool>
+                {
+                    Correcto = true,
+                    Datos = filasAfectadas > 0,
+                    Mensaje = filasAfectadas > 0 ? "Imagen asociada al detalle correctamente" : "La asociación ya existía"
+                };
+            }
+            catch (Exception ex)
+            {
+                transaccion.Rollback();
+                return new DTO<bool>
+                {
+                    Correcto = false,
+                    Mensaje = $"Error al asociar imagen al detalle: {ex.Message}"
                 };
             }
         }

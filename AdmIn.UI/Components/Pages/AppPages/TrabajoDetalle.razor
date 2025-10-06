@@ -4,6 +4,7 @@
 @using AdmIn.UI.Components.Pages.AppPages.Dialogos
 @inject IServ_TrabajoProveedor TrabajoService
 @inject IServ_HistorialTrabajo HistorialService
+@inject IServ_DetalleTrabajo DetalleService
 @inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider authStateProvider
 @inject NotificationService NotificationService
 @inject DialogService DialogService
@@ -11,6 +12,7 @@
 @inject IServ_Proveedor ProveedorService
 @inject IServ_Inmueble InmuebleService
 @inject IServ_Usuario UsuarioService
+@using AdmIn.Common
 
 <PageTitle>Detalle Trabajo</PageTitle>
 
@@ -59,76 +61,168 @@
                 </RadzenColumn>
 
                 <RadzenColumn Size="12" SizeMD="7">
-                    <div class="details-panel">
-                        <div class="row">
-                            <div class="label">Inmueble</div>
-                            <div class="value inmueble-name">@(inmuebleNombre ?? trabajo.InmuebleId.ToString())</div>
-                        </div>
-
-                        <div class="row">
-                            <div class="label">Proveedor</div>
-                            <div class="value proveedor-name">@(proveedorNombre ?? trabajo.ProveedorId.ToString())</div>
-                        </div>
-
-                        <div class="row">
-                            <div class="label">Descripción</div>
-                            <div class="value descripcion">@trabajo.Descripcion</div>
-                        </div>
-
-                        <div class="row two-cols">
-                            <div>
-                                <div class="label">Costo acumulado</div>
-                                <div class="value cost">@trabajo.Costo.ToString("C")</div>
+                    <RadzenStack Gap="0.5rem">
+                        <!-- Inmueble compact card -->
+                        <RadzenCard Class="info-card compact">
+                            <div class="card-title">Inmueble #@(inmueble?.Id ?? trabajo.InmuebleId) - Nombre: @(inmueble?.Nombre ?? inmuebleNombre ?? "-")</div>
+                            <div class="card-body">
+                                <div class="card-row">
+                                    <div class="card-label">Dirección</div>
+                                    <div class="card-data">@(inmueble?.Direccion ?? inmuebleDireccion ?? "-")</div>
+                                </div>
                             </div>
-                            <div>
-                                <div class="label">Costo presupuestado</div>
-                                <div class="value estimate">@(trabajo.CostoAproximado?.ToString("C") ?? "-")</div>
+                        </RadzenCard>
+
+                        <!-- Proveedor compact card -->
+                        <RadzenCard Class="info-card compact">
+                            <div class="card-title">Proveedor #@(proveedor?.Id ?? trabajo.ProveedorId) - Nombre: @(proveedor?.Nombre ?? proveedorNombre ?? "-")</div>
+                            <div class="card-body">
+                                <div class="card-row">
+                                    <div class="card-label">Dirección</div>
+                                    <div class="card-data">@(proveedor?.Direccion ?? proveedorDireccion ?? "-")</div>
+                                </div>
+
+                                <div class="card-row">
+                                    <div class="card-label">Email</div>
+                                    <div class="card-data contact-data">
+                                        @if (!string.IsNullOrWhiteSpace(proveedor?.Email ?? proveedorEmail))
+                                        {
+                                            <a href="mailto:@(proveedor?.Email ?? proveedorEmail)">@(proveedor?.Email ?? proveedorEmail)</a>
+                                        }
+                                        else
+                                        {
+                                            <span>-</span>
+                                        }
+                                    </div>
+
+                                    <div class="card-label small-label">Teléfono</div>
+                                    <div class="card-data contact-data">
+                                        @if (!string.IsNullOrWhiteSpace(proveedor?.Telefono ?? proveedorTelefono))
+                                        {
+                                            <a href="tel:@(proveedor?.Telefono ?? proveedorTelefono)">@(proveedor?.Telefono ?? proveedorTelefono)</a>
+                                        }
+                                        else
+                                        {
+                                            <span>-</span>
+                                        }
+                                    </div>
+                                </div>
                             </div>
-                        </div>
+                        </RadzenCard>
 
-                        <div class="row">
-                            <div class="label">Fecha Inicio</div>
-                            <div class="value">@(trabajo.FechaInicio?.ToString("g") ?? "-")</div>
-                        </div>
+                        <!-- Descripción card -->
+                        <RadzenCard Class="info-card">
+                            <RadzenStack Gap="0.5rem">
+                                <div class="card-title">Descripción</div>
+                                <div class="card-row">
+                                    <div class="card-data descripcion">@trabajo.Descripcion</div>
+                                </div>
+                            </RadzenStack>
+                        </RadzenCard>
 
-                        <div class="actions">
-                            @if (puedeAceptar)
+                        <!-- Historial card moved under description (same width as description) -->
+                        <RadzenCard Class="info-card">
+                            <RadzenText TextStyle="TextStyle.H6" Text="Historial" />
+
+                            @if (historial == null || !historial.Any())
                             {
-                                <RadzenButton ButtonStyle="ButtonStyle.Success" Click="Aceptar">Aceptar</RadzenButton>
+                                <div>No hay historial</div>
                             }
-                            @if (puedeAgregarDetalle)
+                            else
                             {
-                                <RadzenButton Click="AgregarDetalle">Agregar detalle</RadzenButton>
+                                <div class="historial-list">
+                                    @foreach (var h in historial)
+                                    {
+                                        <div class="historial-item">
+                                            <div class="hist-date">@h.Fecha.ToString("g")</div>
+                                            <div class="hist-body">
+                                                <div class="hist-state">@h.Estado</div>
+                                                <div class="hist-comment">@h.Comentario</div>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
                             }
-                            @if (puedeFinalizar)
-                            {
-                                <RadzenButton ButtonStyle="ButtonStyle.Primary" Click="Finalizar">Finalizar</RadzenButton>
-                            }
-                        </div>
-                    </div>
+                        </RadzenCard>
+
+                    </RadzenStack>
                 </RadzenColumn>
             </RadzenRow>
 
-            <RadzenText TextStyle="TextStyle.H6" Text="Historial" />
-            @if (historial == null || !historial.Any())
-            {
-                <div>No hay historial</div>
-            }
-            else
-            {
-                <div class="historial-list">
-                    @foreach (var h in historial)
-                    {
-                        <div class="historial-item">
-                            <div class="hist-date">@h.Fecha.ToString("g")</div>
-                            <div class="hist-body">
-                                <div class="hist-state">@h.Estado</div>
-                                <div class="hist-comment">@h.Comentario</div>
-                            </div>
-                        </div>
-                    }
-                </div>
-            }
+            <!-- Costos / Acciones card moved to full width below -->
+            <RadzenCard Class="info-card full-width-card">
+                <RadzenStack Gap="0.5rem">
+                    <RadzenRow>
+                        <RadzenColumn Size="6">
+                            <div class="label">Costo acumulado</div>
+                            <div class="value cost">@CostoAcumulado.ToString("C")</div>
+                        </RadzenColumn>
+                        <RadzenColumn Size="6">
+                            <div class="label">Costo presupuestado</div>
+                            <div class="value estimate">@(trabajo.CostoAproximado?.ToString("C") ?? "-")</div>
+                        </RadzenColumn>
+                    </RadzenRow>
+
+                    <div class="label">Fecha Inicio</div>
+                    <div class="value">@(trabajo.FechaInicio?.ToString("g") ?? "-")</div>
+
+                    <div class="actions" style="justify-content:flex-end;">
+                        @if (puedeAceptar)
+                        {
+                            <RadzenButton ButtonStyle="ButtonStyle.Success" Click="AbrirDialogoAceptar">ACEPTAR TRABAJO</RadzenButton>
+                        }
+                        @if (puedeAgregarDetalle)
+                        {
+                            <RadzenButton Click="AgregarDetalle">Agregar detalle</RadzenButton>
+                        }
+                        @if (puedeFinalizar)
+                        {
+                            <RadzenButton ButtonStyle="ButtonStyle.Primary" Click="Finalizar">Finalizar</RadzenButton>
+                        }
+                    </div>
+                </RadzenStack>
+            </RadzenCard>
+
+            <!-- Listado de detalles cargados -->
+            <RadzenCard>
+                <RadzenText TextStyle="TextStyle.H6" Text="Detalles del trabajo" />
+
+                @if (detalles == null || !detalles.Any())
+                {
+                    <div>No hay detalles cargados</div>
+                }
+                else
+                {
+                    <div class="detalles-list">
+                        @foreach (var d in detalles.OrderByDescending(d => d.Fecha))
+                        {
+                            <RadzenCard Class="detalle-item">
+                                <div class="detalle-header">
+                                    <div><strong>@d.Fecha.ToString("g")</strong></div>
+                                    <div class="detalle-costo">@d.Costo.ToString("C")</div>
+                                </div>
+                                <div class="detalle-body">
+                                    <div class="descripcion">@d.Descripcion</div>
+
+                                    @if (d.Imagenes != null && d.Imagenes.Any())
+                                    {
+                                        <div class="detalle-imagenes mt-2 d-flex gap-2">
+                                            @foreach (var img in d.Imagenes)
+                                            {
+                                                <img src="@(string.IsNullOrEmpty(img.Url) ? "/images/placeholder.jpg" : (img.Url.StartsWith("http") ? img.Url : "/" + img.Url.TrimStart('/')))" alt="@img.Nombre" style="width:120px;height:90px;object-fit:cover;border-radius:6px;border:1px solid #e9ecef;" />
+                                            }
+                                        </div>
+                                    }
+
+                                    <div style="margin-top:8px; display:flex; gap:8px; justify-content:flex-end;">
+                                        <RadzenButton Size="ButtonSize.Small" Click="@(async () => MostrarDetalle(d))">Ver</RadzenButton>
+                                    </div>
+                                </div>
+                            </RadzenCard>
+                        }
+                    </div>
+                }
+            </RadzenCard>
         </RadzenStack>
     }
 </RadzenCard>
@@ -159,7 +253,7 @@
     .cost { color:#059669; font-weight:700; }
     .estimate { color:#f59e0b; font-weight:700; }
 
-    .actions { margin-top:0.5rem; display:flex; gap:0.5rem; }
+    .actions { margin-top:0.5rem; display:flex; gap:0.5rem; justify-content:flex-end; }
 
     .historial-list { display:flex; flex-direction:column; gap:0.75rem; }
     .historial-item { display:flex; gap:1rem; padding:0.5rem; border-left:4px solid #e5e7eb; background:#fafafa; border-radius:6px; }
@@ -167,11 +261,19 @@
     .hist-state { font-weight:700; }
     .hist-comment { color:#374151; }
 
-    @@media (max-width: 768px) {
-        .main-image img { height:200px; }
-        .header-row { flex-direction:column; align-items:flex-start; }
-        .meta-wrap { text-align:left; }
-    }
+    .info-card { padding: 0.75rem; }
+    .info-card.compact { padding: 0.5rem; }
+    .full-width-card { width: 100%; }
+    .card-row { display:flex; gap:0.5rem; align-items:center; }
+    .card-label { width:110px; color:#6b7280; font-weight:700; font-size:0.85rem; }
+    .card-data { color:#111827; font-weight:400; font-size:0.95rem; }
+
+    .detalles-list { display:flex; flex-direction:column; gap:0.75rem; }
+    .detalle-item { padding:0.5rem; }
+    .detalle-header { display:flex; justify-content:space-between; align-items:center; }
+    .detalle-costo { color:#059669; font-weight:700; }
+    .detalle-body .descripcion { margin-top:0.5rem; }
+    .detalle-imagenes img { border-radius:6px; }
 </style>
 
 @code{
@@ -179,14 +281,25 @@
 
     private TrabajoProveedor? trabajo;
     private List<HistorialTrabajo>? historial = new();
+    private List<DetalleTrabajo>? detalles = new();
     private bool puedeAceptar = false;
     private bool puedeAgregarDetalle = false;
     private bool puedeFinalizar = false;
 
+    // full objects
+    private Inmueble? inmueble;
+    private Proveedor? proveedor;
+
     // display helpers
     private string? inmuebleNombre;
+    private string? inmuebleDireccion;
     private string? proveedorNombre;
+    private string? proveedorDireccion;
+    private string? proveedorTelefono;
+    private string? proveedorEmail;
     private string? usuarioSolicitante;
+
+    private decimal CostoAcumulado => (detalles?.Sum(d => d.Costo) ?? 0m);
 
     protected override async Task OnInitializedAsync()
     {
@@ -196,116 +309,169 @@
     private async Task Cargar()
     {
         var res = await TrabajoService.Obtener_por_id(Id);
-        if (res != null && res.Correcto && res.Datos != null)
+        if (res == null || !res.Correcto || res.Datos == null)
         {
-            trabajo = res.Datos;
-            // cargar historial
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Error", Detail = "No se pudo cargar el trabajo" });
+            Navigation.NavigateTo("/reparaciones");
+            return;
+        }
+
+        trabajo = res.Datos;
+
+        // cargar historial primero (para posibles fallbacks de usuario)
+        try
+        {
             var h = await HistorialService.Obtener_por_trabajo(Id);
-            if (h != null && h.Correcto && h.Datos != null)
-            {
-                historial = h.Datos.ToList();
-            }
+            if (h != null && h.Correcto && h.Datos != null) historial = h.Datos.ToList();
+        }
+        catch { }
 
-            // cargar nombres descriptivos
-            try
+        // cargar detalles asociados
+        try
+        {
+            var dres = await DetalleService.Obtener_todos();
+            if (dres != null && dres.Correcto && dres.Datos != null)
             {
-                var inmRes = await InmuebleService.Obtener_por_id(trabajo.InmuebleId);
-                if (inmRes != null && inmRes.Correcto && inmRes.Datos != null)
+                detalles = dres.Datos.Where(d => d.TrabajoProveedorId == trabajo.Id).ToList();
+            }
+        }
+        catch { detalles = new List<DetalleTrabajo>(); }
+
+        // cargar nombre del usuario creador si existe (fallback a historial si es necesario)
+        try
+        {
+            if (trabajo.UsuarioCreador.HasValue)
+            {
+                var usrRes = await UsuarioService.Obtener_por_id(trabajo.UsuarioCreador.Value);
+                if (usrRes != null && usrRes.Correcto && usrRes.Datos != null)
                 {
-                    inmuebleNombre = inmRes.Datos.Nombre;
+                    usuarioSolicitante = usrRes.Datos.Nombre;
                 }
             }
-            catch { }
 
-            try
+            if (string.IsNullOrWhiteSpace(usuarioSolicitante) && historial != null && historial.Any())
             {
-                var provRes = await ProveedorService.Obtener_por_id(trabajo.ProveedorId);
-                if (provRes != null && provRes.Correcto && provRes.Datos != null)
+                var entryWithUser = historial.FirstOrDefault(h => h.UsuarioId != 0);
+                if (entryWithUser != null)
                 {
-                    proveedorNombre = provRes.Datos.Nombre;
-                }
-            }
-            catch { }
-
-            try
-            {
-                if (trabajo.UsuarioCreador.HasValue)
-                {
-                    var usrRes = await UsuarioService.Obtener_por_id(trabajo.UsuarioCreador.Value);
-                    if (usrRes != null && usrRes.Correcto && usrRes.Datos != null)
+                    try
                     {
-                        usuarioSolicitante = usrRes.Datos.Nombre;
+                        var u2 = await UsuarioService.Obtener_por_id(entryWithUser.UsuarioId);
+                        if (u2 != null && u2.Correcto && u2.Datos != null) usuarioSolicitante = u2.Datos.Nombre;
                     }
+                    catch { }
                 }
             }
-            catch { }
+        }
+        catch { }
 
-            var auth = await authStateProvider.GetAuthenticationStateAsync();
-            var user = auth.User;
-
-            // Obtener proveedor asociado al usuario actual (por email) y comparar con trabajo.ProveedorId
-            var userEmail = user.Identity?.Name;
-            int? proveedorIdFromUser = null;
+        // obtener auth y posible proveedor asociado por email
+        var auth = await authStateProvider.GetAuthenticationStateAsync();
+        var user = auth.User;
+        var userEmail = user.Identity?.Name;
+        int? proveedorIdFromUser = null;
+        try
+        {
             if (!string.IsNullOrEmpty(userEmail))
+            {
+                var provByEmail = await ProveedorService.Obtener_por_email(userEmail);
+                if (provByEmail != null && provByEmail.Correcto && provByEmail.Datos != null)
+                {
+                    proveedorIdFromUser = provByEmail.Datos.Id;
+                }
+            }
+        }
+        catch { }
+
+        // inmueble
+        try
+        {
+            var inmRes = await InmuebleService.Obtener_por_id(trabajo.InmuebleId);
+            if (inmRes != null && inmRes.Correcto && inmRes.Datos != null)
+            {
+                inmueble = inmRes.Datos;
+                inmuebleNombre = inmueble?.Nombre;
+                inmuebleDireccion = inmueble?.Direccion;
+            }
+            else
             {
                 try
                 {
-                    var provRes2 = await ProveedorService.Obtener_por_email(userEmail);
-                    if (provRes2 != null && provRes2.Correcto && provRes2.Datos != null)
+                    var all = await InmuebleService.Obtener_todos();
+                    if (all != null && all.Correcto && all.Datos != null)
                     {
-                        proveedorIdFromUser = provRes2.Datos.Id;
+                        inmueble = all.Datos.FirstOrDefault(i => i.Id == trabajo.InmuebleId);
+                        inmuebleNombre = inmueble?.Nombre;
+                        inmuebleDireccion = inmueble?.Direccion;
                     }
                 }
-                catch { /* ignore errors */ }
+                catch { }
             }
+        }
+        catch { }
 
-            // Determinar permisos usando el proveedor asociado si existe, si no usar claim Id como fallback
+        // proveedor
+        try
+        {
+            var provRes = await ProveedorService.Obtener_por_id(trabajo.ProveedorId);
+            if (provRes != null && provRes.Correcto && provRes.Datos != null)
+            {
+                proveedor = provRes.Datos;
+                proveedorNombre = proveedor?.Nombre;
+                proveedorDireccion = proveedor?.Direccion;
+                proveedorTelefono = proveedor?.Telefono;
+                proveedorEmail = proveedor?.Email;
+            }
+            else if (proveedorIdFromUser.HasValue && proveedorIdFromUser.Value == trabajo.ProveedorId)
+            {
+                try
+                {
+                    var pByEmail = await ProveedorService.Obtener_por_email(userEmail);
+                    if (pByEmail != null && pByEmail.Correcto && pByEmail.Datos != null)
+                    {
+                        proveedor = pByEmail.Datos;
+                        proveedorNombre = proveedor?.Nombre;
+                        proveedorDireccion = proveedor?.Direccion;
+                        proveedorTelefono = proveedor?.Telefono;
+                        proveedorEmail = proveedor?.Email;
+                    }
+                }
+                catch { }
+            }
+        }
+        catch { }
+
+        // permisos
+        try
+        {
             var userIdClaim = user.FindFirst("Id");
             int.TryParse(userIdClaim?.Value, out int uid);
-
             var compareId = proveedorIdFromUser ?? uid;
-
-            if (compareId != 0)
+            if (compareId != 0 && trabajo != null)
             {
                 puedeAceptar = (trabajo.ProveedorId == compareId && trabajo.Estado != TrabajoEstados.EnEjecucion && trabajo.Estado != TrabajoEstados.Finalizado);
                 puedeAgregarDetalle = trabajo.Estado == TrabajoEstados.EnEjecucion && trabajo.ProveedorId == compareId;
                 puedeFinalizar = trabajo.ProveedorId == compareId && trabajo.Estado == TrabajoEstados.EnEjecucion;
             }
         }
-        else
-        {
-            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Error", Detail = "No se pudo cargar el trabajo" });
-            Navigation.NavigateTo("/reparaciones");
-        }
+        catch { }
+
+        StateHasChanged();
     }
 
-    private async Task Aceptar()
+    private async Task AbrirDialogoAceptar()
     {
-        var auth = await authStateProvider.GetAuthenticationStateAsync();
-        var user = auth.User;
-        var userIdClaim = user.FindFirst("Id");
-        if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out int uid))
+        if (trabajo == null) return;
+        var result = await DialogService.OpenAsync<AceptarTrabajoDialog>("Aceptar trabajo", new Dictionary<string, object> { { "trabajo", trabajo } }, new DialogOptions { Width = "500px", Height = "220px" });
+        if (result is bool ok && ok)
         {
-            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Warning, Summary = "Sin usuario", Detail = "No se pudo identificar el usuario autenticado." });
-            return;
-        }
-
-        var req = new AceptarTrabajoRequest { TrabajoId = trabajo.Id, UsuarioId = uid, FechaInicio = DateTime.Now, CostoAproximado = trabajo.CostoAproximado ?? 0m };
-        var r = await TrabajoService.AceptarTrabajo(req);
-        if (r != null && r.Correcto)
-        {
-            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = "Aceptado", Detail = r.Mensaje });
             await Cargar();
-        }
-        else
-        {
-            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Error", Detail = r?.Mensaje ?? "Error aceptando trabajo" });
         }
     }
 
     private async Task AgregarDetalle()
     {
-        var result = await DialogService.OpenAsync<AgregarDetalleDialog>("Agregar Detalle", new Dictionary<string, object> { { "trabajoid", trabajo.Id } }, new DialogOptions { Width = "600px", Height = "400px" });
+        var result = await DialogService.OpenAsync<AgregarDetalleDialog>("Agregar Detalle", new Dictionary<string, object> { { "trabajoid", trabajo.Id } }, new DialogOptions { Width = "900px", Height = "650px", Resizable = true, Draggable = true, CloseDialogOnOverlayClick = false });
         if (result == true) await Cargar();
     }
 
@@ -331,8 +497,6 @@
         imagenSeleccionada = img;
         if (imagenSeleccionada != null)
         {
-            // desplazar la imagen principal a la seleccionada
-            // simple replace in the list: move selected to first position
             if (trabajo?.Imagenes != null)
             {
                 var list = trabajo.Imagenes;
@@ -342,6 +506,15 @@
                     list.Insert(0, img);
                 }
             }
+        }
+    }
+
+    private async Task MostrarDetalle(DetalleTrabajo d)
+    {
+        var result = await DialogService.OpenAsync<DetalleViewDialog>("Detalle", new Dictionary<string, object> { { "detalle", d } }, new DialogOptions { Width = "800px", Height = "600px" });
+        if (result is bool changed && changed)
+        {
+            await Cargar();
         }
     }
 

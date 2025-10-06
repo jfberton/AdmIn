@@ -27,7 +27,7 @@ namespace AdmIn.API.Controllers
         }
 
         [HttpPost("upload")]
-        [Authorize(Roles = "admin_usuario")]
+        [Authorize]
         public async Task<DTO<Imagen>> SubirImagen([FromForm] IFormFile archivo, [FromForm] string? descripcion = null)
         {
             try
@@ -101,6 +101,57 @@ namespace AdmIn.API.Controllers
                 {
                     Correcto = false,
                     Mensaje = $"Error al subir imagen para usuario: {ex.Message}"
+                };
+            }
+        }
+
+        // Allow authenticated users (e.g. proveedores) to upload images related to a Trabajo.
+        [HttpPost("upload-for-trabajo/{trabajoId}")]
+        [Authorize]
+        public async Task<DTO<Imagen>> SubirImagenParaTrabajo(int trabajoId, [FromForm] IFormFile archivo, [FromForm] string? descripcion = null)
+        {
+            try
+            {
+                // Upload image file (no automatic DB association implemented for trabajo)
+                var resultado = await _servicioUpload.SubirImagen(archivo, descripcion);
+                return resultado;
+            }
+            catch (Exception ex)
+            {
+                return new DTO<Imagen>
+                {
+                    Correcto = false,
+                    Mensaje = $"Error al subir imagen para trabajo: {ex.Message}"
+                };
+            }
+        }
+
+        // Allow authenticated users to upload images related to a DetalleTrabajo (detalle)
+        [HttpPost("upload-for-detalle/{detalleId}")]
+        [Authorize]
+        public async Task<DTO<Imagen>> SubirImagenParaDetalle(int detalleId, [FromForm] IFormFile archivo, [FromForm] string? descripcion = null)
+        {
+            try
+            {
+                // Upload image file
+                var resultado = await _servicioUpload.SubirImagen(archivo, descripcion);
+                // Note: association to detalle in DB not implemented here. Could be added later.
+                if (resultado != null && resultado.Correcto && resultado.Datos != null)
+                {
+                    try
+                    {
+                        await _imagenRepo.Asociar_a_detalle(resultado.Datos.Id, detalleId);
+                    }
+                    catch { /* no bloquear si falla la asociación */ }
+                }
+                return resultado;
+            }
+            catch (Exception ex)
+            {
+                return new DTO<Imagen>
+                {
+                    Correcto = false,
+                    Mensaje = $"Error al subir imagen para detalle: {ex.Message}"
                 };
             }
         }
@@ -210,6 +261,25 @@ namespace AdmIn.API.Controllers
                 {
                     Correcto = false,
                     Mensaje = $"Error al eliminar imagen: {ex.Message}"
+                };
+            }
+        }
+
+        // New endpoint: asociar una imagen ya creada a un DetalleTrabajo
+        [HttpPost("asociar-a-detalle/{detalleId}")]
+        [Authorize]
+        public async Task<DTO<bool>> AsociarA_Detalle(int detalleId, [FromBody] Guid imagenId)
+        {
+            try
+            {
+                return await _imagenRepo.Asociar_a_detalle(imagenId, detalleId);
+            }
+            catch (Exception ex)
+            {
+                return new DTO<bool>
+                {
+                    Correcto = false,
+                    Mensaje = $"Error al asociar imagen al detalle: {ex.Message}"
                 };
             }
         }

@@ -47,6 +47,7 @@ builder.Services.AddScoped<IServ_TrabajoProveedor, Serv_TrabajoProveedor>();
 builder.Services.AddScoped<IServ_Notificacion, Serv_Notificacion>();
 builder.Services.AddScoped<IServ_HistorialTrabajo, Serv_HistorialTrabajo>();
 builder.Services.AddScoped<IServ_HistorialDetalleTrabajo, Serv_HistorialDetalleTrabajo>();
+builder.Services.AddScoped<IServ_DetalleTrabajo, Serv_DetalleTrabajo>();
 
 //Utility Services
 builder.Services.AddHttpContextAccessor();

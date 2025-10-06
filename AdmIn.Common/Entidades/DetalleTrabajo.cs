@@ -13,5 +13,8 @@ namespace AdmIn.Common.Entidades
         public string Estado { get; set; } = string.Empty;
         public int UsuarioId { get; set; }
         public List<Imagen> Imagenes { get; set; } = new();
+
+        // New flag: when true, the inquilino cannot change the responsable anymore
+        public bool InquilinoBloqueado { get; set; } = false;
     }
 }

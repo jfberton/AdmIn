@@ -19,5 +19,6 @@ namespace AdmIn.Common.Repositorios
         
         // Métodos específicos para Usuario
         Task<DTO<bool>> Establecer_imagen_perfil_usuario(Guid imagenId, int usuarioId);
+        Task<DTO<bool>> Asociar_a_detalle(Guid imagenId, int detalleTrabajoId);
     }
 }
