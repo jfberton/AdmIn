@@ -8,6 +8,7 @@
 @inject IServ_HistorialDetalleTrabajo HistorialDetalleService
 @inject IServ_HistorialTrabajo HistorialTrabajoService
 @inject IServ_TrabajoProveedor TrabajoService
+@inject IServ_Inmueble InmuebleService
 @inject IServ_Imagen ImagenService
 @inject NotificationService NotificationService
 @inject DialogService DialogService
@@ -78,6 +79,18 @@
         NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Error", Detail = msg });
     }
 
+    private bool InmuebleEstaOcupado(Inmueble? inm)
+    {
+        try
+        {
+            if (inm == null) return false;
+            if (inm.Contratos == null) return false;
+            var now = DateTime.UtcNow;
+            return inm.Contratos.Any(c => c.InquilinoId != 0 && (string.IsNullOrEmpty(c.Estado) || c.Estado.Equals("Activo", StringComparison.OrdinalIgnoreCase) || (c.FechaInicio.HasValue && c.FechaInicio.Value <= now && (!c.FechaFin.HasValue || c.FechaFin.Value >= now))));
+        }
+        catch { return false; }
+    }
+
     private async Task OnSubmit()
     {
         try
@@ -103,6 +116,28 @@
                 await LogConsole("OnSubmit: error obteniendo AuthenticationState", new { ex.Message });
             }
 
+            // Decide initial Estado based on inmueble occupancy
+            string estadoInicial = "A cargo del propietario";
+            try
+            {
+                var tRes = await TrabajoService.Obtener_por_id(TrabajoId);
+                if (tRes != null && tRes.Correcto && tRes.Datos != null)
+                {
+                    var trabajo = tRes.Datos;
+                    try
+                    {
+                        var inmRes = await InmuebleService.Obtener_por_id(trabajo.InmuebleId);
+                        if (inmRes != null && inmRes.Correcto && inmRes.Datos != null)
+                        {
+                            var inm = inmRes.Datos;
+                            if (InmuebleEstaOcupado(inm)) estadoInicial = "A cargo del inquilino";
+                        }
+                    }
+                    catch { }
+                }
+            }
+            catch { }
+
             // 1) Crear DetalleTrabajo
             var detalle = new DetalleTrabajo
             {
@@ -110,7 +145,7 @@
                 Fecha = model.Fecha,
                 Descripcion = model.Descripcion,
                 Costo = model.Costo,
-                Estado = "A cargo del inquilino",
+                Estado = estadoInicial,
                 UsuarioId = usuarioId
             };
 

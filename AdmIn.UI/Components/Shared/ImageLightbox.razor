@@ -1,0 +1,132 @@
+@using Radzen
+@using AdmIn.Common.Entidades
+@using Microsoft.AspNetCore.Components.Web
+@inject DialogService DialogService
+@inject IJSRuntime JSRuntime
+
+<div id="imgLightboxContainer" tabindex="0" style="position:relative; width:100%; padding:12px; display:flex; align-items:center; justify-content:center;">
+    @if (Images != null && Images.Count > 1)
+    {
+        <button class="carousel-control prev" @onclick="Prev" style="position:absolute;left:12px;z-index:50;background:transparent;border:none;color:white;font-size:28px;">?</button>
+        <button class="carousel-control next" @onclick="Next" style="position:absolute;right:12px;z-index:50;background:transparent;border:none;color:white;font-size:28px;">?</button>
+    }
+
+    <div style="width:100%; max-width:960px; display:flex; flex-direction:column; gap:12px; align-items:stretch; justify-content:flex-start; max-height:calc(100vh - 120px); background:transparent;">
+        <!-- Image area: takes remaining vertical space -->
+        <div style="flex:1 1 auto; display:flex; align-items:center; justify-content:center; overflow:hidden;">
+            <img src="@CurrentUrl" alt="@Alt" @onclick="() => { if (Images != null && Images.Count > 1) Next(); }" style="max-width:100%; max-height:100%; object-fit:contain; border-radius:6px; cursor:@(Images != null && Images.Count > 1 ? "pointer" : "default");" />
+        </div>
+
+        @if (!string.IsNullOrEmpty(CurrentCaption))
+        {
+            <div style="color:#fff;opacity:0.9; text-align:center;">@CurrentCaption</div>
+        }
+
+        @if (Images != null && Images.Count > 1)
+        {
+            <div style="color:#fff; opacity:0.9; font-size:0.9rem; text-align:center;">@($"{CurrentIndex + 1} / {Images.Count}")</div>
+        }
+
+        <!-- Thumbnails: fixed height -->
+        <div style="display:flex; gap:8px; overflow-x:auto; padding-top:8px; height:80px; align-items:center;">
+            @if (Images != null)
+            {
+                @for (int i = 0; i < Images.Count; i++)
+                {
+                    var im = Images[i];
+                    <button class="thumb-btn" @onclick="() => GoTo(i)" style="border:none;background:transparent;padding:0;cursor:pointer;height:60px;">
+                        <img src="@(string.IsNullOrEmpty(im.UrlThumb) ? im.Url : im.UrlThumb)" alt="@im.Nombre" style="width:80px;height:60px;object-fit:cover;border-radius:4px;border:@(i==CurrentIndex?"2px solid #fff":"2px solid transparent");" />
+                    </button>
+                }
+            }
+        </div>
+
+        <!-- Footer with close button aligned to bottom-right -->
+        <div style="width:100%; display:flex; justify-content:flex-end; padding-top:8px;">
+            <RadzenButton ButtonStyle="ButtonStyle.Secondary" Text="Cerrar" Click="Cerrar" />
+        </div>
+    </div>
+</div>
+
+@code{
+    [Parameter] public List<AdmIn.Common.Entidades.Imagen>? Images { get; set; }
+    [Parameter] public int CurrentIndex { get; set; } = 0;
+    [Parameter] public string? Alt { get; set; }
+    // Accept single image Url as alternative to passing a List<Imagen>
+    [Parameter] public string? Url { get; set; }
+
+    private string CurrentUrl => Images != null && Images.Count > 0 && CurrentIndex >= 0 && CurrentIndex < Images.Count ? (string.IsNullOrEmpty(Images[CurrentIndex].Url) ? "/images/placeholder.jpg" : (Images[CurrentIndex].Url.StartsWith("http") ? Images[CurrentIndex].Url : "/" + Images[CurrentIndex].Url.TrimStart('/'))) : "/images/placeholder.jpg";
+    private string CurrentCaption => Images != null && Images.Count > 0 && CurrentIndex >= 0 && CurrentIndex < Images.Count ? Images[CurrentIndex].Nombre : string.Empty;
+
+    protected override void OnParametersSet()
+    {
+        // If caller passed a single Url (older code), convert to a single-item Images list
+        if ((Images == null || Images.Count == 0) && !string.IsNullOrEmpty(Url))
+        {
+            Images = new List<Imagen>
+            {
+                new Imagen
+                {
+                    Id = Guid.NewGuid(),
+                    Nombre = Alt ?? string.Empty,
+                    Descripcion = string.Empty,
+                    FechaCreacion = DateTime.Now,
+                    Url = Url,
+                    UrlThumb = Url
+                }
+            };
+            CurrentIndex = 0;
+        }
+
+        if (Images == null) Images = new List<Imagen>();
+        if (CurrentIndex < 0) CurrentIndex = 0;
+        if (Images.Count > 0 && CurrentIndex >= Images.Count) CurrentIndex = Images.Count - 1;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                // focus container to allow keyboard navigation
+                await JSRuntime.InvokeVoidAsync("eval", "(function(){ var el = document.getElementById('imgLightboxContainer'); if(el) el.focus(); })()");
+            }
+            catch { }
+        }
+    }
+
+    private void HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e == null) return;
+        if (e.Key == "ArrowLeft") Prev();
+        else if (e.Key == "ArrowRight") Next();
+        else if (e.Key == "Escape") Cerrar();
+    }
+
+    private void Prev()
+    {
+        if (Images == null || Images.Count == 0) return;
+        CurrentIndex = (CurrentIndex - 1 + Images.Count) % Images.Count;
+        StateHasChanged();
+    }
+
+    private void Next()
+    {
+        if (Images == null || Images.Count == 0) return;
+        CurrentIndex = (CurrentIndex + 1) % Images.Count;
+        StateHasChanged();
+    }
+
+    private void GoTo(int idx)
+    {
+        if (Images == null) return;
+        CurrentIndex = Math.Clamp(idx, 0, Images.Count - 1);
+        StateHasChanged();
+    }
+
+    private void Cerrar()
+    {
+        DialogService.Close(true);
+    }
+}

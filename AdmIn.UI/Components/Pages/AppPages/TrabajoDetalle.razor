@@ -120,67 +120,64 @@
                             </RadzenStack>
                         </RadzenCard>
 
-                        <!-- Historial card moved under description (same width as description) -->
+                        <!-- Costs card moved under description -->
                         <RadzenCard Class="info-card">
-                            <RadzenText TextStyle="TextStyle.H6" Text="Historial" />
+                            <RadzenStack Gap="0.5rem">
+                                <RadzenRow>
+                                    <RadzenColumn Size="6">
+                                        <div class="label">Costo presupuestado</div>
+                                        <div class="value estimate">@(trabajo.CostoAproximado?.ToString("C") ?? "-")</div>
+                                    </RadzenColumn>
+                                    <RadzenColumn Size="6">
+                                        <div class="label">Costo acumulado</div>
+                                        <div id="costo-acumulado" title="@($"A cargo del inquilino: {TotalInquilino:C}\nA cargo del propietario: {TotalPropietario:C}")" class="value cost">@CostoAcumulado.ToString("C")</div>
+                                    </RadzenColumn>
+                                </RadzenRow>
 
-                            @if (historial == null || !historial.Any())
-                            {
-                                <div>No hay historial</div>
-                            }
-                            else
-                            {
-                                <div class="historial-list">
-                                    @foreach (var h in historial)
-                                    {
-                                        <div class="historial-item">
-                                            <div class="hist-date">@h.Fecha.ToString("g")</div>
-                                            <div class="hist-body">
-                                                <div class="hist-state">@h.Estado</div>
-                                                <div class="hist-comment">@h.Comentario</div>
-                                            </div>
-                                        </div>
-                                    }
-                                </div>
-                            }
+                                <RadzenRow>
+                                    <RadzenColumn Size="6">
+                                        <div class="label">A cargo del inquilino</div>
+                                        <div class="value">@TotalInquilino.ToString("C")</div>
+                                    </RadzenColumn>
+                                    <RadzenColumn Size="6">
+                                        <div class="label">A cargo del propietario</div>
+                                        <div class="value">@TotalPropietario.ToString("C")</div>
+                                    </RadzenColumn>
+                                </RadzenRow>
+
+                                <!-- formula row removed: tooltip provides breakdown -->
+
+                            </RadzenStack>
                         </RadzenCard>
 
+                        
                     </RadzenStack>
                 </RadzenColumn>
             </RadzenRow>
 
-            <!-- Costos / Acciones card moved to full width below -->
-            <RadzenCard Class="info-card full-width-card">
-                <RadzenStack Gap="0.5rem">
-                    <RadzenRow>
-                        <RadzenColumn Size="6">
-                            <div class="label">Costo acumulado</div>
-                            <div class="value cost">@CostoAcumulado.ToString("C")</div>
-                        </RadzenColumn>
-                        <RadzenColumn Size="6">
-                            <div class="label">Costo presupuestado</div>
-                            <div class="value estimate">@(trabajo.CostoAproximado?.ToString("C") ?? "-")</div>
-                        </RadzenColumn>
-                    </RadzenRow>
+            <!-- Historial card moved to full width (below main row) -->
+            <RadzenCard Class="info-card">
+                <RadzenText TextStyle="TextStyle.H6" Text="Historial" />
 
-                    <div class="label">Fecha Inicio</div>
-                    <div class="value">@(trabajo.FechaInicio?.ToString("g") ?? "-")</div>
-
-                    <div class="actions" style="justify-content:flex-end;">
-                        @if (puedeAceptar)
+                @if (historial == null || !historial.Any())
+                {
+                    <div>No hay historial</div>
+                }
+                else
+                {
+                    <div class="historial-list">
+                        @foreach (var h in historial)
                         {
-                            <RadzenButton ButtonStyle="ButtonStyle.Success" Click="AbrirDialogoAceptar">ACEPTAR TRABAJO</RadzenButton>
-                        }
-                        @if (puedeAgregarDetalle)
-                        {
-                            <RadzenButton Click="AgregarDetalle">Agregar detalle</RadzenButton>
-                        }
-                        @if (puedeFinalizar)
-                        {
-                            <RadzenButton ButtonStyle="ButtonStyle.Primary" Click="Finalizar">Finalizar</RadzenButton>
+                            <div class="historial-item">
+                                <div class="hist-date">@h.Fecha.ToString("g")</div>
+                                <div class="hist-body">
+                                    <div class="hist-state">@h.Estado</div>
+                                    <div class="hist-comment">@h.Comentario</div>
+                                </div>
+                            </div>
                         }
                     </div>
-                </RadzenStack>
+                }
             </RadzenCard>
 
             <!-- Listado de detalles cargados -->
@@ -198,26 +195,20 @@
                         {
                             <RadzenCard Class="detalle-item">
                                 <div class="detalle-header">
-                                    <div><strong>@d.Fecha.ToString("g")</strong></div>
-                                    <div class="detalle-costo">@d.Costo.ToString("C")</div>
-                                </div>
-                                <div class="detalle-body">
-                                    <div class="descripcion">@d.Descripcion</div>
+                                    <div class="detalle-left">
+                                        <div><strong>@d.Fecha.ToString("g")</strong></div>
+                                        <div class="detalle-desc-compact">@d.Descripcion</div>
+                                    </div>
 
-                                    @if (d.Imagenes != null && d.Imagenes.Any())
-                                    {
-                                        <div class="detalle-imagenes mt-2 d-flex gap-2">
-                                            @foreach (var img in d.Imagenes)
-                                            {
-                                                <img src="@(string.IsNullOrEmpty(img.Url) ? "/images/placeholder.jpg" : (img.Url.StartsWith("http") ? img.Url : "/" + img.Url.TrimStart('/')))" alt="@img.Nombre" style="width:120px;height:90px;object-fit:cover;border-radius:6px;border:1px solid #e9ecef;" />
-                                            }
+                                    <div class="detalle-right">
+                                        <div class="detalle-costo">@d.Costo.ToString("C")</div>
+                                        <div class="detalle-responsable">@GetResponsableLabel(d)</div>
+                                        <div class="detalle-actions">
+                                            <RadzenButton Size="ButtonSize.Small" Click="@(async () => MostrarDetalle(d))">Ver</RadzenButton>
                                         </div>
-                                    }
-
-                                    <div style="margin-top:8px; display:flex; gap:8px; justify-content:flex-end;">
-                                        <RadzenButton Size="ButtonSize.Small" Click="@(async () => MostrarDetalle(d))">Ver</RadzenButton>
                                     </div>
                                 </div>
+                                <!-- remove previous body (description + button moved into header) -->
                             </RadzenCard>
                         }
                     </div>
@@ -268,12 +259,22 @@
     .card-label { width:110px; color:#6b7280; font-weight:700; font-size:0.85rem; }
     .card-data { color:#111827; font-weight:400; font-size:0.95rem; }
 
-    .detalles-list { display:flex; flex-direction:column; gap:0.75rem; }
-    .detalle-item { padding:0.5rem; }
-    .detalle-header { display:flex; justify-content:space-between; align-items:center; }
-    .detalle-costo { color:#059669; font-weight:700; }
-    .detalle-body .descripcion { margin-top:0.5rem; }
-    .detalle-imagenes img { border-radius:6px; }
+    /* Compact adjustments for detalles list to reduce vertical space */
+    .detalles-list { display:flex; flex-direction:column; gap:0.5rem; }
+    .detalle-item { padding:0.45rem; }
+    .detalle-header { display:flex; justify-content:space-between; align-items:flex-start; gap:0.75rem; }
+    .detalle-left { display:flex; flex-direction:column; gap:0.25rem; flex:1 1 auto; }
+    .detalle-desc-compact { margin-top:4px; font-size:0.95rem; color:#374151; max-height:3.2rem; overflow:hidden; text-overflow:ellipsis; }
+    .detalle-right { display:flex; flex-direction:column; align-items:flex-end; gap:6px; min-width:140px; }
+    .detalle-responsable { font-size:0.85rem; color:#6b7280; }
+    .detalle-actions { margin-top:4px; }
+
+    .formula { display:flex; align-items:center; justify-content:center; gap:8px; font-size:0.95rem; color:#374151; padding-top:6px; }
+    .formula .term { font-weight:700; }
+    .formula .inquilino { color: var(--rz-success); } /* green */
+    .formula .propietario { color: #f59e0b; } /* orange */
+    .formula .plus, .formula .equals { color:#6b7280; font-weight:600; }
+    .formula .total { color:#059669; font-weight:800; }
 </style>
 
 @code{
@@ -300,10 +301,47 @@
     private string? usuarioSolicitante;
 
     private decimal CostoAcumulado => (detalles?.Sum(d => d.Costo) ?? 0m);
+    private decimal TotalInquilino => (detalles?.Where(d => ResponsableEsInquilino(d)).Sum(d => d.Costo) ?? 0m);
+    private decimal TotalPropietario => (detalles?.Where(d => !ResponsableEsInquilino(d)).Sum(d => d.Costo) ?? 0m);
 
     protected override async Task OnInitializedAsync()
     {
         await Cargar();
+    }
+
+    private bool InmuebleOcupado()
+    {
+        try
+        {
+            if (inmueble == null) return false;
+            if (inmueble.Contratos == null) return false;
+            var now = DateTime.UtcNow;
+            return inmueble.Contratos.Any(c => c.InquilinoId != 0 && (string.IsNullOrEmpty(c.Estado) || c.Estado.Equals("Activo", StringComparison.OrdinalIgnoreCase) || (c.FechaInicio.HasValue && c.FechaInicio.Value <= now && (!c.FechaFin.HasValue || c.FechaFin.Value >= now))));
+        }
+        catch { return false; }
+    }
+
+    private bool ResponsableEsInquilino(DetalleTrabajo d)
+    {
+        // If estado empty -> depends on inmueble occupancy
+        var estado = (d?.Estado ?? string.Empty).Trim();
+        if (string.IsNullOrEmpty(estado)) return InmuebleOcupado();
+
+        if (estado.IndexOf("inquilino", StringComparison.OrdinalIgnoreCase) >= 0) return true;
+        if (estado.IndexOf("propietario", StringComparison.OrdinalIgnoreCase) >= 0) return false;
+        // fallback: if contains reasignado logic, treat accordingly
+        return InmuebleOcupado();
+    }
+
+    private string GetResponsableLabel(DetalleTrabajo d)
+    {
+        var estado = (d?.Estado ?? string.Empty).Trim();
+        if (string.IsNullOrEmpty(estado)) return InmuebleOcupado() ? "Asignado Inquilino" : "Asignado Propietario";
+        if (estado.Equals("Reasignado Inquilino", StringComparison.OrdinalIgnoreCase)) return "Reasignado Inquilino";
+        if (estado.Equals("Reasignado Propietario", StringComparison.OrdinalIgnoreCase)) return "Reasignado Propietario";
+        if (estado.IndexOf("inquilino", StringComparison.OrdinalIgnoreCase) >= 0) return "A cargo del inquilino";
+        if (estado.IndexOf("propietario", StringComparison.OrdinalIgnoreCase) >= 0) return "A cargo del propietario";
+        return estado;
     }
 
     private async Task Cargar()
@@ -326,13 +364,17 @@
         }
         catch { }
 
-        // cargar detalles asociados
+        // cargar detalles asociados usando endpoint por trabajo para incluir imagenes
         try
         {
-            var dres = await DetalleService.Obtener_todos();
+            var dres = await DetalleService.Obtener_por_trabajo(trabajo.Id);
             if (dres != null && dres.Correcto && dres.Datos != null)
             {
-                detalles = dres.Datos.Where(d => d.TrabajoProveedorId == trabajo.Id).ToList();
+                detalles = dres.Datos.ToList();
+            }
+            else
+            {
+                detalles = new List<DetalleTrabajo>();
             }
         }
         catch { detalles = new List<DetalleTrabajo>(); }
