@@ -160,6 +160,41 @@
     }
 </style>
 
+<script>
+    // Ensure helper exists for downloads (used by blazor components)
+    window.blazorDownloadFile = window.blazorDownloadFile || function (filename, contentType, base64Data) {
+        try {
+            var link = document.createElement('a');
+            link.href = 'data:' + (contentType || 'application/octet-stream') + ';base64,' + base64Data;
+            link.download = filename || 'download';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } catch (e) {
+            console.error('blazorDownloadFile error', e);
+        }
+    };
+
+    window.openBlobFromBase64 = window.openBlobFromBase64 || function (contentType, base64Data) {
+        try {
+            var byteCharacters = atob(base64Data);
+            var byteNumbers = new Array(byteCharacters.length);
+            for (var i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            var byteArray = new Uint8Array(byteNumbers);
+            var blob = new Blob([byteArray], { type: contentType });
+            var url = URL.createObjectURL(blob);
+            window.open(url, '_blank');
+            // Optionally revoke object URL after some time
+            setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
+        } catch (e) {
+            console.error('openBlobFromBase64 error', e);
+            alert('No se pudo abrir el documento en nueva pestaña.');
+        }
+    };
+</script>
+
 @code {
     bool sidebar1Expanded = true;
     string footerText = $"Sistema de administración de inmuebles - {DateTime.Now.Year}";

@@ -79,7 +79,7 @@
                                 </div>
                                 <div class="d-flex gap-2">
                                     <RadzenButton Text="Ver" Icon="visibility" Size="ButtonSize.Small" Click="@(()=> ViewTrabajo(t.Id))" />
-                                    @if (isProveedorContext && t.Estado != "En ejecución" && t.Estado != "Finalizado")
+                                    @if (PuedeAceptarTrabajo(t))
                                     {
                                         <RadzenButton Text="Aceptar" ButtonStyle="ButtonStyle.Success" Size="ButtonSize.Small" Click="@(()=> AceptarTrabajo(t.Id))" />
                                     }
@@ -229,5 +229,16 @@
         {
             NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Excepción", Detail = ex.Message });
         }
+    }
+
+    private bool PuedeAceptarTrabajo(TrabajoProveedor t)
+    {
+        // Solo mostrar botón si el usuario actual tiene el rol 'proveedor' (no admin), el trabajo está asignado a este proveedor específico,
+        // y el estado permite aceptarlo
+        if (!isProveedorContext) return false; // require proveedor role
+        if (!proveedorIdForUser.HasValue) return false;
+        if (t.ProveedorId != proveedorIdForUser.Value) return false;
+        if (t.Estado != TrabajoEstados.Creado && t.Estado != TrabajoEstados.Solicitado) return false;
+        return true;
     }
 }

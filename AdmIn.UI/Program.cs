@@ -44,6 +44,11 @@ builder.Services.AddScoped<IServ_TipoServicio, Serv_TipoServicio>();
 builder.Services.AddScoped<IServ_Proveedor, Serv_Proveedor>();
 builder.Services.AddScoped<IServ_Imagen, Serv_Imagen>();
 builder.Services.AddScoped<IServ_TrabajoProveedor, Serv_TrabajoProveedor>();
+builder.Services.AddScoped<IServ_CalificacionProveedor, Serv_CalificacionProveedor>();
+
+// Radzen services
+builder.Services.AddScoped<DialogService>();
+builder.Services.AddScoped<NotificationService>();
 builder.Services.AddScoped<IServ_Notificacion, Serv_Notificacion>();
 builder.Services.AddScoped<IServ_HistorialTrabajo, Serv_HistorialTrabajo>();
 builder.Services.AddScoped<IServ_HistorialDetalleTrabajo, Serv_HistorialDetalleTrabajo>();

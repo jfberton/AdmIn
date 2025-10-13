@@ -70,10 +70,10 @@ namespace AdmIn.Data.Repositorios
             using var transaccion = conexion.BeginTransaction();
             try
             {
-                var sql = @"UPDATE TrabajoProveedor SET InmuebleId=@InmuebleId, ProveedorId=@ProveedorId, Fecha=@Fecha, Descripcion=@Descripcion, Estado=@Estado, Costo=@Costo, Contratoid=@Contratoid, FacturaURL=@FacturaURL, FechaCreacion=@FechaCreacion, UsuarioCreadorId=@UsuarioCreadorId, FechaInicio=@FechaInicio, CostoAproximado=@CostoAproximado
-                            OUTPUT INSERTED.TrabajoProveedorId as Id, INSERTED.InmuebleId, INSERTED.ProveedorId, INSERTED.Fecha, INSERTED.Descripcion, INSERTED.Estado, INSERTED.Costo, INSERTED.Contratoid, INSERTED.FacturaURL, INSERTED.FechaCreacion, INSERTED.UsuarioCreadorId as UsuarioCreador, INSERTED.FechaInicio, INSERTED.CostoAproximado
+                var sqlUpdate = @"UPDATE TrabajoProveedor SET InmuebleId=@InmuebleId, ProveedorId=@ProveedorId, Fecha=@Fecha, Descripcion=@Descripcion, Estado=@Estado, Costo=@Costo, Contratoid=@Contratoid, FacturaURL=@FacturaURL, FechaCreacion=@FechaCreacion, UsuarioCreadorId=@UsuarioCreadorId, FechaInicio=@FechaInicio, CostoAproximado=@CostoAproximado
                             WHERE TrabajoProveedorId=@Id;";
-                var actualizado = await conexion.QuerySingleOrDefaultAsync<TrabajoProveedor>(sql, new {
+
+                var filas = await conexion.ExecuteAsync(sqlUpdate, new {
                     Id = trabajo.Id,
                     trabajo.InmuebleId,
                     trabajo.ProveedorId,
@@ -83,13 +83,35 @@ namespace AdmIn.Data.Repositorios
                     trabajo.Costo,
                     trabajo.Contratoid,
                     trabajo.FacturaURL,
-                    trabajo.FechaCreacion,
+                    FechaCreacion = trabajo.FechaCreacion,
                     UsuarioCreadorId = trabajo.UsuarioCreador,
                     trabajo.FechaInicio,
                     trabajo.CostoAproximado
                 }, transaccion);
+
+                if (filas == 0)
+                    throw new Exception("No se pudo actualizar el trabajo (filas afectadas = 0).");
+
+                // Obtener la fila actualizada
+                var sqlSelect = "SELECT TrabajoProveedorId as Id, InmuebleId, ProveedorId, Fecha, Descripcion, Estado, Costo, Contratoid, FacturaURL, FechaCreacion, UsuarioCreadorId as UsuarioCreador, FechaInicio, CostoAproximado FROM TrabajoProveedor WHERE TrabajoProveedorId=@Id;";
+                var actualizado = await conexion.QuerySingleOrDefaultAsync<TrabajoProveedor>(sqlSelect, new { Id = trabajo.Id }, transaccion);
+
                 if (actualizado == null)
-                    throw new Exception("No se pudo actualizar el trabajo.");
+                    throw new Exception("No se pudo recuperar el trabajo actualizado.");
+
+                // If images provided in the request, update associations (simple approach: ensure relation table exists and insert any new associations)
+                if (trabajo.Imagenes != null && trabajo.Imagenes.Any())
+                {
+                    var insertRelSql = "IF NOT EXISTS (SELECT 1 FROM TrabajoProveedor_Imagen WHERE TrabajoProveedorId=@TrabajoProveedorId AND ImagenId=@ImagenId) INSERT INTO TrabajoProveedor_Imagen (TrabajoProveedorId, ImagenId) VALUES (@TrabajoProveedorId, @ImagenId);";
+                    foreach (var img in trabajo.Imagenes)
+                    {
+                        if (img?.Id != Guid.Empty)
+                        {
+                            await conexion.ExecuteAsync(insertRelSql, new { TrabajoProveedorId = actualizado.Id, ImagenId = img.Id }, transaccion);
+                        }
+                    }
+                }
+
                 transaccion.Commit();
                 return new DTO<TrabajoProveedor> { Correcto = true, Datos = actualizado, Mensaje = "Trabajo actualizado correctamente." };
             }

@@ -2,6 +2,7 @@
 @using AdmIn.Common.Entidades
 @using AdmIn.UI.Services
 @using AdmIn.UI.Components.Pages.AppPages.Dialogos
+@using AdmIn.UI.Components.Shared
 @inject IServ_TrabajoProveedor TrabajoService
 @inject IServ_HistorialTrabajo HistorialService
 @inject IServ_DetalleTrabajo DetalleService
@@ -13,6 +14,10 @@
 @inject IServ_Inmueble InmuebleService
 @inject IServ_Usuario UsuarioService
 @using AdmIn.Common
+@inject IHttpClientFactory HttpClientFactory
+@inject AdmIn.UI.Services.UtilityServices.ITokenService TokenService
+@inject IJSRuntime JSRuntime
+@inject IServ_CalificacionProveedor CalificacionService
 
 <PageTitle>Detalle Trabajo</PageTitle>
 
@@ -32,6 +37,42 @@
                 <div class="meta-wrap">
                     <div class="meta-item"><strong>Solicitado:</strong> @trabajo.Fecha.ToString("g")</div>
                     <div class="meta-item"><strong>Creado por:</strong> @(usuarioSolicitante ?? "-")</div>
+                </div>
+
+                <!-- Actions for provider/admin depending on permissions -->
+                <div class="actions">
+                    @if (puedeAceptar)
+                    {
+                        <RadzenButton ButtonStyle="ButtonStyle.Primary" Text="Aceptar trabajo" Click="@(async () => await AbrirAceptarDialog(trabajo))" />
+                        <RadzenButton ButtonStyle="ButtonStyle.Secondary" Text="Rechazar solicitud" Click="@(async () => await AbrirRechazarDialog())" Style="margin-left:8px;" />
+                    }
+
+                    @* Reordered buttons: Agregar detalle, Agregar documento, Finalizar trabajo *@
+                    @if (puedeAgregarDetalle)
+                    {
+                        <RadzenButton ButtonStyle="ButtonStyle.Secondary" Text="Agregar detalle" Click="@(async () => await AbrirAgregarDetalle())" Style="margin-left:8px;" />
+                    }
+
+                    @if (puedeAgregarDocumento)
+                    {
+                        <RadzenButton ButtonStyle="ButtonStyle.Primary" Text="Agregar documento" Click="@(async () => await SubirDocumento())" Style="margin-left:8px;" />
+                    }
+
+                    @if (puedeFinalizar)
+                    {
+                        <RadzenButton ButtonStyle="ButtonStyle.Danger" Text="Finalizar trabajo" Click="@(async () => await AbrirFinalizarDialog())" Style="margin-left:8px;" />
+                    }
+
+                    @if (puedeRevisarFinalizacion)
+                    {
+                        <RadzenButton ButtonStyle="ButtonStyle.Primary" Text="Revisar finalización" Click="@(async () => await AbrirRevisarFinalizacionDialog())" Style="margin-left:8px;" />
+                    }
+
+                    @* Cancelar trabajo should be always available to owner/admin *@
+                    @if (puedeCancelar)
+                    {
+                        <RadzenButton ButtonStyle="ButtonStyle.Secondary" Text="Cancelar trabajo" Click="@(async () => await AbrirConfirmarCancelarDialog())" Style="margin-left:8px;" />
+                    }
                 </div>
             </div>
 
@@ -73,42 +114,69 @@
                             </div>
                         </RadzenCard>
 
-                        <!-- Proveedor compact card -->
-                        <RadzenCard Class="info-card compact">
-                            <div class="card-title">Proveedor #@(proveedor?.Id ?? trabajo.ProveedorId) - Nombre: @(proveedor?.Nombre ?? proveedorNombre ?? "-")</div>
-                            <div class="card-body">
-                                <div class="card-row">
-                                    <div class="card-label">Dirección</div>
-                                    <div class="card-data">@(proveedor?.Direccion ?? proveedorDireccion ?? "-")</div>
-                                </div>
-
-                                <div class="card-row">
-                                    <div class="card-label">Email</div>
-                                    <div class="card-data contact-data">
-                                        @if (!string.IsNullOrWhiteSpace(proveedor?.Email ?? proveedorEmail))
-                                        {
-                                            <a href="mailto:@(proveedor?.Email ?? proveedorEmail)">@(proveedor?.Email ?? proveedorEmail)</a>
-                                        }
-                                        else
-                                        {
-                                            <span>-</span>
-                                        }
+                        <!-- Proveedor: si hay proveedor asignado, mostrar tarjeta; si no, ofrecer botón para abrir popup -->
+                        @if (trabajo.ProveedorId.HasValue && trabajo.ProveedorId.Value != 0 && proveedor != null)
+                        {
+                            <RadzenCard Class="info-card compact">
+                                <div class="card-title">Proveedor #@(proveedor?.Id ?? trabajo.ProveedorId) - Nombre: @(proveedor?.Nombre ?? proveedorNombre ?? "-")</div>
+                                <div class="card-body">
+                                    <div class="card-row">
+                                        <div class="card-label">Dirección</div>
+                                        <div class="card-data">@(proveedor?.Direccion ?? proveedorDireccion ?? "-")</div>
                                     </div>
 
-                                    <div class="card-label small-label">Teléfono</div>
-                                    <div class="card-data contact-data">
-                                        @if (!string.IsNullOrWhiteSpace(proveedor?.Telefono ?? proveedorTelefono))
-                                        {
-                                            <a href="tel:@(proveedor?.Telefono ?? proveedorTelefono)">@(proveedor?.Telefono ?? proveedorTelefono)</a>
-                                        }
-                                        else
-                                        {
-                                            <span>-</span>
-                                        }
+                                    <div class="card-row">
+                                        <div class="card-label">Email</div>
+                                        <div class="card-data contact-data">
+                                            @if (!string.IsNullOrWhiteSpace(proveedor?.Email ?? proveedorEmail))
+                                            {
+                                                <a href="mailto:@(proveedor?.Email ?? proveedorEmail)">@(proveedor?.Email ?? proveedorEmail)</a>
+                                            }
+                                            else
+                                            {
+                                                <span>-</span>
+                                            }
+                                        </div>
+
+                                        <div class="card-label small-label">Teléfono</div>
+                                        <div class="card-data contact-data">
+                                            @if (!string.IsNullOrWhiteSpace(proveedor?.Telefono ?? proveedorTelefono))
+                                            {
+                                                <a href="tel:@(proveedor?.Telefono ?? proveedorTelefono)">@(proveedor?.Telefono ?? proveedorTelefono)</a>
+                                            }
+                                            else
+                                            {
+                                                <span>-</span>
+                                            }
+                                        </div>
+                                    </div>
+
+                                    <div class="card-row" style="margin-top:8px; align-items:center; gap:8px;">
+                                        <div style="font-weight:700;">Calificación:</div>
+                                        <div style="display:flex; align-items:center; gap:8px;">
+                                            <RadzenRating Value="@((int)System.Math.Round((double)(proveedor?.CalificacionPromedio ?? 0m)))" Max="5" ReadOnly="true" Style="height:20px;" />
+                                            <div style="color:#6b7280; font-size:0.9rem;">(@(proveedor?.TrabajosRealizados ?? 0) trabajos)</div>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        </RadzenCard>
+                            </RadzenCard>
+                        }
+                        else
+                        {
+                            <RadzenCard Class="info-card compact">
+                                <div class="card-title">No hay proveedor encargado</div>
+                                <div class="card-body">
+                                    <div>No se ha asignado ningún proveedor a este trabajo.</div>
+
+                                    @if (puedeAsignarProveedor)
+                                    {
+                                        <div style="margin-top:8px;">
+                                            <RadzenButton ButtonStyle="ButtonStyle.Primary" Text="Asignar proveedor y solicitar" Click="@(async () => await MostrarProveedorPicker())" />
+                                        </div>
+                                    }
+                                </div>
+                            </RadzenCard>
+                        }
 
                         <!-- Descripción card -->
                         <RadzenCard Class="info-card">
@@ -159,6 +227,7 @@
             <RadzenCard Class="info-card">
                 <RadzenText TextStyle="TextStyle.H6" Text="Historial" />
 
+
                 @if (historial == null || !historial.Any())
                 {
                     <div>No hay historial</div>
@@ -184,6 +253,7 @@
             <RadzenCard>
                 <RadzenText TextStyle="TextStyle.H6" Text="Detalles del trabajo" />
 
+
                 @if (detalles == null || !detalles.Any())
                 {
                     <div>No hay detalles cargados</div>
@@ -194,31 +264,99 @@
                         @foreach (var d in detalles.OrderByDescending(d => d.Fecha))
                         {
                             <RadzenCard Class="detalle-item">
-                                <div class="detalle-header">
-                                    <div class="detalle-left">
-                                        <div><strong>@d.Fecha.ToString("g")</strong></div>
-                                        <div class="detalle-desc-compact">@d.Descripcion</div>
-                                    </div>
+                                <div class="detalle-row">
+                                    <div class="detalle-date">@d.Fecha.ToString("g")</div>
 
-                                    <div class="detalle-right">
-                                        <div class="detalle-costo">@d.Costo.ToString("C")</div>
-                                        <div class="detalle-responsable">@GetResponsableLabel(d)</div>
-                                        <div class="detalle-actions">
-                                            <RadzenButton Size="ButtonSize.Small" Click="@(async () => MostrarDetalle(d))">Ver</RadzenButton>
+                                    <div class="detalle-body">
+                                        <div class="detalle-firstline">
+                                            <div class="detalle-desc">@d.Descripcion</div>
+                                            <div class="detalle-costo">@d.Costo.ToString("C")</div>
+                                        </div>
+
+                                        <div class="detalle-secondline">
+                                            <div class="detalle-responsable">@GetResponsableLabel(d)</div>
+                                            <div class="detalle-actions">
+                                                <RadzenButton Size="ButtonSize.Small" Click="@(async () => MostrarDetalle(d))">Ver</RadzenButton>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                                <!-- remove previous body (description + button moved into header) -->
                             </RadzenCard>
                         }
                     </div>
                 }
             </RadzenCard>
-        </RadzenStack>
-    }
-</RadzenCard>
 
-<style>
+            <!-- Documents card -->
+            <RadzenCard Class="info-card">
+                <RadzenText TextStyle="TextStyle.H6" Text="Documentos" />
+
+
+                @* Upload button removed from Documents card; upload is available in header for permitted users *@
+                <!--<div class="document-upload">
+                    <RadzenButton Text="Subir documento" Click="SubirDocumento" />
+                </div>-->
+
+                @if (documentos == null || !documentos.Any())
+                {
+                    <div>No hay documentos</div>
+                }
+                else
+                {
+                    <ul class="document-list">
+                        @foreach (var doc in documentos)
+                        {
+                            <li>
+                                <div class="doc-row">
+                                    <div class="doc-date">@doc.FechaSubida.ToString("g")</div>
+
+                                    <div class="doc-body">
+                                        <div class="doc-firstline">
+                                            <div class="doc-desc">@(!string.IsNullOrWhiteSpace(doc.Descripcion) ? doc.Descripcion : (string.IsNullOrWhiteSpace(doc.NombreArchivo) ? "Documento" : doc.NombreArchivo))</div>
+                                        </div>
+
+                                        <div class="doc-secondline">
+                                            <div class="doc-meta-line">
+                                                <span class="doc-uploader-meta">@(string.IsNullOrWhiteSpace(doc.NombreSubidor) ? "-" : doc.NombreSubidor)</span>
+                                                <span class="doc-sep"> &nbsp;-&nbsp; </span>
+                                                <span class="doc-info-meta">@GetFileTypeLabel(doc)</span>
+                                            </div>
+                                            <div class="doc-actions">
+                                                <RadzenButton Size="ButtonSize.Small" Click="@(async () => await AbrirPreview(doc))">Ver</RadzenButton>
+                                            </div>
+                                        </div>
+                                     </div>
+                                 </div>
+                             </li>
+                         }
+                     </ul>
+                 }
+             </RadzenCard>
+
+            @* Calificación del proveedor (mostrar si existe) *@
+            @if (trabajo != null && (trabajo.Estado == TrabajoEstados.Finalizado || trabajo.Estado == TrabajoEstados.FinalizacionAceptadaConObservaciones) && calificacion != null)
+            {
+                <RadzenCard Class="info-card">
+                    <RadzenText TextStyle="TextStyle.H6" Text="Calificación del proveedor" />
+                    <div style="display:flex;align-items:center;gap:12px;margin-top:8px;">
+                        <RadzenRating Value="calificacion.Valor" Max="5" ReadOnly="true" Style="height:36px;" />
+                        <div>
+                            <div style="font-weight:700;">@(calificacionUsuarioName ?? "Usuario")</div>
+                            <div style="color:#6b7280;font-size:0.95rem;">@calificacion.Fecha.ToString("g")</div>
+                        </div>
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(calificacion.Comentario))
+                    {
+                        <div style="margin-top:8px; white-space:pre-wrap;">@calificacion.Comentario</div>
+                    }
+                </RadzenCard>
+            }
+
+        </RadzenStack>
+     }
+ </RadzenCard>
+ 
+ <style>
     .trabajo-detalle-card { padding: 1rem; }
     .header-row { display:flex; justify-content:space-between; align-items:center; gap:1rem; }
     .title-wrap { display:flex; align-items:center; gap:1rem; }
@@ -261,23 +399,127 @@
 
     /* Compact adjustments for detalles list to reduce vertical space */
     .detalles-list { display:flex; flex-direction:column; gap:0.5rem; }
-    .detalle-item { padding:0.45rem; }
-    .detalle-header { display:flex; justify-content:space-between; align-items:flex-start; gap:0.75rem; }
-    .detalle-left { display:flex; flex-direction:column; gap:0.25rem; flex:1 1 auto; }
-    .detalle-desc-compact { margin-top:4px; font-size:0.95rem; color:#374151; max-height:3.2rem; overflow:hidden; text-overflow:ellipsis; }
-    .detalle-right { display:flex; flex-direction:column; align-items:flex-end; gap:6px; min-width:140px; }
+    /* Make detalle items visually match historial items */
+    .detalle-item { padding:0.75rem; border-left:4px solid #e7f1ff; background:#fafafa; border-radius:6px; }
+
+    .detalle-row { display:flex; gap:1rem; align-items:flex-start; }
+    .detalle-date { min-width:140px; font-size:0.85rem; color:#6b7280; }
+    
+    .detalle-body { flex:1 1 auto; display:flex; flex-direction:column; gap:6px; }
+    .detalle-firstline { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+    .detalle-desc { font-weight:700; color:#111827; font-size:0.95rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .detalle-costo { font-weight:700; color:#111827; min-width:120px; text-align:right; }
+
+    .detalle-secondline { display:flex; justify-content:space-between; align-items:center; gap:8px; }
     .detalle-responsable { font-size:0.85rem; color:#6b7280; }
-    .detalle-actions { margin-top:4px; }
+    .detalle-actions { margin-left:8px; }
 
-    .formula { display:flex; align-items:center; justify-content:center; gap:8px; font-size:0.95rem; color:#374151; padding-top:6px; }
-    .formula .term { font-weight:700; }
-    .formula .inquilino { color: var(--rz-success); } /* green */
-    .formula .propietario { color: #f59e0b; } /* orange */
-    .formula .plus, .formula .equals { color:#6b7280; font-weight:600; }
-    .formula .total { color:#059669; font-weight:800; }
-</style>
+     .formula { display:flex; align-items:center; justify-content:center; gap:8px; font-size:0.95rem; color:#374151; padding-top:6px; }
+     .formula .term { font-weight:700; }
+     .formula .inquilino { color: var(--rz-success); } /* green */
+     .formula .propietario { color: #f59e0b; } /* orange */
+     .formula .plus, .formula .equals { color:#6b7280; font-weight:600; }
+     .formula .total { color:#059669; font-weight:800; }
 
-@code{
+     /* small styles for documents section */
+     .document-upload { display:flex; gap:8px; align-items:center; margin-bottom:8px; }
+     .document-list { list-style:none; padding:0; margin:0; }
+     /* Make document rows match historial visual style with date column */
+     .doc-row { display:flex; gap:1rem; align-items:flex-start; padding:12px; border-left:4px solid #e5e7eb; background:#fafafa; border-radius:6px; margin-bottom:8px; }
+     .doc-date { min-width:140px; font-size:0.85rem; color:#6b7280; }
+     .doc-body { flex:1 1 auto; display:flex; flex-direction:column; gap:6px; }
+     .doc-firstline { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+     .doc-desc { font-weight:700; color:#111827; font-size:0.95rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+     .doc-actions { display:flex; gap:12px; justify-content:flex-end; align-items:center; }
+     .doc-actions a { cursor:pointer; color:var(--rz-primary); }
+
+     .doc-secondline { display:flex; justify-content:space-between; align-items:center; color:#6b7280; font-size:0.85rem; }
+     .doc-uploader { color:#374151; font-size:0.95rem; }
+     .doc-info { font-size:0.85rem; color:#6b7280; }
+
+     /* Single-line meta style matching detalle state but not bold */
+     .doc-meta-line { font-weight:400; font-size:0.85rem; color:#6b7280; display:flex; align-items:center; gap:8px; }
+     .doc-uploader-meta { color:#374151; font-weight:400; }
+     .doc-info-meta { color:#6b7280; font-weight:400; font-size:0.85rem; }
+     .doc-sep { color:#6b7280; }
+
+    .trabajo-detalle-card { }
+    .header-row { }
+    .title-wrap { }
+    .status-badge { }
+    .meta-wrap { }
+
+    .images-panel { }
+    .main-image img { }
+    .thumbs { }
+    .thumb-btn { }
+    .thumb-btn img { }
+    .thumb-btn img:hover { }
+    .no-images { }
+
+    .details-panel { }
+    .details-panel .row { }
+    .details-panel .row.two-cols { }
+    .label { }
+    .value { }
+    .inmueble-name { }
+    .proveedor-name { }
+    .descripcion { }
+    .cost { }
+    .estimate { }
+
+    .actions { }
+
+    .historial-list { }
+    .historial-item { }
+    .hist-date { }
+    .hist-state { }
+    .hist-comment { }
+
+    .info-card { }
+    .info-card.compact { }
+    .full-width-card { }
+    .card-row { }
+    .card-label { }
+    .card-data { }
+
+    /* Compact adjustments for detalles list to reduce vertical space */
+    .detalles-list { }
+    /* Make detalle items visually match historial items */
+    .detalle-item { }
+
+    .detalle-row { }
+    .detalle-date { }
+    
+    .detalle-body { }
+    .detalle-firstline { }
+    .detalle-desc { }
+    .detalle-costo { }
+
+    .detalle-secondline { }
+    .detalle-responsable { }
+    .detalle-actions { }
+
+     .formula { }
+     .formula .term { }
+     .formula .inquilino { } /* green */
+     .formula .propietario { } /* orange */
+     .formula .plus, .formula .equals { }
+     .formula .total { }
+
+     /* small styles for documents section */
+     .document-upload { }
+     .document-list { }
+     /* Make document rows match historial visual style with date column */
+     .doc-row { }
+     .doc-date { }
+     .doc-body { }
+     .doc-firstline { }
+     .doc-desc { }
+     .doc-actions { }
+ </style>
+ 
+ @code{
     [Parameter] public int Id { get; set; }
 
     private TrabajoProveedor? trabajo;
@@ -286,10 +528,23 @@
     private bool puedeAceptar = false;
     private bool puedeAgregarDetalle = false;
     private bool puedeFinalizar = false;
+    private bool puedeAgregarDocumento = false;
+    private bool puedeRevisarFinalizacion = false;
+    private bool puedeCancelar = false;
+
+    // NUEVAS VARIABLES para asignación (solo flags)
+    private bool puedeAsignarProveedor = false;
+
+    // documentos
+    private List<TrabajoProveedorDocumento>? documentos = new();
 
     // full objects
     private Inmueble? inmueble;
     private Proveedor? proveedor;
+
+    // calificacion
+    private CalificacionProveedor? calificacion = null;
+    private string? calificacionUsuarioName;
 
     // display helpers
     private string? inmuebleNombre;
@@ -299,6 +554,8 @@
     private string? proveedorTelefono;
     private string? proveedorEmail;
     private string? usuarioSolicitante;
+    private string? currentUserName;
+    private int currentUserId = 0;
 
     private decimal CostoAcumulado => (detalles?.Sum(d => d.Costo) ?? 0m);
     private decimal TotalInquilino => (detalles?.Where(d => ResponsableEsInquilino(d)).Sum(d => d.Costo) ?? 0m);
@@ -379,6 +636,9 @@
         }
         catch { detalles = new List<DetalleTrabajo>(); }
 
+        // cargar documentos
+        await CargarDocumentos();
+
         // cargar nombre del usuario creador si existe (fallback a historial si es necesario)
         try
         {
@@ -411,6 +671,7 @@
         var auth = await authStateProvider.GetAuthenticationStateAsync();
         var user = auth.User;
         var userEmail = user.Identity?.Name;
+        currentUserName = user.Identity?.Name;
         int? proveedorIdFromUser = null;
         try
         {
@@ -420,6 +681,25 @@
                 if (provByEmail != null && provByEmail.Correcto && provByEmail.Datos != null)
                 {
                     proveedorIdFromUser = provByEmail.Datos.Id;
+                }
+            }
+
+            // Fallback: si no se obtuvo proveedor por email, intentar buscar proveedor cuyo UsuarioId coincida con el claim 'Id'
+            if (!proveedorIdFromUser.HasValue)
+            {
+                var userIdClaim = user.FindFirst("Id")?.Value ?? user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                if (!string.IsNullOrEmpty(userIdClaim) && int.TryParse(userIdClaim, out int userId))
+                {
+                    try
+                    {
+                        var allProv = await ProveedorService.Obtener_todos();
+                        if (allProv != null && allProv.Correcto && allProv.Datos != null)
+                        {
+                            var match = allProv.Datos.FirstOrDefault(pr => pr.UsuarioId.HasValue && pr.UsuarioId.Value == userId);
+                            if (match != null) proveedorIdFromUser = match.Id;
+                        }
+                    }
+                    catch { /* ignore fallback errors */ }
                 }
             }
         }
@@ -455,30 +735,33 @@
         // proveedor
         try
         {
-            var provRes = await ProveedorService.Obtener_por_id(trabajo.ProveedorId);
-            if (provRes != null && provRes.Correcto && provRes.Datos != null)
+            if (trabajo.ProveedorId.HasValue && trabajo.ProveedorId.Value != 0)
             {
-                proveedor = provRes.Datos;
-                proveedorNombre = proveedor?.Nombre;
-                proveedorDireccion = proveedor?.Direccion;
-                proveedorTelefono = proveedor?.Telefono;
-                proveedorEmail = proveedor?.Email;
-            }
-            else if (proveedorIdFromUser.HasValue && proveedorIdFromUser.Value == trabajo.ProveedorId)
-            {
-                try
+                var provRes = await ProveedorService.Obtener_por_id(trabajo.ProveedorId.Value);
+                if (provRes != null && provRes.Correcto && provRes.Datos != null)
                 {
-                    var pByEmail = await ProveedorService.Obtener_por_email(userEmail);
-                    if (pByEmail != null && pByEmail.Correcto && pByEmail.Datos != null)
-                    {
-                        proveedor = pByEmail.Datos;
-                        proveedorNombre = proveedor?.Nombre;
-                        proveedorDireccion = proveedor?.Direccion;
-                        proveedorTelefono = proveedor?.Telefono;
-                        proveedorEmail = proveedor?.Email;
-                    }
+                    proveedor = provRes.Datos;
+                    proveedorNombre = proveedor?.Nombre;
+                    proveedorDireccion = proveedor?.Direccion;
+                    proveedorTelefono = proveedor?.Telefono;
+                    proveedorEmail = proveedor?.Email;
                 }
-                catch { }
+                else if (proveedorIdFromUser.HasValue && proveedorIdFromUser.Value == trabajo.ProveedorId)
+                {
+                    try
+                    {
+                        var pByEmail = await ProveedorService.Obtener_por_email(userEmail);
+                        if (pByEmail != null && pByEmail.Correcto && pByEmail.Datos != null)
+                        {
+                            proveedor = pByEmail.Datos;
+                            proveedorNombre = proveedor?.Nombre;
+                            proveedorDireccion = proveedor?.Direccion;
+                            proveedorTelefono = proveedor?.Telefono;
+                            proveedorEmail = proveedor?.Email;
+                        }
+                    }
+                    catch { }
+                }
             }
         }
         catch { }
@@ -488,12 +771,100 @@
         {
             var userIdClaim = user.FindFirst("Id");
             int.TryParse(userIdClaim?.Value, out int uid);
+            currentUserId = uid;
             var compareId = proveedorIdFromUser ?? uid;
+
+            // Compute role flags once to avoid redeclaration/scoping issues
+            var isProveedorRole = user.IsInRole("proveedor") || user.Claims.Any(c => c.Type == "role" && c.Value == "proveedor");
+            var isAdminRole = user.IsInRole("admin_usuario") || user.IsInRole("admin_propiedad") || user.Claims.Any(c => c.Type == "role" && (c.Value == "admin_usuario" || c.Value == "admin_propiedad"));
+            var isPropietarioRole = user.IsInRole("propietario") || user.Claims.Any(c => c.Type == "role" && c.Value == "propietario");
+
             if (compareId != 0 && trabajo != null)
             {
-                puedeAceptar = (trabajo.ProveedorId == compareId && trabajo.Estado != TrabajoEstados.EnEjecucion && trabajo.Estado != TrabajoEstados.Finalizado);
-                puedeAgregarDetalle = trabajo.Estado == TrabajoEstados.EnEjecucion && trabajo.ProveedorId == compareId;
-                puedeFinalizar = trabajo.ProveedorId == compareId && trabajo.Estado == TrabajoEstados.EnEjecucion;
+                // Only allow "Aceptar trabajo" when current user is in 'proveedor' role AND the provider record
+                // associated to the current user matches the trabajo.ProveedorId, and state is Creado o Solicitado
+                puedeAceptar = isProveedorRole && proveedorIdFromUser.HasValue && trabajo.ProveedorId == proveedorIdFromUser.Value && (trabajo.Estado == TrabajoEstados.Creado || trabajo.Estado == TrabajoEstados.Solicitado);
+
+                // Only allow adding details when current user is the assigned provider
+                puedeAgregarDetalle = isProveedorRole && proveedorIdFromUser.HasValue && trabajo.Estado == TrabajoEstados.EnEjecucion && trabajo.ProveedorId == proveedorIdFromUser.Value;
+
+                // Only the assigned provider (role 'proveedor') can finalize the trabajo when it's in execution
+                puedeFinalizar = isProveedorRole && proveedorIdFromUser.HasValue && trabajo.ProveedorId == proveedorIdFromUser.Value && trabajo.Estado == TrabajoEstados.EnEjecucion;
+
+                // If current user is the creator/owner or has admin roles, allow reviewing finalization when it's pending
+                var esOwnerOrAdmin = false;
+                if (trabajo.UsuarioCreador.HasValue && trabajo.UsuarioCreador.Value == uid) esOwnerOrAdmin = true;
+                if (isAdminRole) esOwnerOrAdmin = true;
+
+                puedeRevisarFinalizacion = esOwnerOrAdmin && trabajo.Estado == TrabajoEstados.FinalizadoPorAprobar;
+            }
+
+            // document upload allowed for provider, propietario/admin and the creator
+            try
+            {
+                var esPropietario = false;
+
+                // If user has explicit propietario role, allow
+                if (isPropietarioRole) esPropietario = true;
+
+                // If inmueble has an administrador and it matches current user, consider as propietario/admin
+                if (!esPropietario && inmueble != null && uid != 0 && inmueble.AdministradorId.HasValue && inmueble.AdministradorId.Value == uid)
+                {
+                    esPropietario = true;
+                }
+
+                // Fallback: if the current user is the creator of the trabajo, allow uploading
+                var esCreador = trabajo?.UsuarioCreador.HasValue == true && trabajo.UsuarioCreador.Value == uid;
+
+                puedeAgregarDocumento = isProveedorRole || isAdminRole || esPropietario || esCreador;
+
+                // If trabajo is pending review, owners/admins can review finalization
+                if (trabajo != null && trabajo.Estado == TrabajoEstados.FinalizadoPorAprobar)
+                {
+                    puedeRevisarFinalizacion = isAdminRole || isPropietarioRole || (trabajo.UsuarioCreador.HasValue && trabajo.UsuarioCreador.Value == uid);
+                }
+
+                // Owner / admin can cancel at any time (except when trabajo is Finalizado, server will reject)
+                var isOwner = trabajo?.UsuarioCreador.HasValue == true && trabajo.UsuarioCreador.Value == uid;
+                puedeCancelar = isAdminRole || isPropietarioRole || isOwner;
+
+                // Permitir asignar proveedor si es admin o el creador (owner)
+                puedeAsignarProveedor = isAdminRole || isOwner;
+            }
+            catch { }
+        }
+        catch { }
+
+        // If trabajo is already finalizado o cancelado, disable actions and uploading
+        if (trabajo.Estado == TrabajoEstados.Finalizado || trabajo.Estado == TrabajoEstados.Cancelado || trabajo.Estado == TrabajoEstados.FinalizacionAceptadaConObservaciones)
+        {
+            puedeAceptar = false;
+            puedeAgregarDetalle = false;
+            puedeFinalizar = false;
+            puedeAgregarDocumento = false;
+            puedeRevisarFinalizacion = false;
+            puedeCancelar = false;
+        }
+
+        // cargar calificación (si existe) asociada al trabajo (buscar por TrabajoProveedorId, fallback a proveedor)
+        try
+        {
+            var allCalif = await CalificacionService.Obtener_todos();
+            if (allCalif != null && allCalif.Correcto && allCalif.Datos != null)
+            {
+                var list = allCalif.Datos.ToList();
+                calificacion = list.Where(c => c.TrabajoProveedorId == trabajo.Id).OrderByDescending(c => c.Fecha).FirstOrDefault()
+                    ?? list.Where(c => c.ProveedorId == trabajo.ProveedorId).OrderByDescending(c => c.Fecha).FirstOrDefault();
+
+                if (calificacion != null)
+                {
+                    try
+                    {
+                        var ures = await UsuarioService.Obtener_por_id(calificacion.UsuarioId);
+                        if (ures != null && ures.Correcto && ures.Datos != null) calificacionUsuarioName = ures.Datos.Nombre;
+                    }
+                    catch { }
+                }
             }
         }
         catch { }
@@ -501,36 +872,99 @@
         StateHasChanged();
     }
 
-    private async Task AbrirDialogoAceptar()
+    private async Task CargarDocumentos()
     {
         if (trabajo == null) return;
-        var result = await DialogService.OpenAsync<AceptarTrabajoDialog>("Aceptar trabajo", new Dictionary<string, object> { { "trabajo", trabajo } }, new DialogOptions { Width = "500px", Height = "220px" });
+        try
+        {
+            var dres = await TrabajoService.ObtenerDocumentosPorTrabajo(trabajo.Id);
+            if (dres != null && dres.Correcto && dres.Datos != null)
+            {
+                documentos = dres.Datos.ToList();
+            }
+            else
+            {
+                documentos = new List<TrabajoProveedorDocumento>();
+            }
+        }
+        catch { documentos = new List<TrabajoProveedorDocumento>(); }
+    }
+
+    private async Task SubirDocumento()
+    {
+        if (trabajo == null)
+        {
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Error", Detail = "Trabajo no cargado" });
+            return;
+        }
+
+        var result = await DialogService.OpenAsync<UploadDocumentoDialog>("Subir documento", new Dictionary<string, object> { { "TrabajoId", trabajo.Id } }, new DialogOptions { Width = "600px", Height = "220px" });
         if (result is bool ok && ok)
         {
-            await Cargar();
+            await CargarDocumentos();
         }
     }
 
-    private async Task AgregarDetalle()
+    private async Task DescargarDocumento(int documentoId)
     {
-        var result = await DialogService.OpenAsync<AgregarDetalleDialog>("Agregar Detalle", new Dictionary<string, object> { { "trabajoid", trabajo.Id } }, new DialogOptions { Width = "900px", Height = "650px", Resizable = true, Draggable = true, CloseDialogOnOverlayClick = false });
-        if (result == true) await Cargar();
+        try
+        {
+            var res = await TrabajoService.ObtenerDocumentoPorId(documentoId);
+            if (res == null || !res.Correcto || res.Datos == null)
+            {
+                NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Error", Detail = res?.Mensaje ?? "No se pudo obtener el documento" });
+                return;
+            }
+
+            var doc = res.Datos;
+            if (doc.Contenido == null || doc.Contenido.Length == 0)
+            {
+                NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Error", Detail = "Contenido no disponible" });
+                return;
+            }
+
+            var filename = string.IsNullOrWhiteSpace(doc.NombreArchivo) ? "documento" : doc.NombreArchivo;
+            var contentType = string.IsNullOrWhiteSpace(doc.ContentType) ? "application/octet-stream" : doc.ContentType;
+
+            await JSRuntime.InvokeVoidAsync("blazorDownloadFile", filename, contentType, Convert.ToBase64String(doc.Contenido));
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Error", Detail = ex.Message });
+        }
     }
 
-    private async Task Finalizar()
+    private async Task EliminarDocumento(int documentoId)
     {
-        if (trabajo == null) return;
-        trabajo.Estado = TrabajoEstados.Finalizado;
-        var r = await TrabajoService.Actualizar(trabajo);
-        if (r != null && r.Correcto)
+        try
         {
-            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = "Finalizado", Detail = r.Mensaje });
-            await Cargar();
+            var res = await TrabajoService.EliminarDocumento(documentoId);
+            if (res != null && res.Correcto)
+            {
+                NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = "Eliminado", Detail = res.Mensaje });
+                await CargarDocumentos();
+            }
+            else
+            {
+                NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Error", Detail = res?.Mensaje ?? "Error eliminando documento" });
+            }
         }
-        else
+        catch (Exception ex)
         {
-            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Error", Detail = r?.Mensaje ?? "Error finalizando trabajo" });
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Error", Detail = ex.Message });
         }
+    }
+
+    private async Task AbrirPreview(TrabajoProveedorDocumento doc)
+    {
+        // Build a short title from description or filename (max 50 chars)
+        var titleSource = !string.IsNullOrWhiteSpace(doc.Descripcion) ? doc.Descripcion : (string.IsNullOrWhiteSpace(doc.NombreArchivo) ? "Documento" : doc.NombreArchivo);
+        var title = titleSource.Length > 50 ? titleSource.Substring(0, 50) + "…" : titleSource;
+        var result = await DialogService.OpenAsync<DocumentPreviewDialog>(title, new Dictionary<string, object> { { "documento", doc }, { "trabajoId", trabajo?.Id ?? 0 } }, new DialogOptions { Width = "900px", Height = "700px" });
+         if (result is bool deleted && deleted)
+         {
+             await CargarDocumentos();
+         }
     }
 
     private Imagen? imagenSeleccionada;
@@ -552,18 +986,154 @@
     }
 
     private async Task MostrarDetalle(DetalleTrabajo d)
-    {
-        var result = await DialogService.OpenAsync<DetalleViewDialog>("Detalle", new Dictionary<string, object> { { "detalle", d } }, new DialogOptions { Width = "800px", Height = "600px" });
-        if (result is bool changed && changed)
-        {
-            await Cargar();
-        }
-    }
+     {
+       var result = await DialogService.OpenAsync<DetalleViewDialog>("Detalle", new Dictionary<string, object> { { "detalle", d } }, new DialogOptions { Width = "800px", Height = "600px" });
+       if (result is bool changed && changed)
+       {
+           await Cargar();
+       }
+   }
 
     private string ObtenerUrlImagen(Imagen img)
     {
         if (img == null || string.IsNullOrEmpty(img.Url)) return "/images/placeholder.jpg";
         if (img.Url.StartsWith("http")) return img.Url;
         return "/" + img.Url.TrimStart('/');
+    }
+
+    // Helpers usados por la vista (mínimos)
+    private List<TipoServicio>? GetServicios(int proveedorId) => null;
+    private decimal? GetRatingFor(int proveedorId) => null;
+    private int? GetJobsFor(int proveedorId) => null;
+
+    private string GetFileTypeLabel(TrabajoProveedorDocumento doc)
+    {
+        if (!string.IsNullOrWhiteSpace(doc.ContentType))
+        {
+            // Use common friendly names for some content types
+            var ct = doc.ContentType.ToLowerInvariant();
+            if (ct.Contains("pdf")) return "PDF";
+            if (ct.Contains("image")) return "Imagen";
+            if (ct.Contains("word") || ct.Contains("officedocument.wordprocessingml")) return "Documento Word";
+            if (ct.Contains("excel") || ct.Contains("officedocument.spreadsheetml")) return "Hoja de cálculo";
+            return doc.ContentType;
+        }
+
+        // fallback to extension from filename
+        try
+        {
+            var ext = System.IO.Path.GetExtension(doc.NombreArchivo ?? string.Empty);
+            if (string.IsNullOrEmpty(ext)) return "Archivo";
+            return ext.TrimStart('.').ToUpperInvariant();
+        }
+        catch { return "Archivo"; }
+    }
+
+    private async Task AbrirAceptarDialog(TrabajoProveedor t)
+    {
+        var result = await DialogService.OpenAsync<AceptarTrabajoDialog>($"Aceptar Trabajo #{t.Id}", new Dictionary<string, object> { { "trabajo", t } }, new DialogOptions { Width = "500px", Height = "300px" });
+        if (result == true)
+        {
+            await Cargar();
+        }
+    }
+
+    private async Task AbrirAgregarDetalle()
+    {
+        if (trabajo == null) return;
+        var result = await DialogService.OpenAsync<AgregarDetalleDialog>("Agregar detalle", new Dictionary<string, object> { { "TrabajoId", trabajo.Id } }, new DialogOptions { Width = "700px", Height = "500px" });
+        if (result is bool ok && ok) await Cargar();
+    }
+
+    private async Task AbrirFinalizarDialog()
+    {
+        if (trabajo == null) return;
+        var result = await DialogService.OpenAsync<FinalizarTrabajoDialog>("Finalizar", new Dictionary<string, object> { { "trabajo", trabajo } }, new DialogOptions { Width = "600px", Height = "300px" });
+        if (result is bool ok && ok) await Cargar();
+    }
+
+    private async Task AbrirRevisarFinalizacionDialog()
+    {
+        if (trabajo == null) return;
+        var result = await DialogService.OpenAsync<RevisarFinalizacionDialog>("Revisar finalización", new Dictionary<string, object> { { "trabajo", trabajo } }, new DialogOptions { Width = "700px", Height = "360px" });
+        if (result is bool ok && ok) await Cargar();
+    }
+
+    private async Task AbrirConfirmarCancelarDialog()
+    {
+        if (trabajo == null) return;
+        var result = await DialogService.OpenAsync<ConfirmarCancelarDialog>("Confirmar cancelación", new Dictionary<string, object> { { "trabajo", trabajo } }, new DialogOptions { Width = "600px", Height = "280px" });
+        if (result is bool ok && ok) await Cargar();
+    }
+
+    private async Task AbrirRechazarDialog()
+    {
+        if (trabajo == null) return;
+        var result = await DialogService.OpenAsync<RechazarSolicitudDialog>("Rechazar solicitud", new Dictionary<string, object> { { "trabajo", trabajo } }, new DialogOptions { Width = "600px", Height = "260px" });
+        if (result is bool ok && ok) await Cargar();
+    }
+
+    // Abre el dialog de selección y procesa el proveedor seleccionado
+    private async Task MostrarProveedorPicker()
+    {
+        if (trabajo == null) return;
+
+        var result = await DialogService.OpenAsync<SeleccionarProveedorDialog>("Seleccionar proveedor", new Dictionary<string, object> { { "InmuebleId", trabajo.InmuebleId } }, new DialogOptions { Width = "900px", Height = "600px" });
+        if (result is Proveedor prov)
+        {
+            await SelectProveedorParaTrabajo(prov);
+        }
+    }
+
+    // Asigna proveedor, actualiza trabajo y solicita (genera historial y notifica) — reusa servicio backend
+    private async Task SelectProveedorParaTrabajo(Proveedor? p)
+    {
+        if (p == null || trabajo == null) return;
+
+        // Asignar proveedor localmente sin cambiar estado todavía
+        trabajo.ProveedorId = p.Id;
+
+        var upd = await TrabajoService.Actualizar(trabajo);
+        if (upd == null || !upd.Correcto)
+        {
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Error", Detail = upd?.Mensaje ?? "No se pudo asignar proveedor" });
+            return;
+        }
+
+        // Construir comentario para el historial: preferir nombre de usuario asociado al proveedor si existe
+        string comentario = $"Solicitado a {p.Nombre}";
+        if (p.UsuarioId.HasValue && p.UsuarioId.Value != 0)
+        {
+            try
+            {
+                var ures = await UsuarioService.Obtener_por_id(p.UsuarioId.Value);
+                if (ures != null && ures.Correcto && ures.Datos != null && !string.IsNullOrWhiteSpace(ures.Datos.Nombre))
+                {
+                    comentario = $"Solicitado al proveedor {ures.Datos.Nombre}";
+                }
+            }
+            catch { /* no bloquear */ }
+        }
+
+        // Llamar al endpoint de solicitar para que el servidor cambie el estado y cree el historial
+        try
+        {
+            var sol = await TrabajoService.SolicitarTrabajo(new TrabajoAccionRequest { TrabajoId = trabajo.Id, UsuarioId = currentUserId, Comentario = comentario });
+            if (sol != null && sol.Correcto)
+            {
+                NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = "Ok", Detail = "Proveedor asignado y solicitud enviada." });
+            }
+            else
+            {
+                NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Warning, Summary = "Advertencia", Detail = sol?.Mensaje ?? "Proveedor asignado pero no se pudo enviar la solicitud." });
+            }
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Warning, Summary = "Advertencia", Detail = "Proveedor asignado pero error enviando solicitud: " + ex.Message });
+        }
+
+        // recargar vista para leer historial actualizado
+        await Cargar();
     }
 }

@@ -1,0 +1,74 @@
+@using AdmIn.Common.Entidades
+@using AdmIn.UI.Services
+@inject IServ_TrabajoProveedor TrabajoService
+@inject NotificationService NotificationService
+@inject DialogService DialogService
+@inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthState
+
+<div style="padding:12px;">
+    <RadzenTemplateForm TItem="CancelModel" Data="Model" Submit="OnSubmit">
+        <div style="margin-bottom:8px;">
+            <label style="font-weight:700;">Motivo de cancelación (obligatorio)</label>
+            <RadzenTextArea @bind-Value="Model.Comentario" Style="width:100%" />
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px;">
+            <RadzenButton ButtonStyle="ButtonStyle.Danger" Text="Confirmar cancelación" Click="@(async () => await Confirmar())" />
+            <RadzenButton ButtonStyle="ButtonStyle.Secondary" Text="Cancelar" Click="Cancelar" />
+        </div>
+    </RadzenTemplateForm>
+</div>
+
+@code {
+    [Parameter] public TrabajoProveedor trabajo { get; set; }
+
+    class CancelModel { public string Comentario { get; set; } = string.Empty; }
+    private CancelModel Model = new CancelModel();
+
+    private async Task<int> GetCurrentUsuarioId()
+    {
+        try
+        {
+            var auth = await AuthState.GetAuthenticationStateAsync();
+            var user = auth.User;
+            var idClaim = user.FindFirst("Id")?.Value ?? user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? user.FindFirst("sub")?.Value;
+            if (!string.IsNullOrEmpty(idClaim) && int.TryParse(idClaim, out var parsed)) return parsed;
+        }
+        catch { }
+        return 0;
+    }
+
+    private async Task Confirmar()
+    {
+        if (trabajo == null)
+        {
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Error", Detail = "Trabajo no especificado." });
+            DialogService.Close(false);
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(Model.Comentario))
+        {
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Warning, Summary = "Observación requerida", Detail = "Debe ingresar una observación para cancelar." });
+            return;
+        }
+
+        var usuarioId = await GetCurrentUsuarioId();
+        if (usuarioId == 0) usuarioId = trabajo.UsuarioCreador ?? 0;
+
+        var req = new TrabajoAccionRequest { TrabajoId = trabajo.Id, UsuarioId = usuarioId, Comentario = Model.Comentario };
+        var res = await TrabajoService.CancelarTrabajo(req);
+        if (res != null && res.Correcto)
+        {
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = "Cancelado", Detail = res.Mensaje });
+            DialogService.Close(true);
+        }
+        else
+        {
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Error", Detail = res?.Mensaje ?? "Error cancelando trabajo" });
+        }
+    }
+
+    private void Cancelar() => DialogService.Close(false);
+
+    private void OnSubmit() { /* no-op */ }
+}

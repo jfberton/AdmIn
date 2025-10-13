@@ -10,7 +10,7 @@ namespace AdmIn.Common.Entidades
     {
         public int Id { get; set; }
         public int InmuebleId { get; set; }
-        public int ProveedorId { get; set; }
+        public int? ProveedorId { get; set; } // made nullable
         public DateTime Fecha { get; set; }
         public string Descripcion { get; set; }
         public string Estado { get; set; }

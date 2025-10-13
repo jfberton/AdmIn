@@ -1,0 +1,92 @@
+@using AdmIn.Common.Entidades
+@using AdmIn.UI.Services
+@inject IServ_TrabajoProveedor TrabajoService
+@inject NotificationService NotificationService
+@inject DialogService DialogService
+@inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthState
+@inject IServ_Proveedor ProveedorService
+
+<div class="finalizar-dialog">
+    <RadzenTemplateForm TItem="FinalizarModel" Data="model" Submit="OnSubmit">
+        <div style="padding:12px;">
+            <div style="margin-bottom:8px;">
+                <label style="font-weight:600;">Comentario (opcional)</label>
+                <div>
+                    <RadzenTextArea @bind-Value="model.Comentario" Style="width:100%" />
+                </div>
+            </div>
+
+            <div style="display:flex; gap:8px; margin-top:12px;">
+                <RadzenButton ButtonStyle="ButtonStyle.Primary" Text="Marcar como finalizado" ButtonType="ButtonType.Submit" />
+                <RadzenButton Text="Cancelar" Click="Cancel" Style="margin-left:8px;" />
+            </div>
+        </div>
+    </RadzenTemplateForm>
+</div>
+
+@code {
+    [Parameter] public TrabajoProveedor trabajo { get; set; }
+
+    class FinalizarModel { public string Comentario { get; set; } = string.Empty; }
+
+    private FinalizarModel model = new();
+
+    private async Task OnSubmit()
+    {
+        if (trabajo == null)
+        {
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Error", Detail = "Trabajo no especificado." });
+            DialogService.Close(false);
+            return;
+        }
+
+        int usuarioId = 0;
+        try
+        {
+            var auth = await AuthState.GetAuthenticationStateAsync();
+            var user = auth.User;
+
+            // 1) Intentar obtener Id del usuario desde las claims (Id o NameIdentifier)
+            var userIdClaim = user.FindFirst("Id")?.Value ?? user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (!string.IsNullOrEmpty(userIdClaim) && int.TryParse(userIdClaim, out int parsedId))
+            {
+                usuarioId = parsedId;
+            }
+            else
+            {
+                // 2) Si no hay claim con Id, intentar obtener UsuarioId asociado al proveedor por email
+                var userEmail = user.Identity?.Name;
+                if (!string.IsNullOrEmpty(userEmail))
+                {
+                    try
+                    {
+                        var provRes = await ProveedorService.Obtener_por_email(userEmail);
+                        if (provRes != null && provRes.Correcto && provRes.Datos != null)
+                        {
+                            // IMPORTANTE: usar UsuarioId (el id de la entidad Usuario) no el Id del proveedor
+                            usuarioId = provRes.Datos.UsuarioId ?? 0;
+                        }
+                    }
+                    catch { }
+                }
+            }
+        }
+        catch { }
+
+        // Si no pudimos obtener usuarioId, fallback al proveedorId como último recurso (puede fallar la validación en servidor)
+        var usuarioIdToSend = usuarioId != 0 ? usuarioId : (int)(trabajo.ProveedorId ?? 0);
+        var request = new TrabajoAccionRequest { TrabajoId = trabajo.Id, UsuarioId = usuarioIdToSend, Comentario = model.Comentario };
+        var res = await TrabajoService.MarcarFinalizado(request);
+        if (res != null && res.Correcto)
+        {
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = "Marcado", Detail = res.Mensaje });
+            DialogService.Close(true);
+        }
+        else
+        {
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Error", Detail = res?.Mensaje ?? "Error marcando finalizado" });
+        }
+    }
+
+    private void Cancel() => DialogService.Close(false);
+}

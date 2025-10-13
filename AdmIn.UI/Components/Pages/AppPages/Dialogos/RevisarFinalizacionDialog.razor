@@ -1,0 +1,137 @@
+@using AdmIn.Common.Entidades
+@using AdmIn.UI.Services
+@inject IServ_TrabajoProveedor TrabajoService
+@inject IServ_CalificacionProveedor CalificacionService
+@inject NotificationService NotificationService
+@inject DialogService DialogService
+@inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthState
+
+<div class="revisar-dialog">
+    <RadzenTemplateForm TItem="RevisarModel" Data="model" Submit="OnSubmit">
+        <div style="padding:12px;">
+            <div style="margin-bottom:8px;">
+                <label style="font-weight:600;">Observaciones / Comentario (opcional)</label>
+                <div>
+                    <RadzenTextArea @bind-Value="model.Comentario" Style="width:100%" />
+                </div>
+            </div>
+
+            <div style="margin-top:8px;">
+                <label style="font-weight:600;">Calificar proveedor (opcional)</label>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <RadzenRating @bind-Value="model.Calificacion" Max="5" Style="height:36px;" />
+                    <span style="color:#6b7280;font-size:0.9rem;">(1-5)</span>
+                </div>
+                <div style="margin-top:6px;">
+                    <label style="font-weight:600;">Comentario de calificación (opcional)</label>
+                    <RadzenTextArea @bind-Value="model.CalificacionComentario" Style="width:100%" />
+                </div>
+            </div>
+
+            <div style="display:flex; gap:8px; margin-top:12px; justify-content:flex-end;">
+                <RadzenButton ButtonStyle="ButtonStyle.Primary" Text="Finalizar" Click="@(async () => await Approve(false))" />
+                <RadzenButton ButtonStyle="ButtonStyle.Primary" Text="Finalizar con observaciones" Click="@(async () => await Approve(true))" Style="margin-left:8px;" />
+                <RadzenButton ButtonStyle="ButtonStyle.Secondary" Text="Rechazar finalización" Click="@(async () => await Reject())" Style="margin-left:8px;" />
+            </div>
+        </div>
+    </RadzenTemplateForm>
+</div>
+
+@code {
+    [Parameter] public TrabajoProveedor trabajo { get; set; }
+
+    class RevisarModel { public string Comentario { get; set; } = string.Empty; public int Calificacion { get; set; } = 0; public string CalificacionComentario { get; set; } = string.Empty; }
+    private RevisarModel model = new();
+
+    private async Task<int> GetCurrentUsuarioId()
+    {
+        try
+        {
+            var auth = await AuthState.GetAuthenticationStateAsync();
+            var user = auth.User;
+            var idClaim = user.FindFirst("Id")?.Value ?? user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? user.FindFirst("sub")?.Value;
+            if (!string.IsNullOrEmpty(idClaim) && int.TryParse(idClaim, out var parsed)) return parsed;
+        }
+        catch { }
+        return 0;
+    }
+
+    private async Task Approve(bool withObservations)
+    {
+        if (trabajo == null)
+        {
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Error", Detail = "Trabajo no especificado." });
+            DialogService.Close(false);
+            return;
+        }
+
+        var usuarioId = await GetCurrentUsuarioId();
+        if (usuarioId == 0) usuarioId = trabajo.UsuarioCreador ?? 0;
+
+        // Enviar comentario sólo si el usuario explicitó "Finalizar con observaciones"
+        var comentarioToSend = withObservations ? (string.IsNullOrWhiteSpace(model.Comentario) ? null : model.Comentario) : null;
+
+        var request = new RevisarFinalizacionRequest { TrabajoId = trabajo.Id, UsuarioId = usuarioId, Aprobado = true, Comentario = comentarioToSend };
+        var res = await TrabajoService.RevisarFinalizacion(request);
+        if (res != null && res.Correcto)
+        {
+            // If user provided rating (Calificacion > 0), create calificacion
+            if (model.Calificacion >= 1 && model.Calificacion <= 5)
+            {
+                try
+                {
+                    var cal = new CalificacionProveedor
+                    {
+                        TrabajoProveedorId = trabajo.Id,
+                        ProveedorId = trabajo.ProveedorId ?? 0,
+                        UsuarioId = usuarioId,
+                        Valor = model.Calificacion,
+                        Comentario = string.IsNullOrWhiteSpace(model.CalificacionComentario) ? null : model.CalificacionComentario,
+                        Fecha = DateTime.Now
+                    };
+
+                    var cRes = await CalificacionService.Crear(cal);
+                    if (cRes == null || !cRes.Correcto)
+                    {
+                        NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Warning, Summary = "Advertencia", Detail = "Finalizado pero no se pudo guardar la calificación" });
+                    }
+                }
+                catch { /* no bloquear aprobación si falla la calificación */ }
+            }
+
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = "Finalizado", Detail = res.Mensaje });
+            DialogService.Close(true);
+        }
+        else
+        {
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Error", Detail = res?.Mensaje ?? "Error al finalizar" });
+        }
+    }
+
+    private async Task Reject()
+    {
+        if (trabajo == null)
+        {
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Error", Detail = "Trabajo no especificado." });
+            DialogService.Close(false);
+            return;
+        }
+
+        var usuarioId = await GetCurrentUsuarioId();
+        if (usuarioId == 0) usuarioId = trabajo.UsuarioCreador ?? 0;
+
+        var request = new RevisarFinalizacionRequest { TrabajoId = trabajo.Id, UsuarioId = usuarioId, Aprobado = false, Comentario = string.IsNullOrWhiteSpace(model.Comentario) ? null : model.Comentario };
+        var res = await TrabajoService.RevisarFinalizacion(request);
+        if (res != null && res.Correcto)
+        {
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = "Rechazado", Detail = res.Mensaje });
+            DialogService.Close(true);
+        }
+        else
+        {
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Error", Detail = res?.Mensaje ?? "Error al rechazar finalización" });
+        }
+    }
+
+    private void OnSubmit() { /* no-op, buttons handle actions */ }
+}

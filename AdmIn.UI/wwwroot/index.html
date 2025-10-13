@@ -17,6 +17,16 @@
     </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.6/signalr.min.js"></script>
     <script src="js/signalr-notifications.js"></script>
+    <script>
+        window.blazorDownloadFile = (filename, contentType, base64Data) => {
+            const link = document.createElement('a');
+            link.href = `data:${contentType};base64,${base64Data}`;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        };
+    </script>
   </head>
   <body>
     <app>Loading...</app>

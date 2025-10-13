@@ -143,10 +143,11 @@
     [Parameter]
     public int InmuebleId { get; set; }
 
+    // Inicializar como 'Creado' (antes estaba "Solicitado")
     TrabajoProveedor trabajo = new()
     {
         Fecha = DateTime.Now,
-        Estado = "Solicitado"
+        Estado = TrabajoEstados.Creado
     };
 
     List<Proveedor> proveedores = new();
@@ -194,6 +195,19 @@
             if (r.Correcto && r.Datos != null)
             {
                 proveedores = r.Datos.ToList();
+
+                // Inicializar _rating y _jobs a partir de las propiedades del objeto Proveedor
+                foreach (var p in proveedores)
+                {
+                    if (p.CalificacionPromedio > 0m)
+                    {
+                        _rating[p.Id] = p.CalificacionPromedio;
+                    }
+                    if (p.TrabajosRealizados > 0)
+                    {
+                        _jobs[p.Id] = p.TrabajosRealizados;
+                    }
+                }
 
                 // Try to load images, services and stats per provider
                 foreach (var p in proveedores)
@@ -289,6 +303,18 @@
         trabajo.Fecha = DateTime.Now;
         // Fecha de creación para evitar DateTime.MinValue que provoca overflow en SQL
         trabajo.FechaCreacion = DateTime.Now;
+
+        // Si se seleccionó proveedor, marcar como Solicitado; si no, dejar Creado
+        if (selectedProveedor != null && selectedProveedor.Id != 0)
+        {
+            trabajo.ProveedorId = selectedProveedor.Id;
+            trabajo.Estado = TrabajoEstados.Solicitado;
+        }
+        else
+        {
+            trabajo.ProveedorId = null;
+            trabajo.Estado = TrabajoEstados.Creado;
+        }
 
         // Obtener usuario autenticado y guardar como UsuarioCreador
         try

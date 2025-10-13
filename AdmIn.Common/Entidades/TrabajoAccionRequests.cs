@@ -1,5 +1,6 @@
 namespace AdmIn.Common.Entidades
 {
+    // Consolidated request types for trabajo actions
     public class TrabajoAccionRequest
     {
         public int TrabajoId { get; set; }

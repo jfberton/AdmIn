@@ -9,6 +9,8 @@
 @inject IServ_Inmueble serv_inmueble
 @inject IServ_Imagen serv_imagen
 @inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider authStateProvider
+@inject IServ_TrabajoProveedor serv_trabajo
+@inject IJSRuntime JSRuntime
 
 <PageTitle>@(inmueble?.Nombre ?? "Inmueble")</PageTitle>
 
@@ -51,9 +53,8 @@
             {
                 <RadzenButton ButtonStyle="ButtonStyle.Success"
                               Icon="build"
-                              Text="Solicitar Trabajo"
-                              Size="ButtonSize.Medium"
-                              Click="@(() => IrA($"/inmuebles/{inmueble.Id}/trabajos/nuevo"))" />
+                              Text="Gestionar Trabajos"
+                              Click="@(() => GestionarTrabajos())" />
             }
         </RadzenStack>
 
@@ -140,9 +141,10 @@
             <RadzenStack Gap="1.5rem">
                 <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
                     <RadzenText TextStyle="TextStyle.H6" Text="Galería de Imágenes" />
-                    <RadzenButton ButtonStyle="ButtonStyle.Primary" 
+                    <RadzenButton ButtonStyle="ButtonStyle.Info" 
                                  Icon="add_photo_alternate" 
                                  Text="Agregar Imágenes"
+                                 Size="ButtonSize.Small"
                                  Click="@(() => AgregarImagenes())" />
                 </RadzenStack>
                 
@@ -157,6 +159,43 @@
                     OnImagenPrincipalCambiada="@OnImagenPrincipalCambiada"
                     OnImagenEliminada="@OnImagenEliminada"
                     OnImagenActualizada="@OnImagenActualizada" />
+            </RadzenStack>
+        </RadzenCard>
+
+        <!-- Trabajos asociados -->
+        <RadzenCard id="trabajos">
+            <RadzenStack Gap="1.5rem">
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
+                    <RadzenText TextStyle="TextStyle.H6" Text="Trabajos" />
+                    <div>
+                        @if (canRequestWork)
+                        {
+                            <RadzenButton ButtonStyle="ButtonStyle.Info" Icon="add" Text="Solicitar trabajo" Size="ButtonSize.Small" Click="@(() => IrA($"/inmuebles/{inmueble.Id}/trabajos/nuevo"))" />
+                        }
+                    </div>
+                </RadzenStack>
+
+                @if (trabajosInmueble == null || !trabajosInmueble.Any())
+                {
+                    <div>No hay trabajos asociados a este inmueble</div>
+                }
+                else
+                {
+                    <div class="trabajos-list">
+                        @foreach (var t in trabajosInmueble.OrderByDescending(x => x.Fecha))
+                        {
+                            <div class="trabajo-item" style="display:flex;justify-content:space-between;align-items:center;padding:8px;border-left:4px solid #e5e7eb;background:#fafafa;border-radius:6px;margin-bottom:8px;">
+                                <div>
+                                    <div style="font-weight:700;">@t.Descripcion</div>
+                                    <div style="color:#6b7280;font-size:0.9rem;">Estado: @t.Estado &nbsp;·&nbsp; Fecha: @t.Fecha.ToString("g")</div>
+                                </div>
+                                <div style="display:flex;gap:8px;">
+                                    <RadzenButton Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Info" Click="@(() => IrA($"/trabajos/{t.Id}"))">Ver</RadzenButton>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
             </RadzenStack>
         </RadzenCard>
 
@@ -262,6 +301,8 @@ else
         font-weight: 600;
         letter-spacing: 0.05em;
     }
+
+    .trabajos-list { }
 </style>
 
 @code {
@@ -274,6 +315,9 @@ else
     private bool canRequestWork = false;
     private List<string> userRoles = new();
     private string currentUserIdDisplay = "(no autenticado)";
+
+    // trabajos
+    private List<TrabajoProveedor> trabajosInmueble = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -364,6 +408,9 @@ else
                     await LogHelper.Error($"Error verificando permisos de solicitud de trabajo: {exAuth.Message}");
                     canRequestWork = false;
                 }
+
+                // cargar trabajos asociados
+                await CargarTrabajos();
             }
             else
             {
@@ -383,6 +430,23 @@ else
         finally
         {
             cargando = false;
+        }
+    }
+
+    private async Task CargarTrabajos()
+    {
+        try
+        {
+            trabajosInmueble = new List<TrabajoProveedor>();
+            var res = await serv_trabajo.Obtener_todos();
+            if (res != null && res.Correcto && res.Datos != null)
+            {
+                trabajosInmueble = res.Datos.Where(t => t.InmuebleId == inmueble.Id).ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            await LogHelper.Error($"Error cargando trabajos del inmueble: {ex.Message}");
         }
     }
 
@@ -674,6 +738,15 @@ else
         if (caracteristicasViewer != null)
         {
             await caracteristicasViewer.RefreshCaracteristicas();
+        }
+    }
+
+    private async Task GestionarTrabajos()
+    {
+        var result = await DialogService.OpenAsync<Dialogos.GestionarTrabajosDialog>($"Trabajos - {inmueble?.Nombre}", new Dictionary<string, object> { { "InmuebleId", inmueble.Id }, { "CanRequestWork", canRequestWork } }, new DialogOptions { Width = "900px", Height = "600px" });
+        if (result is bool ok && ok)
+        {
+            // navigations are handled inside dialog
         }
     }
 }

@@ -1,0 +1,206 @@
+@using AdmIn.Common
+@using AdmIn.Common.Entidades
+@using AdmIn.UI.Services
+@using AdmIn.UI.Components.Shared
+@inject IServ_Proveedor ProveedorService
+@inject IServ_Usuario UsuarioService
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+@inject IHttpClientFactory HttpClientFactory
+@inject NavigationManager NavigationManager
+
+<div style="padding:12px; width:100%; max-height:720px;">
+    <RadzenStack Gap="1rem">
+        <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.SpaceBetween" AlignItems="AlignItems.Center">
+            <RadzenText TextStyle="TextStyle.H6" Text="Seleccionar proveedor" />
+            <div>
+                <RadzenButton ButtonStyle="ButtonStyle.Secondary" Text="Cancelar" Click="Cancelar" Style="margin-right:8px;" />
+                <RadzenButton ButtonStyle="ButtonStyle.Primary" Text="Aceptar" Click="Aceptar" Disabled="@(!CanAccept)" />
+            </div>
+        </RadzenStack>
+
+        @if (proveedores == null)
+        {
+            <div style="display:flex;align-items:center;justify-content:center;padding:24px;">
+                <div>Cargando proveedores...</div>
+            </div>
+        }
+        else if (!proveedores.Any())
+        {
+            <div>No hay proveedores disponibles</div>
+        }
+        else
+        {
+            @if (selectedProveedor == null)
+            {
+                <div class="proveedores-list d-flex gap-2 flex-wrap" style="max-height:520px; overflow:auto; padding:6px;">
+                    @foreach (var p in proveedores)
+                    {
+                        <ProveedorCard Proveedor="p"
+                                       Selectable="true"
+                                       Selected="false"
+                                       OnSelect="@(async (prov) => await OnSelectProveedor(prov))"
+                                       ImageUrl="@GetImageUrl(p.Id)"
+                                       Servicios="@GetServicios(p.Id)"
+                                       Rating="@(GetRatingFor(p.Id))"
+                                       JobsCount="@(GetJobsFor(p.Id))" />
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="selected-provider-wrapper" style="display:flex;align-items:flex-start;gap:12px;">
+                    <ProveedorCard Proveedor="selectedProveedor"
+                                   Selectable="true"
+                                   Selected="true"
+                                   OnSelect="@(async (prov) => await OnSelectProveedor(prov))"
+                                   ImageUrl="@GetImageUrl(selectedProveedor.Id)"
+                                   Servicios="@GetServicios(selectedProveedor.Id)"
+                                   Rating="@(GetRatingFor(selectedProveedor.Id))"
+                                   JobsCount="@(GetJobsFor(selectedProveedor.Id))" />
+                    <div style="align-self:flex-start;">
+                        <button class="btn btn-link btn-sm" @onclick="ClearSelected">Cambiar proveedor</button>
+                    </div>
+                </div>
+            }
+        }
+    </RadzenStack>
+</div>
+
+@code {
+    [Parameter] public int? InmuebleId { get; set; }
+
+    private List<Proveedor>? proveedores;
+    private Proveedor? selectedProveedor;
+
+    // caches para mostrar imagenes/servicios/estadisticas
+    private Dictionary<int, string> _images = new();
+    private Dictionary<int, List<TipoServicio>> _services = new();
+    private Dictionary<int, decimal> _rating = new();
+    private Dictionary<int, int> _jobs = new();
+
+    private bool CanAccept => selectedProveedor != null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProveedores();
+    }
+
+    private async Task LoadProveedores()
+    {
+        try
+        {
+            var res = await ProveedorService.Obtener_todos();
+            if (res != null && res.Correcto && res.Datos != null)
+            {
+                proveedores = res.Datos.ToList();
+
+                // Si el objeto Proveedor ya trae CalificacionPromedio úsalo como valor inicial
+                foreach (var p in proveedores)
+                {
+                    if (p.CalificacionPromedio > 0m)
+                    {
+                        _rating[p.Id] = p.CalificacionPromedio;
+                    }
+
+                    // Inicializar trabajos si la entidad trae el dato
+                    if (p.TrabajosRealizados > 0)
+                    {
+                        _jobs[p.Id] = p.TrabajosRealizados;
+                    }
+                }
+
+                // cargar detalles ligeros por proveedor (servicios e imagen de perfil)
+                foreach (var p in proveedores)
+                {
+                    // servicios (intento silencioso)
+                    try
+                    {
+                        var servRes = await ProveedorService.Obtener_servicios_proveedor(p.Id);
+                        if (servRes != null && servRes.Correcto && servRes.Datos != null)
+                        {
+                            _services[p.Id] = servRes.Datos.ToList();
+                        }
+                    }
+                    catch { /* no bloquear */ }
+
+                    // imagen de usuario asociado
+                    if (p.UsuarioId.HasValue)
+                    {
+                        try
+                        {
+                            var ures = await UsuarioService.Obtener_por_id(p.UsuarioId.Value);
+                            if (ures != null && ures.Correcto && ures.Datos != null && ures.Datos.ImagenPerfil != null)
+                            {
+                                var url = ures.Datos.ImagenPerfil.Url;
+                                _images[p.Id] = string.IsNullOrEmpty(url) ? string.Empty : (url.StartsWith("http") ? url : "/" + url.TrimStart('/'));
+                            }
+                        }
+                        catch { /* ignore */ }
+                    }
+                }
+
+                // opcional: intentar obtener estadísticas agregadas desde API (no crítico)
+                try
+                {
+                    var cliente = HttpClientFactory.CreateClient();
+                    var baseUrl = new Uri(NavigationManager.BaseUri);
+                    var apiUrl = baseUrl.Scheme + "://" + baseUrl.Host + (baseUrl.Port > 0 ? ":" + baseUrl.Port : "") + "/api/Proveedor/obtener_con_estadisticas";
+                    var resp = await cliente.GetAsync(apiUrl);
+                    if (resp.IsSuccessStatusCode)
+                    {
+                        var data = await resp.Content.ReadFromJsonAsync<DTO<IEnumerable<ProveedorConEstadisticas>>>();
+                        if (data != null && data.Correcto && data.Datos != null)
+                        {
+                            foreach (var pc in data.Datos)
+                            {
+                                // Sobrescribe/añade la estadística con la información agregada
+                                _rating[pc.Proveedor.Id] = pc.CalificacionPromedio;
+                                _jobs[pc.Proveedor.Id] = pc.JobsCount;
+                            }
+                        }
+                    }
+                }
+                catch { /* no bloquear */ }
+            }
+            else
+            {
+                proveedores = new List<Proveedor>();
+            }
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Error", Detail = ex.Message });
+            proveedores = new List<Proveedor>();
+        }
+    }
+
+    private async Task OnSelectProveedor(Proveedor? p)
+    {
+        if (p == null) return;
+        // marcar seleccionado (ProveedorCard puede volver a llamar OnSelect para deseleccionar)
+        selectedProveedor = p;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void ClearSelected()
+    {
+        selectedProveedor = null;
+    }
+
+    private void Cancelar()
+    {
+        DialogService.Close(null);
+    }
+
+    private void Aceptar()
+    {
+        DialogService.Close(selectedProveedor);
+    }
+
+    // Helpers para ProveedorCard
+    private string? GetImageUrl(int proveedorId) => _images.TryGetValue(proveedorId, out var u) && !string.IsNullOrEmpty(u) ? u : null;
+    private List<TipoServicio>? GetServicios(int proveedorId) => _services.TryGetValue(proveedorId, out var s) ? s : null;
+    private decimal? GetRatingFor(int proveedorId) => _rating.TryGetValue(proveedorId, out var r) ? r : (decimal?)null;
+    private int? GetJobsFor(int proveedorId) => _jobs.TryGetValue(proveedorId, out var j) ? j : (int?)null;
+}

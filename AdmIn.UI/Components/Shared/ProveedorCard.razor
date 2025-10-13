@@ -24,9 +24,31 @@
                         <div class="proveedor-services small text-muted">@ServiciosDisplay</div>
                     }
                 </div>
-                <div class="text-end">
-                    <div class="rating-badge">@((Rating.HasValue) ? Rating.Value.ToString("0.0") : "-")</div>
-                    <div class="jobs-count small text-muted">@((JobsCount.HasValue) ? $"{JobsCount.Value} trabajos" : "-")</div>
+                <div class="text-end stats-wrap">
+                    <div class="rating-badge" title="Calificación promedio de este proveedor">
+                        <i class="fas fa-star" aria-hidden="true"></i>
+                        @((Rating.HasValue) ? Rating.Value.ToString("0.0") : "-")
+                    </div>
+                    @{
+                        // Fallback: usar JobsCount si llegó desde el padre, sino usar Proveedor.TrabajosRealizados
+                        string jobsDisplay;
+                        if (JobsCount.HasValue)
+                        {
+                            jobsDisplay = $"{JobsCount.Value} trabajos";
+                        }
+                        else if (Proveedor?.TrabajosRealizados > 0)
+                        {
+                            jobsDisplay = $"{Proveedor.TrabajosRealizados} trabajos";
+                        }
+                        else
+                        {
+                            jobsDisplay = "-";
+                        }
+                    }
+                    <div class="jobs-count small text-muted" title="Cantidad de trabajos completados por este proveedor">
+                        <i class="fas fa-key jobs-icon" aria-hidden="true"></i>
+                        @jobsDisplay
+                    </div>
                 </div>
             </div>
         </div>
@@ -52,8 +74,15 @@
 .avatar-placeholder { width: 64px; height: 64px; border-radius: 50%; background: #f3f4f6; display:flex; align-items:center; justify-content:center; color:#9ca3af; font-size:24px; border: 3px solid #e9e9e9; }
 .proveedor-name { font-weight:700; font-size:1rem; color:#1f2937; }
 .proveedor-services { margin-top:0.25rem; max-width: calc(100% - 90px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.rating-badge { display:inline-block; background:#f3f4f6; padding:0.25rem 0.5rem; border-radius:6px; font-weight:600; color:#111827; margin-bottom:0.25rem; }
-.jobs-count { margin-top:0.25rem; }
+
+/* Rating and jobs styles */
+.stats-wrap { min-width: 92px; display:flex; flex-direction:column; align-items:flex-end; gap:6px; }
+.rating-badge { display:inline-flex; align-items:center; gap:6px; background:#f3f4f6; padding:0.25rem 0.5rem; border-radius:6px; font-weight:600; color:#111827; margin-bottom:0.25rem; }
+.rating-icon { color:#f59e0b; font-size:0.95rem; }
+
+/* Jobs with key icon */
+.jobs-count { display:inline-flex; align-items:center; gap:6px; color:#6b7280; font-size:0.85rem; }
+.jobs-icon { color:#6b7280; font-size:0.95rem; }
 
 /* Responsive tweaks */
 @@media (max-width: 480px) {

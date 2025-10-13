@@ -26,7 +26,8 @@
                 <RadzenDataGridColumn TItem="TrabajoProveedor" Title="Acciones">
                     <Template Context="t">
                         <RadzenButton Size="ButtonSize.Small" Icon="visibility" Click="@(()=> VerDetalle(t.Id))">Ver</RadzenButton>
-                        @if (esProveedor && t.Estado != "En ejecución" && t.Estado != "Finalizado")
+                        @* Only show Accept when trabajo is in Creado or Solicitado AND assigned to this provider *@
+                        @if (esProveedor && proveedorId.HasValue && t.ProveedorId == proveedorId.Value && (t.Estado == TrabajoEstados.Creado || t.Estado == TrabajoEstados.Solicitado))
                         {
                             <RadzenButton Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Success" Icon="check" Click="@(()=> AbrirAceptarDialog(t))">Aceptar</RadzenButton>
                         }

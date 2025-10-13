@@ -21,5 +21,11 @@ namespace AdmIn.Business.Servicios
         Task<DTO<bool>> MarcarFinalizado(TrabajoAccionRequest request);
         Task<DTO<bool>> RevisarFinalizacion(RevisarFinalizacionRequest request);
         Task<DTO<bool>> CancelarTrabajo(TrabajoAccionRequest request);
+
+        // Documentos asociados a trabajos
+        Task<DTO<TrabajoProveedorDocumento>> CrearDocumento(TrabajoProveedorDocumento doc);
+        Task<DTO<TrabajoProveedorDocumento>> ObtenerDocumentoPorId(int documentoId);
+        Task<DTO<IEnumerable<TrabajoProveedorDocumento>>> ObtenerDocumentosPorTrabajo(int trabajoId);
+        Task<DTO<bool>> EliminarDocumento(int documentoId);
     }
 }

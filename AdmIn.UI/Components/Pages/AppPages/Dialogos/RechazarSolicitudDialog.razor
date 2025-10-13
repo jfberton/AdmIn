@@ -6,32 +6,28 @@
 @inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthState
 
 <RadzenCard>
-    <RadzenTemplateForm TItem="AceptarModel" Data="model" Submit="OnSubmit">
-        <RadzenRow>
-            <RadzenColumn>
-                <RadzenLabel Text="Costo aproximado" />
-                <RadzenNumeric @bind-Value="model.CostoAproximado" Min="0" Step="0.01" />
-            </RadzenColumn>
-            <RadzenColumn>
-                <RadzenLabel Text="Fecha inicio" />
-                <RadzenDatePicker @bind-Value="model.FechaInicio" />
-            </RadzenColumn>
-        </RadzenRow>
-        <RadzenRow class="mt-3">
-            <RadzenColumn>
-                <RadzenButton ButtonStyle="ButtonStyle.Primary" Text="Aceptar" ButtonType="ButtonType.Submit" />
-                <RadzenButton Text="Cancelar" Click="Cancel" Style="margin-left:8px;" />
-            </RadzenColumn>
-        </RadzenRow>
+    <RadzenTemplateForm TItem="Model" Data="model" Submit="OnSubmit">
+        <div style="padding:12px;">
+            <div style="margin-bottom:8px;">
+                <label style="font-weight:600;">Motivo del rechazo</label>
+                <div>
+                    <RadzenTextArea @bind-Value="model.Comentario" Style="width:100%" />
+                </div>
+            </div>
+
+            <div style="display:flex; gap:8px; margin-top:12px; justify-content:flex-end;">
+                <RadzenButton ButtonStyle="ButtonStyle.Danger" Text="Rechazar" ButtonType="ButtonType.Submit" />
+                <RadzenButton ButtonStyle="ButtonStyle.Secondary" Text="Cancelar" Click="Cancel" Style="margin-left:8px;" />
+            </div>
+        </div>
     </RadzenTemplateForm>
 </RadzenCard>
 
 @code{
     [Parameter] public TrabajoProveedor trabajo { get; set; }
 
-    class AceptarModel { public decimal CostoAproximado { get; set; } = 0m; public DateTime FechaInicio { get; set; } = DateTime.Now; }
-
-    private AceptarModel model = new();
+    class Model { public string Comentario { get; set; } = string.Empty; }
+    private Model model = new();
 
     private async Task<int> GetCurrentUsuarioId()
     {
@@ -62,16 +58,16 @@
             return;
         }
 
-        var req = new AceptarTrabajoRequest { TrabajoId = trabajo.Id, UsuarioId = usuarioId, FechaInicio = model.FechaInicio, CostoAproximado = model.CostoAproximado };
-        var r = await TrabajoService.AceptarTrabajo(req);
+        var req = new TrabajoAccionRequest { TrabajoId = trabajo.Id, UsuarioId = usuarioId, Comentario = string.IsNullOrWhiteSpace(model.Comentario) ? null : model.Comentario };
+        var r = await TrabajoService.RechazarTrabajo(req);
         if (r != null && r.Correcto)
         {
-            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = "Aceptado", Detail = r.Mensaje });
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = "Rechazado", Detail = r.Mensaje });
             DialogService.Close(true);
         }
         else
         {
-            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Error", Detail = r?.Mensaje ?? "Error al aceptar" });
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Error", Detail = r?.Mensaje ?? "Error al rechazar" });
         }
     }
 

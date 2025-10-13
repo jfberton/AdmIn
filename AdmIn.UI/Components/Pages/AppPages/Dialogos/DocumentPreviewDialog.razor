@@ -1,0 +1,204 @@
+@using AdmIn.Common.Entidades
+@using AdmIn.UI.Services
+@using AdmIn.Common
+@inject IServ_TrabajoProveedor TrabajoService
+@inject IServ_Proveedor ProveedorService
+@inject NotificationService NotificationService
+@inject DialogService DialogService
+@inject IJSRuntime JSRuntime
+@inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthState
+@inject IServ_Inmueble InmuebleService
+
+<div style="width:100%;">
+    <div style="display:flex; flex-direction:column; gap:12px; padding:12px;">
+        <!-- Meta line: uploader • type • date -->
+        <div style="font-size:0.9rem; color:#6b7280;">
+            Subido por: @(_doc?.NombreSubidor ?? "-") &nbsp;•&nbsp; @GetFileTypeLabel(_doc) &nbsp;•&nbsp; @(_doc?.FechaSubida.ToString("g"))
+        </div>
+
+        <!-- Actions row -->
+        <div style="display:flex; gap:8px; align-items:center;">
+            <RadzenButton Text="Descargar" Click="Descargar" ButtonStyle="ButtonStyle.Primary" />
+            @if (IsPreviewable(_doc))
+            {
+                <RadzenButton Text="Abrir en nueva pestaña" Click="AbrirEnPestana" ButtonStyle="ButtonStyle.Primary" />
+            }
+            @if (_canDelete)
+            {
+                <RadzenButton Text="Eliminar" ButtonStyle="ButtonStyle.Danger" Click="Eliminar" />
+            }
+            <RadzenButton Text="Cerrar" Click="Cerrar" ButtonStyle="ButtonStyle.Light" />
+        </div>
+
+        <!-- Preview area -->
+        <div style="flex:1; display:flex; justify-content:center; align-items:center; min-height:320px; padding-top:6px;">
+            @if (_loading)
+            {
+                <div>Cargando...</div>
+            }
+            else if (_doc != null && _doc.Contenido != null && _doc.Contenido.Length > 0)
+            {
+                @if (IsImage(_doc.ContentType))
+                {
+                    <img src="@GetDataUri(_doc)" style="max-width:100%; max-height:60vh; object-fit:contain; border-radius:6px;" />
+                }
+                else if (IsPdf(_doc.ContentType))
+                {
+                    <iframe src="@GetDataUri(_doc)" style="width:100%; height:60vh; border:0;" />
+                }
+                else
+                {
+                    <div style="text-align:center; color:#374151;">
+                        <p>Tipo de archivo: @(_doc.ContentType)</p>
+                        <p>Nombre: @(_doc.NombreArchivo)</p>
+                        <p>Tamaño: @(_doc.Contenido?.Length ?? 0) bytes</p>
+                    </div>
+                }
+            }
+            else
+            {
+                <div>No hay vista previa disponible</div>
+            }
+        </div>
+    </div>
+</div>
+
+@code{
+    [Parameter] public TrabajoProveedorDocumento documento { get; set; }
+    [Parameter] public int trabajoId { get; set; }
+
+    private TrabajoProveedorDocumento? _doc;
+    private bool _loading = true;
+    private bool _canDelete = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _doc = documento;
+        try
+        {
+            // Ensure we have content
+            if (_doc == null) return;
+            if (_doc.Contenido == null || _doc.Contenido.Length == 0)
+            {
+                var res = await TrabajoService.ObtenerDocumentoPorId(_doc.TrabajoProveedor_DocumentoId);
+                if (res != null && res.Correcto && res.Datos != null)
+                {
+                    _doc = res.Datos;
+                }
+            }
+
+            // determine if current user can delete: only if logged-in display name equals NombreSubidor
+            try
+            {
+                var auth = await AuthState.GetAuthenticationStateAsync();
+                var user = auth.User;
+
+                var uploader = (_doc?.NombreSubidor ?? string.Empty).Trim();
+
+                // Display name shown in welcome card: prefer user.Identity.Name, fallback to "name" claim
+                // Prefer a claim that represents the user's display name in Spanish ('Nombre') if present
+                var displayName = string.Empty;
+                var nombreClaim = user.Claims.FirstOrDefault(c => !string.IsNullOrEmpty(c.Type) && c.Type.IndexOf("nombre", StringComparison.OrdinalIgnoreCase) >= 0);
+                if (nombreClaim != null && !string.IsNullOrWhiteSpace(nombreClaim.Value))
+                {
+                    displayName = nombreClaim.Value.Trim();
+                }
+                else
+                {
+                    // fallback to standard identity name and then generic 'name' claim
+                    displayName = (user.Identity?.Name ?? string.Empty).Trim();
+                    if (string.IsNullOrEmpty(displayName))
+                    {
+                        displayName = user.Claims.FirstOrDefault(c => string.Equals(c.Type, "name", StringComparison.OrdinalIgnoreCase))?.Value?.Trim() ?? string.Empty;
+                    }
+                }
+
+                _canDelete = false;
+                if (!string.IsNullOrEmpty(uploader) && !string.IsNullOrEmpty(displayName) && string.Equals(uploader, displayName, StringComparison.OrdinalIgnoreCase))
+                {
+                    _canDelete = true;
+                }
+            }
+            catch { _canDelete = false; }
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogError(ex, "Error loading document preview");
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private string GetDataUri(TrabajoProveedorDocumento d)
+    {
+        var base64 = Convert.ToBase64String(d.Contenido ?? Array.Empty<byte>());
+        var ct = string.IsNullOrWhiteSpace(d.ContentType) ? "application/octet-stream" : d.ContentType;
+        return $"data:{ct};base64,{base64}";
+    }
+
+    private bool IsImage(string ct) => !string.IsNullOrWhiteSpace(ct) && ct.StartsWith("image/");
+    private bool IsPdf(string ct) => !string.IsNullOrWhiteSpace(ct) && ct.Contains("pdf");
+    private bool IsPreviewable(TrabajoProveedorDocumento? d) => d != null && (IsImage(d.ContentType) || IsPdf(d.ContentType) || d.Contenido != null);
+
+    private string GetFileTypeLabel(TrabajoProveedorDocumento? d)
+    {
+        if (d == null) return "";
+        if (!string.IsNullOrWhiteSpace(d.ContentType))
+        {
+            var ct = d.ContentType.ToLowerInvariant();
+            if (ct.Contains("pdf")) return "PDF";
+            if (ct.Contains("image")) return "Imagen";
+            if (ct.Contains("word") || ct.Contains("officedocument.wordprocessingml")) return "Documento Word";
+            if (ct.Contains("excel") || ct.Contains("officedocument.spreadsheetml")) return "Hoja de cálculo";
+            return d.ContentType;
+        }
+        try { return System.IO.Path.GetExtension(d.NombreArchivo ?? string.Empty).TrimStart('.').ToUpperInvariant(); } catch { return "Archivo"; }
+    }
+
+    private async Task Descargar()
+    {
+        if (_doc == null || _doc.Contenido == null) return;
+        await JSRuntime.InvokeVoidAsync("blazorDownloadFile", _doc.NombreArchivo ?? "documento", _doc.ContentType ?? "application/octet-stream", Convert.ToBase64String(_doc.Contenido));
+    }
+
+    private async Task AbrirEnPestana()
+    {
+        if (_doc == null || _doc.Contenido == null) return;
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("openBlobFromBase64", _doc.ContentType ?? "application/octet-stream", Convert.ToBase64String(_doc.Contenido));
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogError(ex, "Error opening blob in new tab");
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Error", Detail = ex.Message });
+        }
+    }
+
+    private async Task Eliminar()
+    {
+        if (_doc == null) return;
+        var confirm = await DialogService.Confirm("¿Eliminar este documento? Esta acción no se puede deshacer.", "Confirmar eliminación");
+        if (confirm != true) return;
+
+        var res = await TrabajoService.EliminarDocumento(_doc.TrabajoProveedor_DocumentoId);
+        if (res != null && res.Correcto)
+        {
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = "Eliminado", Detail = res.Mensaje });
+            DialogService.Close(true); // signal parent to refresh
+        }
+        else
+        {
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Error", Detail = res?.Mensaje ?? "No se pudo eliminar" });
+        }
+    }
+
+    private void Cerrar()
+    {
+        DialogService.Close(false);
+    }
+
+    [Inject] private ILogger<DocumentPreviewDialog>? Logger { get; set; }
+}

@@ -1,0 +1,111 @@
+@using AdmIn.Common.Entidades
+@using AdmIn.UI.Services
+@using AdmIn.UI.Services.UtilityServices
+@using Microsoft.AspNetCore.Components.Forms
+@using System.Linq
+@inject IServ_TrabajoProveedor TrabajoService
+@inject NotificationService NotificationService
+@inject DialogService DialogService
+@inject IHttpClientFactory HttpClientFactory
+@inject ITokenService TokenService
+@inject NavigationManager Navigation
+@inject IConfiguration Config
+@inject ILogger<UploadDocumentoDialog> Logger
+@inject IJSRuntime JSRuntime
+
+<RadzenCard>
+    <div style="display:flex; flex-direction:column; gap:8px;">
+        <InputFile OnChange="FileSelected" />
+        <input placeholder="Descripción" @bind="Descripcion" />
+        <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:8px;">
+            <RadzenButton Text="Cancelar" Click="Cancel" ButtonStyle="ButtonStyle.Light" />
+            <RadzenButton Text="Subir" Click="Upload" Disabled="@(SelectedFile == null)" />
+        </div>
+    </div>
+</RadzenCard>
+
+@code{
+    [Parameter] public int TrabajoId { get; set; }
+
+    private IBrowserFile? SelectedFile;
+    private string Descripcion = string.Empty;
+
+    private void FileSelected(InputFileChangeEventArgs e)
+    {
+        SelectedFile = e.File;
+    }
+
+    private async Task Upload()
+    {
+        if (SelectedFile == null) return;
+
+        try
+        {
+            var client = HttpClientFactory.CreateClient();
+            var token = await TokenService.GetTokenAsync();
+            if (!string.IsNullOrEmpty(token)) client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+            using var content = new MultipartFormDataContent();
+            await using var stream = SelectedFile.OpenReadStream(1024 * 1024 * 15); // 15 MB limit
+            var fileContent = new StreamContent(stream);
+            fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(SelectedFile.ContentType ?? "application/octet-stream");
+            content.Add(fileContent, "file", SelectedFile.Name);
+            content.Add(new StringContent(Descripcion ?? string.Empty), "descripcion");
+
+            // Use configured API path if available to ensure absolute URL to API server
+            var apiPathDev = Config["Path_api_dev"];
+            var apiPathProd = Config["Path_api_prod"];
+            var apiBase = !string.IsNullOrWhiteSpace(apiPathDev) && Navigation.Uri.StartsWith("https://") ? apiPathDev : apiPathProd;
+            if (string.IsNullOrWhiteSpace(apiBase)) apiBase = Navigation.BaseUri;
+            apiBase = apiBase.TrimEnd('/');
+
+            var url = new Uri(apiBase + $"/TrabajoProveedor/{TrabajoId}/documentos");
+
+            var resp = await client.PostAsync(url, content);
+            if (resp.IsSuccessStatusCode)
+            {
+                NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = "Subido", Detail = "Documento subido correctamente" });
+                DialogService.Close(true);
+            }
+            else
+            {
+                var txt = await resp.Content.ReadAsStringAsync();
+                var headers = resp.Headers != null ? string.Join("; ", resp.Headers.Select(h => h.Key + ":" + string.Join(",", h.Value))) : string.Empty;
+                var contentHeaders = resp.Content?.Headers != null ? string.Join("; ", resp.Content.Headers.Select(h => h.Key + ":" + string.Join(",", h.Value))) : string.Empty;
+
+                // Log detailed info to server logs
+                Logger.LogError("UploadDocumento: Error uploading to {Url}. Status: {Status}. Reason: {Reason}. Headers: {Headers}. ContentHeaders: {ContentHeaders}. Body: {Body}", url.ToString(), (int)resp.StatusCode, resp.ReasonPhrase, headers, contentHeaders, txt);
+
+                // Log to browser console for quick debugging
+                try
+                {
+                    await JSRuntime.InvokeVoidAsync("console.error", $"Upload error to {url}: {(int)resp.StatusCode} {resp.ReasonPhrase}", headers, contentHeaders, txt);
+                }
+                catch
+                {
+                    // Ignore JS errors during prerendering
+                }
+
+                NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Error", Detail = txt });
+            }
+        }
+        catch (Exception ex)
+        {
+            // Log exception details
+            Logger.LogError(ex, "UploadDocumento: Exception while uploading document for trabajo {TrabajoId}", TrabajoId);
+            try
+            {
+                await JSRuntime.InvokeVoidAsync("console.error", "UploadDocumento exception:", ex.Message, ex.StackTrace);
+            }
+            catch { }
+
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Error", Detail = ex.Message });
+        }
+    }
+
+    private Task Cancel()
+    {
+        DialogService.Close(false);
+        return Task.CompletedTask;
+    }
+}

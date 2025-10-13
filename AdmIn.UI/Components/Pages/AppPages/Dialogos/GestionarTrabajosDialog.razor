@@ -1,0 +1,91 @@
+@using AdmIn.Common.Entidades
+@using AdmIn.UI.Services
+@inject IServ_TrabajoProveedor TrabajoService
+@inject NavigationManager Navigation
+@inject DialogService DialogService
+
+<div style="padding:12px; width:100%;">
+    <RadzenStack Gap="1rem">
+        <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.SpaceBetween" AlignItems="AlignItems.Center">
+            <RadzenText TextStyle="TextStyle.H6" Text="Trabajos asociados" />
+            <div>
+                @if (CanRequestWork)
+                {
+                    <RadzenButton ButtonStyle="ButtonStyle.Primary" Icon="add" Text="Solicitar trabajo" Click="OnSolicitar" Style="margin-left:8px;" />
+                }
+                <RadzenButton ButtonStyle="ButtonStyle.Secondary" Text="Cerrar" Click="Close" Style="margin-left:8px;" />
+            </div>
+        </RadzenStack>
+
+        @if (trabajos == null || !trabajos.Any())
+        {
+            <div>No hay trabajos asociados a este inmueble</div>
+        }
+        else
+        {
+            <div style="display:flex;flex-direction:column;gap:8px;max-height:420px;overflow:auto;padding-right:8px;">
+                @foreach (var t in trabajos)
+                {
+                    <div class="trabajo-item" style="display:flex;justify-content:space-between;align-items:center;padding:12px;border-left:4px solid #e5e7eb;background:#fafafa;border-radius:6px;">
+                        <div style="flex:1;min-width:0;">
+                            <div style="font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">@t.Descripcion</div>
+                            <div style="color:#6b7280;font-size:0.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Estado: @t.Estado &nbsp;·&nbsp; Fecha: @t.Fecha.ToString("g")</div>
+                        </div>
+                        <div style="display:flex;gap:8px;margin-left:12px;">
+                            <RadzenButton Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Primary" Click="@(async () => OnVer(t))">Ver</RadzenButton>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+
+    </RadzenStack>
+</div>
+
+@code {
+    [Parameter] public int InmuebleId { get; set; }
+    [Parameter] public bool CanRequestWork { get; set; } = false;
+
+    private List<TrabajoProveedor> trabajos = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadTrabajos();
+    }
+
+    private async Task LoadTrabajos()
+    {
+        try
+        {
+            var res = await TrabajoService.Obtener_todos();
+            if (res != null && res.Correcto && res.Datos != null)
+            {
+                trabajos = res.Datos.Where(t => t.InmuebleId == InmuebleId).OrderByDescending(t => t.Fecha).ToList();
+            }
+            else
+            {
+                trabajos = new List<TrabajoProveedor>();
+            }
+        }
+        catch { trabajos = new List<TrabajoProveedor>(); }
+    }
+
+    private async Task OnVer(TrabajoProveedor t)
+    {
+        DialogService.Close(true);
+        await Task.Delay(50);
+        Navigation.NavigateTo($"/trabajos/{t.Id}");
+    }
+
+    private async Task OnSolicitar()
+    {
+        DialogService.Close(true);
+        await Task.Delay(50);
+        Navigation.NavigateTo($"/inmuebles/{InmuebleId}/trabajos/nuevo");
+    }
+
+    private void Close()
+    {
+        DialogService.Close(false);
+    }
+}
