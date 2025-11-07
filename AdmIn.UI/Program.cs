@@ -45,6 +45,7 @@ builder.Services.AddScoped<IServ_Proveedor, Serv_Proveedor>();
 builder.Services.AddScoped<IServ_Imagen, Serv_Imagen>();
 builder.Services.AddScoped<IServ_TrabajoProveedor, Serv_TrabajoProveedor>();
 builder.Services.AddScoped<IServ_CalificacionProveedor, Serv_CalificacionProveedor>();
+builder.Services.AddScoped<IServ_ReservaUi, Serv_Reserva>();
 
 // Radzen services
 builder.Services.AddScoped<DialogService>();
@@ -53,6 +54,7 @@ builder.Services.AddScoped<IServ_Notificacion, Serv_Notificacion>();
 builder.Services.AddScoped<IServ_HistorialTrabajo, Serv_HistorialTrabajo>();
 builder.Services.AddScoped<IServ_HistorialDetalleTrabajo, Serv_HistorialDetalleTrabajo>();
 builder.Services.AddScoped<IServ_DetalleTrabajo, Serv_DetalleTrabajo>();
+builder.Services.AddScoped<AdmIn.UI.Components.Shared.ReservaDialog>();
 
 //Utility Services
 builder.Services.AddHttpContextAccessor();

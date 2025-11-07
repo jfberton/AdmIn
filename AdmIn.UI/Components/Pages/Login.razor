@@ -10,7 +10,7 @@
 @using Microsoft.AspNetCore.Components.Authorization
 
 @layout LoginLayout
-@inject AuthenticationStateProvider authStateProvider
+@inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider authStateProvider
 @inject ITokenService TokenService
 @inject NavigationManager navManager
 @inject IServ_Auth serv_Auth
@@ -20,150 +20,71 @@
 @inject IJSRuntime JSRuntime
 @inject IConfiguration configuration
 
+<div class="login-card">
+    <div class="login-card-left">
+        <img src="img/imagen.png" alt="Illustration" />
+    </div>
 
-@if (DeviceService.IsMobileDevice())
-{
-    <RadzenRow Gap="0" Class="rz-mx-auto login-container-row-mobile">
-        <RadzenColumn Size="12">
-            <RadzenCard Class="rz-shadow-0 rz-border-radius-0 login-form-card">
-                <img src="img/AdmIn.png" alt="AdmIn Logo" class="login-logo" />
-                <RadzenText TextStyle="TextStyle.H5" TagName="TagName.H2" Class="rz-mb-6 login-title">
-                    Ingrese sus credenciales
-                </RadzenText>
-                <RadzenTemplateForm Data=@("LoginWithDefaultValues")>
-                    <RadzenLogin AllowRegister="false" AllowResetPassword="false" UserText="Usuario" PasswordText="Contraseña"
-                                 AllowRememberMe="false" RememberMe="false" LoginText="Ingresar"
-                                 Login=@(args => OnLogin(args, "Login with default values")) />
-                </RadzenTemplateForm>
-            </RadzenCard>
-        </RadzenColumn>
-    </RadzenRow>
-}
-else
-{
-    <RadzenRow Gap="0" Class="rz-my-12 rz-mx-auto login-container-row-desktop" JustifyContent="JustifyContent.Center">
-        <RadzenColumn Size="12" SizeMD="6">
-            <RadzenCard Class="rz-shadow-0 rz-border-radius-0 login-form-card">
-                <img src="img/AdmIn.png" alt="AdmIn Logo" class="login-logo" />
-                <RadzenText TextStyle="TextStyle.H5" TagName="TagName.H2" Class="rz-mb-6 login-title">
-                    Ingrese sus credenciales
-                </RadzenText>
-                <RadzenTemplateForm Data=@("LoginWithDefaultValues")>
-                    <RadzenLogin AllowRegister="false" AllowResetPassword="false" UserText="Usuario" PasswordText="Contraseña"
-                                 AllowRememberMe="false" RememberMe="false" LoginText="Ingresar"
-                                 Login=@(args => OnLogin(args, "Login with default values")) />
-                </RadzenTemplateForm>
-            </RadzenCard>
-        </RadzenColumn>
-    </RadzenRow>
-}
+    <div class="login-separator" aria-hidden="true"></div>
 
+    <div class="login-card-right">
+        <div class="login-form-card">
+            <RadzenText TextStyle="TextStyle.H5" TagName="TagName.H2" Class="login-title">
+                Ingrese sus credenciales
+            </RadzenText>
+
+            <RadzenTemplateForm Data=@("LoginWithDefaultValues")>
+                <RadzenLogin AllowRegister="false" AllowResetPassword="false" UserText="Usuario" PasswordText="Contraseña"
+                             AllowRememberMe="false" RememberMe="false" LoginText="Ingresar"
+                             Login=@(args => OnLogin(args, "Login with default values")) />
+            </RadzenTemplateForm>
+
+            <div class="mt-3">
+              <a href="/request-password-reset">¿Olvidaste tu contraseña?</a>
+            </div>
+
+            <!-- Removed social login buttons and top logo so the card is a clean two-column layout -->
+
+        </div>
+    </div>
+</div>
 
 @code {
+    // Logo style helpers (now static)
+    private string LogoStyle => string.Empty; // not used, kept for compatibility
+
     async Task OnLogin(LoginArgs args, string name)
     {
         await JSRuntime.InvokeVoidAsync("console.log", "========== INICIO LOGIN DESDE BLAZOR ==========");
         await JSRuntime.InvokeVoidAsync("console.log", $"[BLAZOR LOGIN] Usuario intentando login: {args?.Username ?? "null"}");
-        await JSRuntime.InvokeVoidAsync("console.log", $"[BLAZOR LOGIN] Password length: {args?.Password?.Length ?? 0}");
-        await JSRuntime.InvokeVoidAsync("console.log", $"[BLAZOR LOGIN] Timestamp: {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}");
 
         try
         {
-            await JSRuntime.InvokeVoidAsync("console.log", "[BLAZOR LOGIN] ✓ Creando modelo de login...");
-
             var model = new LoginModel
             {
                 Email = args.Username,
                 Password = args.Password
             };
 
-            await JSRuntime.InvokeVoidAsync("console.log", "[BLAZOR LOGIN] ✓ Modelo de login creado correctamente");
-            
-            // Obtener el path del API que se va a usar
-            var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production";
-            var isDevelopment = environment.Equals("Development", StringComparison.OrdinalIgnoreCase);
-            var pathApiConfig = configuration[isDevelopment ? "Path_api_dev" : "Path_api_prod"];
-            var fullApiPath = pathApiConfig + "Auth/login";
-            
-            await JSRuntime.InvokeVoidAsync("console.log", $"[BLAZOR LOGIN] Llamando a serv_Auth.Login...");
-            await JSRuntime.InvokeVoidAsync("console.log", $"[BLAZOR LOGIN] 🎯 Path API configurado: {fullApiPath}");
-            await JSRuntime.InvokeVoidAsync("console.log", $"[BLAZOR LOGIN] 🌍 Entorno detectado: {environment} (isDev: {isDevelopment})");
-
             Usuario user = null;
 
             try
             {
-                switch (args.Username)
-                {
-                   default:
-                        user = await serv_Auth.Login(model);
-                        break;
-                }
-
-                await JSRuntime.InvokeVoidAsync("console.log", $"[BLAZOR LOGIN] ✓ Respuesta de serv_Auth.Login recibida");
-                
-                // Análisis detallado de la respuesta
-                if (user == null)
-                {
-                    await JSRuntime.InvokeVoidAsync("console.log", $"[BLAZOR LOGIN] 📊 ANÁLISIS: serv_Auth.Login retornó NULL");
-                    await JSRuntime.InvokeVoidAsync("console.log", $"[BLAZOR LOGIN] 🔍 Esto indica una de estas situaciones:");
-                    await JSRuntime.InvokeVoidAsync("console.log", $"[BLAZOR LOGIN]   1. ❌ No llegó al API (timeout/conexión)");
-                    await JSRuntime.InvokeVoidAsync("console.log", $"[BLAZOR LOGIN]   2. ❌ Llegó al API pero retornó HTTP error (404/500)");
-                    await JSRuntime.InvokeVoidAsync("console.log", $"[BLAZOR LOGIN]   3. ❌ API retornó DTO con Correcto=false (credenciales inválidas)");
-                    await JSRuntime.InvokeVoidAsync("console.log", $"[BLAZOR LOGIN]   4. ❌ API retornó JSON malformado o DTO.Datos=null");
-                    await JSRuntime.InvokeVoidAsync("console.log", $"[BLAZOR LOGIN] 💡 Revisa DevTools Network tab y logs del API para más detalles");
-                }
-                else
-                {
-                    await JSRuntime.InvokeVoidAsync("console.log", $"[BLAZOR LOGIN] 📊 ANÁLISIS: serv_Auth.Login retornó USUARIO VÁLIDO");
-                    await JSRuntime.InvokeVoidAsync("console.log", $"[BLAZOR LOGIN] ✅ Esto confirma que:");
-                    await JSRuntime.InvokeVoidAsync("console.log", $"[BLAZOR LOGIN]   1. ✅ Llegó correctamente al API");
-                    await JSRuntime.InvokeVoidAsync("console.log", $"[BLAZOR LOGIN]   2. ✅ API procesó la petición exitosamente");
-                    await JSRuntime.InvokeVoidAsync("console.log", $"[BLAZOR LOGIN]   3. ✅ Retornó DTO con Correcto=true y Datos válidos");
-                }
+                user = await serv_Auth.Login(model);
             }
             catch (Exception authEx)
             {
-                await JSRuntime.InvokeVoidAsync("console.log", $"[BLAZOR LOGIN] 💥 EXCEPCIÓN en serv_Auth.Login:");
-                await JSRuntime.InvokeVoidAsync("console.log", $"[BLAZOR LOGIN] ❌ Exception: {authEx.GetType().Name}");
-                await JSRuntime.InvokeVoidAsync("console.log", $"[BLAZOR LOGIN] ❌ Message: {authEx.Message}");
-                await JSRuntime.InvokeVoidAsync("console.log", $"[BLAZOR LOGIN] 📊 ANÁLISIS: Excepción durante llamada a serv_Auth");
-                await JSRuntime.InvokeVoidAsync("console.log", $"[BLAZOR LOGIN] 🔍 Esto indica problema en el cliente HTTP o deserialización");
+                await JSRuntime.InvokeVoidAsync("console.log", $"[BLAZOR LOGIN] EXCEPTION: {authEx.Message}");
                 user = null;
             }
 
-            await JSRuntime.InvokeVoidAsync("console.log", $"[BLAZOR LOGIN] ✓ Usuario recibido: {user != null}");
-
             if (user == null)
             {
-                await JSRuntime.InvokeVoidAsync("console.log", "[BLAZOR LOGIN] ✗ Usuario nulo - mostrando diálogo de error");
                 await dialogService.Alert("Usuario o contraseña incorrecta", "Credenciales inválidas");
-                await JSRuntime.InvokeVoidAsync("console.log", "========== LOGIN BLAZOR FALLIDO ==========");
                 return;
             }
 
-            await JSRuntime.InvokeVoidAsync("console.log", $"[BLAZOR LOGIN] ✓ Usuario válido recibido:");
-            await JSRuntime.InvokeVoidAsync("console.log", $"[BLAZOR LOGIN]   - ID: {user.Id}");
-            await JSRuntime.InvokeVoidAsync("console.log", $"[BLAZOR LOGIN]   - Nombre: {user.Nombre ?? "null"}");
-            await JSRuntime.InvokeVoidAsync("console.log", $"[BLAZOR LOGIN]   - Email: {user.Email ?? "null"}");
-            await JSRuntime.InvokeVoidAsync("console.log", $"[BLAZOR LOGIN]   - Token length: {user.Token?.Length ?? 0}");
-            await JSRuntime.InvokeVoidAsync("console.log", $"[BLAZOR LOGIN]   - Roles count: {user.Roles?.Count ?? 0}");
-
-            if (user.Roles?.Any() == true)
-            {
-                foreach (var rol in user.Roles)
-                {
-                    await JSRuntime.InvokeVoidAsync("console.log", $"[BLAZOR LOGIN]     - Rol: {rol.Nombre}");
-                }
-            }
-
-            await JSRuntime.InvokeVoidAsync("console.log", "[BLAZOR LOGIN] ✓ Configurando token en TokenService...");
-            
-            // Setear el token usando el servicio
             await TokenService.SetTokenAsync(user.Token);
-            
-            await JSRuntime.InvokeVoidAsync("console.log", "[BLAZOR LOGIN] ✓ Token configurado en TokenService");
-            await JSRuntime.InvokeVoidAsync("console.log", "[BLAZOR LOGIN] ✓ Actualizando estado de autenticación...");
 
             var customAuthStateProvider = authStateProvider as CustomAuthenticationStateProvider;
             await customAuthStateProvider.UpdateAuthenticationState(new UserSession
@@ -176,48 +97,11 @@ else
                 Password = model.Password
             });
 
-            await JSRuntime.InvokeVoidAsync("console.log", "[BLAZOR LOGIN] ✓ Estado de autenticación actualizado");
-            await JSRuntime.InvokeVoidAsync("console.log", "[BLAZOR LOGIN] ✓ Redirigiendo a /home...");
-
-            // Inicializar servicios Mock usando el provider inyectado
-            // AdmIn.UI.Services.Mock.MockDataInitializer.InicializarDatosMock(ServiceProvider);
-
-            //Redirigir a la página de inicio
             navManager.NavigateTo("/home", true);
-
-            await JSRuntime.InvokeVoidAsync("console.log", "========== LOGIN BLAZOR EXITOSO ==========");
         }
         catch (Exception ex)
         {
-            await JSRuntime.InvokeVoidAsync("console.log", "[BLAZOR LOGIN] ✗ ERROR CRÍTICO en OnLogin");
-            await JSRuntime.InvokeVoidAsync("console.log", $"[BLAZOR LOGIN] ✗ Exception: {ex.GetType().Name}");
-            await JSRuntime.InvokeVoidAsync("console.log", $"[BLAZOR LOGIN] ✗ Message: {ex.Message}");
-            await JSRuntime.InvokeVoidAsync("console.log", $"[BLAZOR LOGIN] ✗ Stack trace: {ex.StackTrace}");
-            
-            if (ex.InnerException != null)
-            {
-                await JSRuntime.InvokeVoidAsync("console.log", $"[BLAZOR LOGIN] ✗ Inner exception: {ex.InnerException.Message}");
-            }
-            
-            await JSRuntime.InvokeVoidAsync("console.log", "========== LOGIN BLAZOR ERROR ==========");
-            
             await dialogService.Alert($"Error interno: {ex.Message}", "Error de sistema");
         }
     }
-
-    void OnRegister(string name)
-    {
-
-    }
-
-    void OnResetPassword(string value, string name)
-    {
-
-    }
-
-    async Task Authenticate()
-    {
-
-    }
-
 }

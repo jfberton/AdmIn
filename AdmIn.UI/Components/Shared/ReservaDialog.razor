@@ -1,0 +1,267 @@
+@using AdmIn.Common.Entidades
+@using AdmIn.UI.Models
+@using AdmIn.UI.Services
+@using AdmIn.UI.Services.UtilityServices
+@using Microsoft.AspNetCore.Components.Authorization
+@using AdmIn.UI.Components.Shared
+@inject IServ_ReservaUi ReservaService
+@inject IServ_Moneda ServMoneda
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+@inject AuthenticationStateProvider AuthStateProvider
+@inject IServiceProvider ServiceProvider
+
+<RadzenDialogStyle />
+
+<div class="reserva-dialog-root" style="position:relative;min-width:640px;max-width:800px;">
+    @if (isLoading)
+    {
+        <div class="overlay-loading">
+            <RadzenProgressBarCircular ProgressBarStyle="ProgressBarStyle.Primary" Value="100" ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
+            <div class="loading-text">Cargando datos...</div>
+        </div>
+    }
+
+    <RadzenTemplateForm TItem="ReservaCreateModel" Data="model" Submit="OnSubmit">
+        <RadzenFieldset Text="Reservar Inmueble">
+
+            <div class="reserva-form-body">
+                <RadzenRow Style="gap:12px;">
+                    <RadzenColumn Size="12">
+                        <RadzenFormField Text="Inmueble" Style="width:100%">
+                            <ChildContent>
+                                <RadzenTextBox Value="@inmuebleDisplay" Style="width:100%" ReadOnly="true" />
+                            </ChildContent>
+                        </RadzenFormField>
+                    </RadzenColumn>
+
+                    <RadzenColumn Size="6">
+                        <RadzenFormField Text="Costo" Style="width:100%">
+                            <ChildContent>
+                                <RadzenNumeric @bind-Value="model.Costo" Style="width:100%" Step="0.01" Min="0" />
+                            </ChildContent>
+                            <Helper>
+                                <RadzenText TextStyle="TextStyle.Caption">Monto a reservar (ej. monto de apartado)</RadzenText>
+                            </Helper>
+                        </RadzenFormField>
+                    </RadzenColumn>
+
+                    <RadzenColumn Size="6">
+                        <RadzenFormField Text="Moneda" Style="width:100%">
+                            <ChildContent>
+                                <RadzenDropDown @bind-Value="model.MonedaId" Data="monedas" TextProperty="Nombre" ValueProperty="Id" Style="width:100%" Disabled="isLoading" />
+                            </ChildContent>
+                            <Helper>
+                                <RadzenText TextStyle="TextStyle.Caption">Selecciona la moneda</RadzenText>
+                            </Helper>
+                        </RadzenFormField>
+                    </RadzenColumn>
+
+                    <RadzenColumn Size="12">
+                        <RadzenFormField Text="Usuario reservador" Style="width:100%">
+                            <ChildContent>
+                                <div class="userselector-wrapper">
+                                    <UserSelector Title="Reservador" RoleName="Inquilino" Description="Buscar o crear inquilino"
+                                                  SelectedUserId="@(model.UsuarioReservadorId ==0 ? null : (int?)model.UsuarioReservadorId)"
+                                                  SelectedUserIdChanged="@(async (int? id) => model.UsuarioReservadorId = id ??0)"
+                                                  CurrentUserId="currentUserId"
+                                                  AllowAssociateSelf="false" />
+                                </div>
+                            </ChildContent>
+                            <Helper>
+                                <RadzenText TextStyle="TextStyle.Caption">Busca o crea el usuario que realizará la reserva.</RadzenText>
+                            </Helper>
+                        </RadzenFormField>
+                    </RadzenColumn>
+
+                    <RadzenColumn Size="12">
+                        <RadzenFormField Text="Fecha de vencimiento" Style="width:100%">
+                            <ChildContent>
+                                <RadzenDatePicker @bind-Value="model.FechaVencimiento" Style="width:100%" />
+                            </ChildContent>
+                            <Helper>
+                                <RadzenText TextStyle="TextStyle.Caption">Fecha límite de vigencia de la reserva</RadzenText>
+                            </Helper>
+                        </RadzenFormField>
+                    </RadzenColumn>
+                </RadzenRow>
+            </div>
+
+            <div class="reserva-form-footer">
+                <RadzenButton ButtonStyle="ButtonStyle.Primary" Text="Reservar" Type="ButtonType.Submit" Disabled="isSubmitting || isLoading" />
+            <RadzenButton ButtonStyle="ButtonStyle.Secondary" Text="Cancelar" Click="OnCancelar" Disabled="isSubmitting" />
+            </div>
+
+        </RadzenFieldset>
+    </RadzenTemplateForm>
+</div>
+
+<style>
+    .reserva-dialog-root {
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* Body has a max height relative to the viewport so the dialog doesn't overflow the page */
+    .reserva-form-body {
+        max-height: calc(70vh);
+        overflow: auto;
+        padding-right:8px;
+    }
+
+    .reserva-form-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap:8px;
+        margin-top:12px;
+        position: sticky;
+        bottom:0;
+        background: white; /* keep footer readable */
+        padding-top:8px;
+        padding-bottom:8px;
+        border-top:1px solid #eee;
+    }
+
+    /* Ensure userselector content expands full width */
+    .userselector-wrapper {
+        width:100%;
+    }
+
+    .reserva-dialog-root .overlay-loading {
+        position: absolute;
+        inset:0;
+        background: rgba(255,255,255,0.85);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap:12px;
+        z-index:30;
+        border-radius:4px;
+    }
+
+    .reserva-dialog-root .loading-text {
+        color: var(--rz-text-secondary-color, #6b7280);
+    }
+
+    /* Responsive adjustments */
+    @@media (max-width:768px) {
+        .reserva-dialog-root { min-width:320px; max-width:95vw; }
+        .reserva-form-body { max-height:60vh; }
+        .reserva-form-footer { padding-bottom:12px; }
+    }
+</style>
+
+@code {
+    [Parameter] public int InmuebleId { get; set; }
+    [Parameter] public decimal? InitialCosto { get; set; }
+
+    private ReservaCreateModel model = new();
+    private IEnumerable<Moneda> monedas = new List<Moneda>();
+    private bool isLoading = true;
+    private bool isSubmitting = false;
+    private string inmuebleDisplay = "Inmueble";
+    private int? currentUserId = null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        model.InmuebleId = InmuebleId;
+        isLoading = true;
+
+        try
+        {
+            // Cargar monedas
+            var resMon = await ServMoneda.Obtener_todos();
+            if (resMon != null && resMon.Correcto && resMon.Datos != null)
+            {
+                monedas = resMon.Datos;
+                model.MonedaId = model.MonedaId ?? monedas.FirstOrDefault()?.Id;
+            }
+
+            // Si se pasó costo inicial usarlo
+            if (InitialCosto.HasValue && model.Costo == 0)
+            {
+                model.Costo = InitialCosto.Value;
+            }
+
+            // Obtener nombre/descripcion del inmueble para mostrar en el dialog
+            try
+            {
+                var servInm = ServiceProvider.GetService(typeof(IServ_Inmueble)) as IServ_Inmueble;
+                if (servInm != null)
+                {
+                    var r = await servInm.Obtener_por_id(model.InmuebleId);
+                    if (r != null && r.Correcto && r.Datos != null)
+                    {
+                        inmuebleDisplay = r.Datos.Nombre;
+                        if (!InitialCosto.HasValue)
+                        {
+                            // default to renta mensual if present else valor
+                            model.Costo = r.Datos.RentaMensual > 0 ? r.Datos.RentaMensual : r.Datos.Valor;
+                        }
+                    }
+                }
+            }
+            catch { /* non critical */ }
+
+            // Obtener id de usuario actual
+            try
+            {
+                var auth = await AuthStateProvider.GetAuthenticationStateAsync();
+                var user = auth.User;
+                var idClaim = user.FindFirst("Id")?.Value ?? user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                if (int.TryParse(idClaim, out var id)) currentUserId = id;
+            }
+            catch { }
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Warning, Summary = "Advertencia", Detail = $"No se pudieron cargar algunos datos: {ex.Message}" });
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    void OnCancelar()
+    {
+        DialogService.Close(false);
+    }
+
+    async Task OnSubmit(ReservaCreateModel unused)
+    {
+        isSubmitting = true;
+        try
+        {
+            var req = new AdmIn.UI.Models.ReservaCreateRequest(model.InmuebleId, model.UsuarioReservadorId, model.Costo, model.FechaVencimiento, model.MonedaId);
+            var resultado = await ReservaService.Crear(req);
+            if (resultado != null && resultado.Correcto)
+            {
+                NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = "Reserva creada", Detail = "La reserva se creó correctamente." });
+                DialogService.Close(true);
+            }
+            else
+            {
+                NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Error", Detail = resultado?.Mensaje ?? "Error al crear reserva" });
+            }
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Error", Detail = ex.Message });
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    public class ReservaCreateModel
+    {
+        public int InmuebleId { get; set; }
+        public int UsuarioReservadorId { get; set; }
+        public decimal Costo { get; set; }
+        public DateTime? FechaVencimiento { get; set; }
+        public int? MonedaId { get; set; }
+    }
+}

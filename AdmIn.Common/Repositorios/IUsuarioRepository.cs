@@ -10,5 +10,6 @@ namespace AdmIn.Common.Repositorios
     public interface IUsuarioRepository : IRepoBase<Usuario>
     {
         Task<DTO<Usuario>> Obtener_por_email(string email);
+        Task<DTO<IEnumerable<Usuario>>> Buscar_por_termino(string termino);
     }
 }

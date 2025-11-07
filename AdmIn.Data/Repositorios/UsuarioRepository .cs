@@ -735,5 +735,110 @@ namespace AdmIn.Data.Repositorios
                 Mensaje = "Usuarios paginados correctamente."
             };
         }
+
+        public async Task<DTO<IEnumerable<Usuario>>> Buscar_por_termino(string termino)
+        {
+            using var conexion = new SqlConnection(InfoSQL.Conexion);
+            await conexion.OpenAsync();
+
+            try
+            {
+                var sqlUsuarios = @"SELECT 
+                                     u.UsuarioID as Id,
+                                     u.Nombre,
+                                     u.Email,
+                                     u.Password,
+                                     u.Pais,
+                                     u.Telefono,
+                                     u.PersonaID,
+                                     u.EmpresaID,
+                                     u.MonedaID,
+                                     u.Activo,
+                                     u.FechaCreacion,
+                                     u.FechaModificacion,
+                                     u.UsuarioCreadorID,
+                                     u.UsuarioModificadorID,
+                                     m.MonedaID as Moneda_Id,
+                                     m.Codigo as Moneda_Codigo,
+                                     m.Nombre as Moneda_Nombre
+                                   FROM Usuario u
+                                   LEFT JOIN Moneda m ON u.MonedaID = m.MonedaID
+                                   WHERE (@Term IS NULL OR u.Nombre LIKE '%' + @Term + '%' OR u.Email LIKE '%' + @Term + '%');";
+
+                var usuariosData = (await conexion.QueryAsync(sqlUsuarios, new { Term = string.IsNullOrWhiteSpace(termino) ? null : termino.Trim() })).ToList();
+
+                if (!usuariosData.Any())
+                {
+                    return new DTO<IEnumerable<Usuario>> { Correcto = true, Datos = new List<Usuario>(), Mensaje = "No se encontraron usuarios" };
+                }
+
+                var usuarioIds = usuariosData.Select(u => (int)u.Id).ToList();
+
+                var sqlRoles = @"SELECT ur.UsuarioID, r.RolID as Id, r.Nombre, r.Descripcion 
+                                 FROM UsuarioRol ur
+                                 INNER JOIN Rol r ON ur.RolID = r.RolID
+                                 WHERE ur.UsuarioID IN @UsuarioIds;";
+
+                var rolesData = (await conexion.QueryAsync<dynamic>(sqlRoles, new { UsuarioIds = usuarioIds })).ToList();
+
+                var usuarios = new List<Usuario>();
+
+                foreach (var userData in usuariosData)
+                {
+                    var usuario = new Usuario
+                    {
+                        Id = userData.Id,
+                        Nombre = userData.Nombre,
+                        Email = userData.Email,
+                        Password = userData.Password,
+                        Pais = userData.Pais,
+                        Telefono = userData.Telefono,
+                        PersonaId = userData.PersonaID,
+                        EmpresaId = userData.EmpresaID,
+                        MonedaId = userData.MonedaID,
+                        Activo = userData.Activo,
+                        FechaCreacion = userData.FechaCreacion,
+                        FechaModificacion = userData.FechaModificacion,
+                        UsuarioCreador = userData.UsuarioCreadorID,
+                        UsuarioModificador = userData.UsuarioModificadorID
+                    };
+
+                    // Mapear la moneda si existe
+                    if (userData.Moneda_Id != null)
+                    {
+                        usuario.Moneda = new Moneda
+                        {
+                            Id = userData.Moneda_Id,
+                            Codigo = userData.Moneda_Codigo,
+                            Nombre = userData.Moneda_Nombre
+                        };
+                    }
+
+                    // Asociar roles al usuario
+                    var rolesDelUsuario = rolesData
+                        .Where(ur => ur.UsuarioID == usuario.Id)
+                        .Select(ur => new Rol { Id = ur.Id, Nombre = ur.Nombre, Descripcion = ur.Descripcion })
+                        .ToList();
+
+                    usuario.Roles = rolesDelUsuario;
+                    usuarios.Add(usuario);
+                }
+
+                return new DTO<IEnumerable<Usuario>>
+                {
+                    Correcto = true,
+                    Datos = usuarios,
+                    Mensaje = "Usuarios encontrados"
+                };
+            }
+            catch (SqlException sqlEx)
+            {
+                return new DTO<IEnumerable<Usuario>> { Correcto = false, Mensaje = $"Error de base de datos: {sqlEx.Message}" };
+            }
+            catch (Exception ex)
+            {
+                return new DTO<IEnumerable<Usuario>> { Correcto = false, Mensaje = $"Error: {ex.Message}" };
+            }
+        }
     }
 }

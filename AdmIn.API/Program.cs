@@ -46,17 +46,17 @@ builder.Services.AddCors(options =>
 builder.Services.AddLogging(logging =>
 {
     logging.ClearProviders();
-    
+
     // Console logging (para desarrollo y debug en IIS)
     logging.AddConsole(options =>
     {
         options.IncludeScopes = true;
         options.TimestampFormat = "yyyy-MM-dd HH:mm:ss.fff ";
     });
-    
+
     // Debug logging
     logging.AddDebug();
-    
+
     // Event Log (para producción en Windows Server)
     if (OperatingSystem.IsWindows())
     {
@@ -79,8 +79,12 @@ builder.Services.AddLogging(logging =>
 builder.Services.AddScoped<IApiLoggerService, ApiLoggerService>();
 
 // Register application services
+builder.Services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();
 builder.Services.AddScoped<IServ_Usuario, Serv_Usuario>();
 builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
+
+// Register email service (SMTP) - sends to TEST_EMAIL by default
+builder.Services.AddScoped<AdmIn.Common.Services.IEmailService, AdmIn.API.Services.SmtpEmailService>();
 
 // Register Rol services
 builder.Services.AddScoped<IServ_Rol, Serv_Rol>();
@@ -149,6 +153,15 @@ builder.Services.AddSignalR();
 // Register Service bus hub context dependency for business services (so they can use IHubContext)
 builder.Services.AddSingleton(typeof(Microsoft.AspNetCore.SignalR.IHubContext<AdmIn.API.Hubs.NotificationHub>), sp => sp.GetService<Microsoft.AspNetCore.SignalR.IHubContext<AdmIn.API.Hubs.NotificationHub>>());
 
+// --- RESERVAS & CONTRATOS REPOS/SERVICES ---
+builder.Services.AddScoped<IReservaRepository, ReservaRepository>();
+builder.Services.AddScoped<IServ_Reserva, Serv_Reserva>();
+// Contrato repo not implemented fully; if exists register it
+// builder.Services.AddScoped<IContratoRepository, ContratoRepository>();
+
+// Registrar el servicio de expiración de reservas (BackgroundService)
+builder.Services.AddHostedService<AdmIn.API.Services.ReservaExpirationService>();
+
 var app = builder.Build();
 
 // Helper method for file logging optimizado para IIS usando el servicio centralizado
@@ -158,7 +171,7 @@ static async void WriteToLogFile(string message)
     {
         // En IIS, usar una ruta fija accesible
         var serverLogsPath = @"C:\inetpub\logs\AdmIn";
-        
+
         // Si no tenemos permisos en C:\inetpub, usar la carpeta de la aplicación
         if (!Directory.Exists(serverLogsPath))
         {
@@ -176,7 +189,7 @@ static async void WriteToLogFile(string message)
                 }
             }
         }
-        
+
         var logFile = Path.Combine(serverLogsPath, $"AdmIn-API-{DateTime.Now:yyyy-MM-dd}.log");
         var logMessage = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [INFO] [STARTUP] {message}{Environment.NewLine}";
         await File.AppendAllTextAsync(logFile, logMessage);
@@ -223,19 +236,19 @@ try
     using var connection = new Microsoft.Data.SqlClient.SqlConnection(InfoSQL.Conexion);
     await connection.OpenAsync();
     WriteToLogFile("DATABASE CONNECTION SUCCESS");
-    
+
     var cmd = connection.CreateCommand();
     cmd.CommandText = "SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'Usuario'";
     var userTableExists = (int)await cmd.ExecuteScalarAsync();
     WriteToLogFile($"Usuario table exists: {userTableExists > 0}");
-    
+
     if (userTableExists > 0)
     {
         cmd.CommandText = "SELECT COUNT(*) FROM Usuario";
         var userCount = (int)await cmd.ExecuteScalarAsync();
         WriteToLogFile($"Total users in database: {userCount}");
     }
-    
+
     connection.Close();
 }
 catch (Exception ex)

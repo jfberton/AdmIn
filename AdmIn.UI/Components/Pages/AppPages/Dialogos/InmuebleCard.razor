@@ -1,5 +1,11 @@
 ﻿@using AdmIn.Common.Entidades
 @using Radzen.Blazor
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
+@using AdmIn.UI.Components.Shared
+@inject DialogService DialogService
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NotificationService NotificationService
 
 <RadzenCard class="modern-property-card">
     <Header>
@@ -21,7 +27,7 @@
                         </div>
                     }
                     @* Carousel controls *@
-                    @if (Inmueble.Imagenes.Count > 1)
+                    @if (Inmueble.Imagenes.Count >1)
                     {
                         <button type="button" class="carousel-control prev" @onclick="PrevImage">&#10094;</button>
                         <button type="button" class="carousel-control next" @onclick="NextImage">&#10095;</button>
@@ -53,7 +59,7 @@
              </div>
 
              <!-- Indicador de múltiples imágenes -->
-             @if (Inmueble.Imagenes?.Count > 1)
+             @if (Inmueble.Imagenes?.Count >1)
              {
                  <div class="images-count-badge">
                      <RadzenIcon Icon="photo_library" class="images-icon" />
@@ -69,7 +75,7 @@
             <div class="property-header">
                 <h3 class="property-title">
                     <RadzenIcon Icon="business" class="title-icon" />
-                    @TruncateText(Inmueble.Nombre, 30)
+                    @TruncateText(Inmueble.Nombre,30)
                 </h3>
                 <div class="property-id-badge">ID: @Inmueble.Id</div>
             </div>
@@ -82,7 +88,7 @@
             <!-- Información de ubicación -->
             <div class="property-location">
                 <RadzenIcon Icon="location_on" class="location-icon" />
-                <span class="location-text">@TruncateText($"{Inmueble.Ciudad}, {Inmueble.Estado}", 35)</span>
+                <span class="location-text">@TruncateText($"{Inmueble.Ciudad}, {Inmueble.Estado}",35)</span>
             </div>
             
             <!-- Mostrar características principales si existen -->
@@ -95,7 +101,7 @@
                         {
                             <span class="char-item">@c.Caracteristica?.Nombre</span>
                         }
-                        @if (Inmueble.Caracteristicas.Count > 3)
+                        @if (Inmueble.Caracteristicas.Count >3)
                         {
                             <span class="char-more">+@((Inmueble.Caracteristicas.Count)-3)</span>
                         }
@@ -154,6 +160,12 @@
                                          Click="@(() => GestionarImagenes())" />
                         </RadzenStack>
                     }
+
+                    <!-- Botón reservar: mostrar si inmueble disponible y usuario es admin o propietario -->
+                    @if (Inmueble.Condicion?.Nombre?.ToLower() == "disponible")
+                    {
+                        <RadzenButton Text="Reservar" Icon="bookmark" ButtonStyle="ButtonStyle.Info" Size="ButtonSize.Small" Click="@(async () => await AbrirDialogReserva())" />
+                    }
                 </RadzenStack>
             </div>
             
@@ -170,151 +182,151 @@
 
 <style>
     .modern-property-card {
-        height: 100%;
+        height:100%;
         display: flex;
         flex-direction: column;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        transition: all 0.3s ease;
-        border-radius: 12px;
+        box-shadow:02px8px rgba(0,0,0,0.1);
+        transition: all0.3s ease;
+        border-radius:12px;
         overflow: hidden;
     }
 
     .modern-property-card:hover {
-        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        box-shadow:08px25px rgba(0,0,0,0.15);
         transform: translateY(-2px);
     }
 
     .property-content {
-        flex: 1;
+        flex:1;
         display: flex;
         flex-direction: column;
-        padding: 1rem;
+        padding:1rem;
     }
 
     .property-header {
-        margin-bottom: 0.75rem;
+        margin-bottom:0.75rem;
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
     }
 
     .property-title {
-        font-size: 1.1rem;
-        font-weight: 600;
-        margin: 0;
+        font-size:1.1rem;
+        font-weight:600;
+        margin:0;
         color: #333;
         display: flex;
         align-items: center;
-        gap: 0.5rem;
-        flex: 1;
-        min-height: 1.5rem;
+        gap:0.5rem;
+        flex:1;
+        min-height:1.5rem;
     }
 
     .title-icon {
         color: var(--rz-primary, #007acc);
-        font-size: 1.2rem;
+        font-size:1.2rem;
     }
 
     .property-id-badge {
         background: #f0f4f8;
         color: #64748b;
-        padding: 0.25rem 0.5rem;
-        border-radius: 4px;
-        font-size: 0.75rem;
-        font-weight: 500;
+        padding:0.25rem0.5rem;
+        border-radius:4px;
+        font-size:0.75rem;
+        font-weight:500;
     }
 
     .property-description {
-        margin-bottom: 0.75rem;
-        flex-grow: 1;
+        margin-bottom:0.75rem;
+        flex-grow:1;
     }
 
     .description-main {
-        margin: 0;
+        margin:0;
         color: #666;
-        font-size: 0.875rem;
-        line-height: 1.4;
+        font-size:0.875rem;
+        line-height:1.4;
         display: -webkit-box;
-        -webkit-line-clamp: 2;
+        -webkit-line-clamp:2;
         -webkit-box-orient: vertical;
         overflow: hidden;
-        min-height: 2.4rem; /* Aproximadamente 2 líneas */
-        max-height: 2.4rem;
+        min-height:2.4rem; /* Aproximadamente2 líneas */
+        max-height:2.4rem;
     }
 
     .property-location {
         display: flex;
         align-items: center;
-        gap: 0.5rem;
-        margin-bottom: 0.75rem;
-        padding: 0.5rem;
+        gap:0.5rem;
+        margin-bottom:0.75rem;
+        padding:0.5rem;
         background: #f8fafc;
-        border-radius: 6px;
+        border-radius:6px;
     }
 
     .location-icon {
         color: var(--rz-warning, #ff9800);
-        font-size: 1rem;
-        flex-shrink: 0;
+        font-size:1rem;
+        flex-shrink:0;
     }
 
     .location-text {
-        font-size: 0.875rem;
+        font-size:0.875rem;
         color: #475569;
-        font-weight: 500;
+        font-weight:500;
     }
 
     .property-characteristics {
         display: flex;
         align-items: center;
-        gap: 0.5rem;
-        margin: 0.75rem 0;
-        padding: 0.5rem;
+        gap:0.5rem;
+        margin:0.75rem0;
+        padding:0.5rem;
         background-color: var(--rz-info-lighter, #e3f2fd);
-        border-radius: 6px;
-        border-left: 3px solid var(--rz-info, #2196f3);
+        border-radius:6px;
+        border-left:3px solid var(--rz-info, #2196f3);
     }
 
     .characteristics-icon {
         color: var(--rz-info, #2196f3);
-        font-size: 1rem;
+        font-size:1rem;
     }
 
     .characteristics-list { display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap; }
 
-    .char-item { background:#eef2ff; color:#1e3a8a; padding:0.25rem 0.5rem; border-radius:6px; font-size:0.8rem; }
+    .char-item { background:#eef2ff; color:#1e3a8a; padding:0.25rem0.5rem; border-radius:6px; font-size:0.8rem; }
 
     .char-more { color:#6b7280; font-size:0.8rem; }
 
     .property-status-section {
-        margin-bottom: 1rem;
+        margin-bottom:1rem;
     }
 
     .status-indicator-wrapper {
         display: flex;
         flex-direction: column;
-        gap: 0.25rem;
+        gap:0.25rem;
     }
 
     .status-badge-container {
         display: flex;
         align-items: center;
-        gap: 0.5rem;
+        gap:0.5rem;
     }
 
     .status-description {
         color: #6b7280;
         font-style: italic;
-        font-size: 0.75rem;
-        margin-top: 0.25rem;
+        font-size:0.75rem;
+        margin-top:0.25rem;
     }
 
     .status-dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
+        width:8px;
+        height:8px;
+        border-radius:50%;
         display: inline-block;
-        flex-shrink: 0;
+        flex-shrink:0;
     }
 
     .status-available { background-color: #10b981; }
@@ -325,13 +337,13 @@
 
     .property-actions {
         margin-top: auto;
-        padding-top: 0.75rem;
-        border-top: 1px solid var(--rz-border-color, #e0e0e0);
+        padding-top:0.75rem;
+        border-top:1px solid var(--rz-border-color, #e0e0e0);
     }
 
     .property-footer {
-        margin-top: 0.5rem;
-        padding-top: 0.5rem;
+        margin-top:0.5rem;
+        padding-top:0.5rem;
     }
 
     .property-price-footer {
@@ -341,66 +353,66 @@
     }
 
     .price-label {
-        font-size: 0.875rem;
+        font-size:0.875rem;
         color: var(--rz-text-secondary-color, #666);
-        font-weight: 500;
+        font-weight:500;
     }
 
     .price-value {
-        font-size: 1.1rem;
-        font-weight: 600;
+        font-size:1.1rem;
+        font-weight:600;
         color: var(--rz-success, #4caf50);
     }
 
     .images-count-badge {
         position: absolute;
-        bottom: 8px;
-        left: 8px;
+        bottom:8px;
+        left:8px;
         background: rgba(0,0,0,0.8);
         color: white;
-        padding: 4px 8px;
-        border-radius: 16px;
-        font-size: 0.75rem;
+        padding:4px8px;
+        border-radius:16px;
+        font-size:0.75rem;
         display: flex;
         align-items: center;
-        gap: 4px;
+        gap:4px;
     }
 
     .images-icon {
-        font-size: 0.875rem;
+        font-size:0.875rem;
     }
 
     .property-image-container {
         position: relative;
-        height: 200px;
+        height:200px;
         overflow: hidden;
     }
 
     /* Carousel controls */
     .carousel-control {
         position: absolute;
-        top: 50%;
+        top:50%;
         transform: translateY(-50%);
         background: rgba(0,0,0,0.35);
         color: #fff;
         border: none;
-        width: 36px;
-        height: 36px;
-        border-radius: 50%;
+        width:36px;
+        height:36px;
+        border-radius:50%;
         display: flex;
         align-items: center;
         justify-content: center;
         cursor: pointer;
-        z-index: 30;
+        z-index:30;
     }
-    .carousel-control.prev { left: 12px; }
-    .carousel-control.next { right: 12px; }
+    .carousel-control.prev { left:12px; }
+    .carousel-control.next { right:12px; }
 
     .property-image {
-        width: 100%;
-        height: 100%;
+        width:100%;
+        height:100%;
         object-fit: cover;
-        transition: transform 0.3s ease;
+        transition: transform0.3s ease;
     }
 
     .property-image:hover {
@@ -408,9 +420,9 @@
     }
 
     .property-image-placeholder {
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(135deg, #f0f0f0 0%, #e0e0e0 100%);
+        width:100%;
+        height:100%;
+        background: linear-gradient(135deg, #f0f0f00%, #e0e0e0100%);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -423,44 +435,44 @@
     }
 
     .placeholder-icon {
-        font-size: 2rem;
-        margin-bottom: 0.5rem;
+        font-size:2rem;
+        margin-bottom:0.5rem;
     }
 
     .placeholder-text {
-        font-size: 0.875rem;
-        font-weight: 500;
+        font-size:0.875rem;
+        font-weight:500;
     }
 
     .price-tag {
         position: absolute;
-        top: 8px;
-        right: 8px;
+        top:8px;
+        right:8px;
         background: var(--rz-success, #4caf50);
         color: white;
-        padding: 6px 12px;
-        border-radius: 20px;
-        font-weight: 600;
-        font-size: 0.875rem;
-        box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+        padding:6px12px;
+        border-radius:20px;
+        font-weight:600;
+        font-size:0.875rem;
+        box-shadow:02px8px rgba(76,175,80,0.3);
     }
 
     .image-overlay {
         position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
+        top:0;
+        left:0;
+        right:0;
+        bottom:0;
         /* allow interaction for controls inside the overlay */
         pointer-events: auto;
     }
 
     .overlay-gradient {
         position: absolute;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        height: 50%;
+        bottom:0;
+        left:0;
+        right:0;
+        height:50%;
         background: linear-gradient(transparent, rgba(0,0,0,0.6));
         /* gradient shouldn't intercept pointer events */
         pointer-events: none;
@@ -468,13 +480,13 @@
 
     .property-status-overlay {
         position: absolute;
-        bottom: 8px;
-        right: 8px;
+        bottom:8px;
+        right:8px;
     }
 
     .status-badge-overlay {
-        font-size: 0.75rem;
-        padding: 0.25rem 0.5rem;
+        font-size:0.75rem;
+        padding:0.25rem0.5rem;
     }
 </style>
 
@@ -501,7 +513,7 @@
     // Variables para evitar múltiples clicks
     private bool gestionandoCaracteristicas = false;
     private bool gestionandoImagenes = false;
-    private int currentImageIndex = 0;
+    private int currentImageIndex =0;
 
     private async Task VerDetalle(int inmuebleId)
     {
@@ -547,14 +559,14 @@
     private void PrevImage()
     {
         if (Inmueble?.Imagenes == null || !Inmueble.Imagenes.Any()) return;
-        currentImageIndex = (currentImageIndex - 1 + Inmueble.Imagenes.Count) % Inmueble.Imagenes.Count;
+        currentImageIndex = (currentImageIndex -1 + Inmueble.Imagenes.Count) % Inmueble.Imagenes.Count;
         StateHasChanged();
     }
 
     private void NextImage()
     {
         if (Inmueble?.Imagenes == null || !Inmueble.Imagenes.Any()) return;
-        currentImageIndex = (currentImageIndex + 1) % Inmueble.Imagenes.Count;
+        currentImageIndex = (currentImageIndex +1) % Inmueble.Imagenes.Count;
         StateHasChanged();
     }
 
@@ -604,6 +616,36 @@
             return $"background-color: {color}; border-color: {color};";
         }
         return "";
+    }
+
+    private async Task AbrirDialogReserva()
+    {
+        var auth = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = auth.User;
+        var esAdmin = user.IsInRole("admin_usuario") || user.IsInRole("admin_propiedad");
+        var uid = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var esPropietario = Inmueble.PropietarioId.HasValue && uid != null && int.TryParse(uid, out var id) && Inmueble.PropietarioId.Value == id;
+
+        if (!esAdmin && !esPropietario)
+        {
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Warning, Summary = "Sin permisos", Detail = "Solo el administrador o propietario puede crear reservas." });
+            return;
+        }
+
+        var parameters = new Dictionary<string, object> { { "InmuebleId", Inmueble.Id } };
+        var options = new DialogOptions
+        {
+            Width = "760px",
+            Height = "640px",
+            Resizable = true,
+            Draggable = true,
+            CloseDialogOnOverlayClick = false
+        };
+        var result = await DialogService.OpenAsync<ReservaDialog>($"Reservar - {Inmueble.Nombre}", parameters, options);
+        if (result == true)
+        {
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = "Reserva", Detail = "Reserva creada correctamente." });
+        }
     }
 
     private string TruncateText(string text, int maxLength)

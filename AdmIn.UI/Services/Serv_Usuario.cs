@@ -5,6 +5,8 @@ using AdmIn.UI.Services.UtilityServices;
 using Microsoft.AspNetCore.Components.Authorization;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Threading.Tasks;
+using System.Collections.Generic;
 
 namespace AdmIn.UI.Services
 {
@@ -30,6 +32,11 @@ namespace AdmIn.UI.Services
         public async Task<DTO<bool>> Modificar_password(CambioClaveModel datos)
         {
             return await EjecutarPeticion<DTO<bool>>(HttpMethod.Post, "modificar_password", datos);
+        }
+
+        public async Task<DTO<IEnumerable<Usuario>>> Buscar_por_termino(string termino)
+        {
+            return await EjecutarPeticion<DTO<IEnumerable<Usuario>>>(HttpMethod.Get, $"buscar_por_termino/{Uri.EscapeDataString(termino)}");
         }
     }
 

@@ -36,9 +36,9 @@
                     <div class="header-content">
                         <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
                             <RadzenSidebarToggle Click="@(() => sidebar1Expanded = !sidebar1Expanded)" />
-                            <RadzenImage class="header-logo"
+                            <RadzenImage class="header-logo scaled"
                                          Path="@GetLogoPath()"
-                                         Style="max-height: 40px; max-width: 120px; height: 40px; width: auto; object-fit: contain;" />
+                                         Style="max-height: 56px; max-width: 180px; height: 56px; width: auto; object-fit: contain;" />
                         </RadzenStack>
                         <div class="header-title">
                             <strong>@PageTitleService.Titulo</strong>
@@ -56,14 +56,15 @@
     {
         <RadzenHeader>
             <RadzenRow>
-                <RadzenColumn Size="11">
+                <RadzenColumn Size="12">
                     <div class="header-content">
-                        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                        <div class="header-left" style="display:flex;align-items:center;gap:0.5rem;flex:0 0 auto;">
                             <RadzenSidebarToggle Click="@(() => sidebar1Expanded = !sidebar1Expanded)" />
-                            <RadzenImage class="header-logo"
+                            <RadzenImage class="header-logo scaled"
                                          Path="@GetLogoPath()"
-                                         Style="max-height: 35px; max-width: 100px; height: 35px; width: auto; object-fit: contain;" />
-                        </RadzenStack>
+                                         Style="max-height: 56px; max-width: 150px; height: 56px; width: auto; object-fit: contain;" />
+                        </div>
+
                         <div class="header-title">
                             <strong>@PageTitleService.Titulo</strong>
                             @if (!string.IsNullOrEmpty(PageTitleService.Subtitulo))
@@ -71,47 +72,41 @@
                                 <span>&nbsp;- @PageTitleService.Subtitulo</span>
                             }
                         </div>
+
+                        <div class="header-actions">
+                            <AuthorizeView>
+                                <Authorized>
+                                    <div style="display:flex;align-items:center;gap:0.5rem;">
+                                        <NotificationBell />
+                                        <RadzenProfileMenu>
+                                            <Template>
+                                                @if (usuarioActual?.ObtenerUrlImagenPerfil() != null)
+                                                {
+                                                    <ProfilePhotoComponent Usuario="@usuarioActual" Tamaño="32" />
+                                                }
+                                                else
+                                                {
+                                                    <div style="width: 32px; height: 32px; border-radius: 50%; background: #f3f4f6; display: flex; align-items: center; justify-content: center; border: 2px solid #e5e7eb;">
+                                                        <RadzenIcon Icon="account_circle" Style="font-size: 20px; color: #6b7280;" />
+                                                    </div>
+                                                }
+                                            </Template>
+                                            <ChildContent>
+                                                <RadzenStack Gap="0" Orientation="Orientation.Vertical" AlignItems="AlignItems.Center" class="rz-p-2">
+                                                    <ProfilePhotoComponent Usuario="@usuarioActual" Tamaño="64" ClasesAdicionales="mb-2" />
+                                                    <RadzenText TextStyle="TextStyle.Overline">Bienvenido</RadzenText>
+                                                    <RadzenText TextStyle="TextStyle.Body1"><b>@userName</b></RadzenText>
+                                                    <RadzenButton Icon="person" Variant="Variant.Text" Size="ButtonSize.Small" Click="@(() => IrAPerfil())">Ver mi perfil</RadzenButton>
+                                                    <RadzenButton Icon="lock_reset" Variant="Variant.Text" Size="ButtonSize.Small" Click="@(() => CambiarPassword())">Cambiar contraseña</RadzenButton>
+                                                    <RadzenButton Icon="logout" Variant="Variant.Text" Size="ButtonSize.Small" Click="@(() => Logout())">Cerrar sesión</RadzenButton>
+                                                </RadzenStack>
+                                            </ChildContent>
+                                        </RadzenProfileMenu>
+                                    </div>
+                                </Authorized>
+                            </AuthorizeView>
+                        </div>
                     </div>
-                </RadzenColumn>
-                <RadzenColumn>
-                    <AuthorizeView>
-                        <Authorized>
-                            <div class="d-flex align-items-center gap-2">
-                                <NotificationBell />
-                                <RadzenProfileMenu>
-                                    <Template>
-                                        @* Mostrar placeholder temporalmente si no hay imagen *@
-                                        @if (usuarioActual?.ObtenerUrlImagenPerfil() != null)
-                                        {
-                                            <ProfilePhotoComponent Usuario="@usuarioActual" Tamaño="32" />
-                                        }
-                                        else
-                                        {
-                                            <div style="width: 32px; height: 32px; border-radius: 50%; background: #f3f4f6; display: flex; align-items: center; justify-content: center; border: 2px solid #e5e7eb;">
-                                                <RadzenIcon Icon="account_circle" Style="font-size: 20px; color: #6b7280;" />
-                                            </div>
-                                        }
-                                    </Template>
-                                    <ChildContent>
-                                        <RadzenStack Gap="0" Orientation="Orientation.Vertical" AlignItems="AlignItems.Center" class="rz-p-2">
-                                            <!-- Avatar más grande en el menú -->
-                                            <ProfilePhotoComponent Usuario="@usuarioActual" Tamaño="64" ClasesAdicionales="mb-2" />
-                                            
-                                            <RadzenText TextStyle="TextStyle.Overline">Bienvenido</RadzenText>
-                                            <RadzenText TextStyle="TextStyle.Body1"><b>@userName</b></RadzenText>
-                                            
-                                            <RadzenButton Icon="person" Variant="Variant.Text" Size="ButtonSize.Small" 
-                                                         Click="@(() => IrAPerfil())">Ver mi perfil</RadzenButton>
-                                            <RadzenButton Icon="lock_reset" Variant="Variant.Text" Size="ButtonSize.Small" 
-                                                         Click="@(() => CambiarPassword())">Cambiar contraseña</RadzenButton>
-                                            <RadzenButton Icon="logout" Variant="Variant.Text" Size="ButtonSize.Small" 
-                                                         Click="@(() => Logout())">Cerrar sesión</RadzenButton>
-                                        </RadzenStack>
-                                    </ChildContent>
-                                </RadzenProfileMenu>
-                            </div>
-                        </Authorized>
-                    </AuthorizeView>
                 </RadzenColumn>
             </RadzenRow>
         </RadzenHeader>
@@ -125,7 +120,7 @@
             <MenuItem Text="Tipos de Servicio" Icon="construction" Path="/tipos-servicio" Roles="admin_usuario" OnMenuItemClick="@OnMenuItemClick" />
             <MenuItem Text="Proveedores" Icon="business" Path="/proveedores" Roles="admin_usuario" OnMenuItemClick="@OnMenuItemClick" />
             <MenuItem Text="Monedas" Icon="currency_exchange" Path="/monedas" Roles="admin_usuario" OnMenuItemClick="@OnMenuItemClick" />
-            <MenuItem Text="Inmuebles" Icon="apartment" Path="/inmuebles" Roles="admin_propiedad" OnMenuItemClick="@OnMenuItemClick" />
+            <MenuItem Text="Inmuebles" Icon="apartment" Path="/inmuebles" Roles="admin_propiedad, propietario" OnMenuItemClick="@OnMenuItemClick" />
             <MenuItem Text="Reparaciones" Icon="build" Path="/reparaciones" Roles="add_reparacion, admin_reparacion, proveedor" OnMenuItemClick="@OnMenuItemClick" />
         </RadzenPanelMenu>
     </RadzenSidebar>
@@ -137,8 +132,24 @@
                     @Body
                 </Authorized>
                 <NotAuthorized>
+                    @{
+                    // If the current route is the public password reset page, render the page body
+                    var relative = navManager.Uri.Replace(navManager.BaseUri, "/");
+                    var path = relative.TrimStart('/');
+                    var isPublicReset = path.StartsWith("request-password-reset", StringComparison.OrdinalIgnoreCase) ||
+    path.StartsWith("confirm-password-reset", StringComparison.OrdinalIgnoreCase);
+                    }
+                    @if (isPublicReset)
+                    {
+                    @Body
+                    }
+                    else
+                    {
+                    <div>
                     <h1>Hola invitado!</h1>
-                    Debes <a href="/">iniciar sesión</a> para acceder a la aplicación.
+                    <p>Debes <a href="/">iniciar sesión</a> para acceder a la aplicación.</p>
+                    </div>
+                    }
                 </NotAuthorized>
             </AuthorizeView>
         </div>
@@ -157,6 +168,55 @@
 <style>
     .mb-2 {
         margin-bottom: 0.5rem;
+    }
+
+    /* Mantener altura del header y permitir que la imagen escalada se dibuje por encima sin aumentar el alto */
+    .header-content {
+        height: 56px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between; /* asegurar que logo y acciones queden a los extremos */
+        gap: 0.75rem;
+        width: 100%;
+        overflow: visible; /* permitir overflow para que la imagen escalada no recorte */
+        flex-wrap: nowrap; /* evitar que elementos hagan wrap a otra línea */
+    }
+
+    /* Contenedor del título dentro del header: evitar que haga wrap y permitir truncado */
+    .header-title {
+        margin-left: 0.5rem;
+        flex: 1 1 auto; /* permitir que ocupe el espacio restante */
+        min-width: 0; /* imprescindible para que text-overflow funcione en flex items */
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: block;
+    }
+
+    .header-actions {
+        flex: 0 0 auto;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        min-width: 0;
+    }
+
+    .header-logo {
+        height: 56px;
+        transition: transform 0.12s ease;
+        transform-origin: left center;
+        display: inline-block;
+        flex: 0 0 auto; /* no permitir que el logo se estire */
+        max-width: 150px; /* limit actual width so layout reserves space */
+        width: auto;
+    }
+
+    /* Ajuste visual: aumentar tamaño reservando espacio en el layout */
+    .header-logo.scaled {
+        transform: none; /* remove visual scaling to avoid overlapping title */
+        height: 56px;
+        max-width: 150px;
+        width: auto;
     }
 </style>
 
@@ -226,6 +286,12 @@
             }
         }
         catch { }
+    }
+
+    private string GetLogoPath()
+    {
+        // Use the transparent PNG logo in wwwroot/img
+        return "img/logo.png";
     }
 
     private async Task CargarUsuarioCompleto()
@@ -299,11 +365,6 @@
         {
             sidebar1Expanded = false;
         }
-    }
-
-    private string GetLogoPath()
-    {
-        return sidebar1Expanded ? "img/AdmIn.png" : "img/Admin.png";
     }
 
     private void IrAPerfil()

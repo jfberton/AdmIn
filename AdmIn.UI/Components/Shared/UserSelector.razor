@@ -1,0 +1,493 @@
+﻿@inherits BaseComponent
+@using AdmIn.Common.Entidades
+@using AdmIn.UI.Services
+@using Microsoft.AspNetCore.Components.Authorization
+
+@inject IServ_Usuario serv_usuario
+@inject IServ_Rol serv_rol
+@inject ILogger<UserSelector> Logger
+
+<RadzenCard>
+    <RadzenStack Gap="1rem">
+        <RadzenText TextStyle="TextStyle.H6">@Title</RadzenText>
+        <RadzenText>@Description</RadzenText>
+
+        @* If there is a selected user, show only the associated user and a remove button *@
+        @if (SelectedUserId.HasValue && SelectedUser != null)
+        {
+            <div>
+                <div><strong>@($"{RoleName} asociado:")</strong></div>
+                <div class="mt-2 d-flex align-items-center">
+                    <span>@(DisplayNameForSelected())</span>
+                    <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.ExtraSmall" Class="ms-2" Click="QuitarAsociacion" />
+                </div>
+            </div>
+        }
+        else if (SelectedUserId.HasValue && SelectedUser == null)
+        {
+            <div>
+                <div><strong>@($"{RoleName} asociado:")</strong></div>
+                <div class="mt-2 d-flex align-items-center">
+                    <span>@($"Usuario ID: {SelectedUserId}")</span>
+                    <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.ExtraSmall" Class="ms-2" Click="QuitarAsociacion" />
+                </div>
+            </div>
+        }
+        else
+        {
+            @* No associated user: show options *@
+            <RadzenRadioButtonList @bind-Value="SelectedOption" Data="options" TextProperty="Text" ValueProperty="Value" TValue="UserSelectionOption" />
+
+            @if (SelectedOption == UserSelectionOption.AsociarExistente)
+            {
+                <div>
+                    <div style="display:flex;gap:8px;align-items:center;">
+                        <RadzenTextBox Placeholder="Ingrese nombre o email a buscar" @bind-Value="terminoBusqueda" Style="width:70%; border:1px solid #ced4da; padding:8px; border-radius:4px; background:white;" Class="search-input" />
+                        <RadzenButton Text="Buscar" Click="BuscarUsuarioPorTermino" ButtonStyle="ButtonStyle.Secondary" IsBusy="isSearching" />
+                    </div>
+
+                    <div class="search-results mt-2">
+                        @if (isSearching)
+                        {
+                            <div style="display:flex;align-items:center;gap:8px;"><RadzenProgressBarCircular ProgressBarStyle="ProgressBarStyle.Primary" Value="100" ShowValue="false" Mode="ProgressBarMode.Indeterminate" /><span>Buscando...</span></div>
+                        }
+                        else
+                        {
+                            @* Always render the results container so layout doesn't jump *@
+                            @if (usuariosEncontrados != null && usuariosEncontrados.Any())
+                            {
+                                <RadzenCard Class="mt-2">
+                                    <div><strong>@($"{RoleName}s encontrados:")</strong></div>
+                                    <div class="mt-2">
+                                        @foreach (var u in usuariosEncontrados)
+                                        {
+                                            <div class="user-search-item" style="display:flex;justify-content:space-between;align-items:center;padding:6px;border-bottom:1px solid #eee;">
+                                                <div>@u.Nombre (@u.Email)</div>
+                                                <div>
+                                                    <RadzenButton Text="Asociar" ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Small" Click="@(() => AsociarUsuarioEncontrado(u))" />
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                </RadzenCard>
+                            }
+                            else if (!string.IsNullOrEmpty(terminoBusqueda))
+                            {
+                                <div class="text-danger mt-2">@searchMessage</div>
+                            }
+                        }
+                    </div>
+                </div>
+            }
+
+            @if (SelectedOption == UserSelectionOption.CrearNuevo)
+            {
+                <div>
+                    <RadzenTextBox Placeholder="@($"Nombre {RoleName}")" @bind-Value="nuevoUsuario.Nombre" Style="width:100%;" />
+                    <RadzenTextBox Placeholder="@($"Email {RoleName}")" @bind-Value="nuevoUsuario.Email" Style="width:100%; margin-top:8px;" />
+                    <RadzenTextBox Placeholder="Teléfono" @bind-Value="nuevoUsuario.Telefono" Style="width:100%; margin-top:8px;" />
+                    <RadzenTextBox Placeholder="Dirección" Value="@GetDireccion()" ValueChanged="@(v => SetDireccion(v))" Style="width:100%; margin-top:8px;" />
+
+                    <div class="form-text small mt-2">Se generará una contraseña temporal y el usuario recibirá instrucciones para crear su propia contraseña (siempre que exista un servicio de envío de email configurado).</div>
+
+                    <RadzenButton Text="@($"Crear {RoleName} y asociar")" ButtonStyle="ButtonStyle.Primary" Click="CrearUsuarioYAsociar" IsBusy="isCreating" Style="margin-top:8px;" />
+                </div>
+            }
+
+            @if (SelectedOption == UserSelectionOption.Asociarme)
+            {
+                <div>
+                    <RadzenButton Text="@($"Asociarme como {RoleName}")" Click="Asociarme" ButtonStyle="ButtonStyle.Primary" />
+                </div>
+            }
+        }
+
+        @if (!string.IsNullOrEmpty(warningMessage))
+        {
+            <RadzenAlert AlertStyle="AlertStyle.Warning" ShowIcon="true">@warningMessage</RadzenAlert>
+        }
+    </RadzenStack>
+</RadzenCard>
+
+@code {
+    [Parameter] public string Title { get; set; } = "Usuario";
+    [Parameter] public string RoleName { get; set; } = "Usuario";
+    [Parameter] public string Description { get; set; } = "Seleccione un usuario.";
+
+    [Parameter] public int? SelectedUserId { get; set; }
+    [Parameter] public EventCallback<int?> SelectedUserIdChanged { get; set; }
+    [Parameter] public int? CurrentUserId { get; set; }
+    [Parameter] public int? ConflictingUserId { get; set; }
+    [Parameter] public bool IsRequired { get; set; } = false;
+    [Parameter] public bool AllowAssociateSelf { get; set; } = true;
+
+    private enum UserSelectionOption { Ninguna, AsociarExistente, CrearNuevo, Asociarme }
+    private UserSelectionOption selectedOption = UserSelectionOption.AsociarExistente;
+
+    private UserSelectionOption SelectedOption
+    {
+        get => selectedOption;
+        set
+        {
+            if (selectedOption != value)
+            {
+                selectedOption = value;
+                // Clear previous search/results when switching
+                terminoBusqueda = string.Empty;
+                usuariosEncontrados.Clear();
+                ultimaBusquedaFallida = false;
+                searchMessage = string.Empty;
+                StateHasChanged();
+
+                if (selectedOption == UserSelectionOption.Asociarme && AllowAssociateSelf)
+                {
+                    _ = Asociarme();
+                }
+            }
+        }
+    }
+
+    private List<object> options = new();
+
+    private string terminoBusqueda = string.Empty;
+    private List<Usuario> usuariosEncontrados = new();
+    private bool isSearching = false;
+    private bool ultimaBusquedaFallida = false;
+    private string searchMessage = string.Empty;
+
+    private Usuario nuevoUsuario = new();
+    private bool isCreating = false;
+
+    private Usuario? SelectedUser { get; set; }
+
+    private string warningMessage = string.Empty;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        base.OnParametersSet();
+
+        // If there's an ID but no loaded SelectedUser, try to fetch user details for display
+        if (SelectedUserId.HasValue && SelectedUser == null)
+        {
+            try
+            {
+                var res = await serv_usuario.Obtener_por_id(SelectedUserId.Value);
+                if (res != null && res.Correcto && res.Datos != null)
+                {
+                    SelectedUser = res.Datos;
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogDebug(ex, "No se pudo cargar usuario asociado por id {Id}", SelectedUserId);
+            }
+        }
+
+        // Build options list only when no selection
+        if (!SelectedUserId.HasValue)
+        {
+            var optionList = new List<object>
+ {
+ new { Text = "Asociar existente", Value = UserSelectionOption.AsociarExistente },
+ new { Text = "Crear nuevo", Value = UserSelectionOption.CrearNuevo }
+ };
+
+            if (CurrentUserId.HasValue && AllowAssociateSelf)
+            {
+                optionList.Add(new { Text = $"Asociarme como {RoleName}", Value = UserSelectionOption.Asociarme });
+            }
+            options = optionList;
+        }
+        else
+        {
+            options = new List<object>();
+        }
+    }
+
+    private string DisplayNameForSelected()
+    {
+        if (SelectedUser != null)
+        {
+            if (SelectedUser.Id == CurrentUserId)
+                return "Usuario actual (tú)";
+
+            return $"{SelectedUser.Nombre} ({SelectedUser.Email})";
+        }
+
+        return "Usuario asociado";
+    }
+
+    private async Task BuscarUsuarioPorTermino()
+    {
+        usuariosEncontrados = new();
+        ultimaBusquedaFallida = false;
+        searchMessage = string.Empty;
+        if (string.IsNullOrWhiteSpace(terminoBusqueda))
+        {
+            searchMessage = "Ingresa un término de búsqueda.";
+            return;
+        }
+
+        isSearching = true;
+        try
+        {
+            var res = await serv_usuario.Buscar_por_termino(terminoBusqueda);
+            if (res != null && res.Correcto && res.Datos != null)
+            {
+                usuariosEncontrados = res.Datos.ToList();
+                if (!usuariosEncontrados.Any())
+                {
+                    ultimaBusquedaFallida = true;
+                    searchMessage = "No se encontraron usuarios con ese término.";
+                }
+            }
+            else
+            {
+                ultimaBusquedaFallida = true;
+                searchMessage = res?.Mensaje ?? "Error buscando usuarios.";
+            }
+        }
+        catch (Exception ex)
+        {
+            ultimaBusquedaFallida = true;
+            searchMessage = ex.Message;
+            Logger.LogError(ex, "Error buscando usuario por término.");
+        }
+        finally
+        {
+            isSearching = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task AsociarUsuarioEncontrado(Usuario u)
+    {
+        if (u == null) return;
+
+        if (ConflictingUserId.HasValue && ConflictingUserId == u.Id)
+        {
+            MostrarNotificacion(NotificationSeverity.Warning, "Conflicto de roles", $"Este usuario ya tiene el rol conflictivo. No puede ser también {RoleName}.");
+            return;
+        }
+
+        SelectedUser = u;
+        await UpdateSelectedUserId(u.Id);
+        terminoBusqueda = string.Empty;
+        usuariosEncontrados.Clear();
+        warningMessage = string.Empty;
+        StateHasChanged();
+        MostrarNotificacion(NotificationSeverity.Success, $"{RoleName} asociado", $"Se asoció a {u.Nombre}.");
+    }
+
+    private async Task CrearUsuarioYAsociar()
+    {
+        if (isCreating) return;
+        if (string.IsNullOrWhiteSpace(nuevoUsuario.Nombre) || string.IsNullOrWhiteSpace(nuevoUsuario.Email))
+        {
+            MostrarNotificacion(NotificationSeverity.Warning, "Datos incompletos", $"El {RoleName} debe tener nombre y email.");
+            return;
+        }
+        // For new users we now collect persona data and generate a temporary password.
+        if (nuevoUsuario.Persona == null)
+        {
+            // ensure Persona object exists to store additional fields
+            nuevoUsuario.Persona = new Persona();
+        }
+
+        // If persona fields are missing, try to populate from usuario-level fields
+        if (string.IsNullOrWhiteSpace(nuevoUsuario.Persona.Nombre))
+            nuevoUsuario.Persona.Nombre = nuevoUsuario.Nombre;
+        if (string.IsNullOrWhiteSpace(nuevoUsuario.Persona.Email))
+            nuevoUsuario.Persona.Email = nuevoUsuario.Email;
+        if (string.IsNullOrWhiteSpace(nuevoUsuario.Persona.Telefono))
+            nuevoUsuario.Persona.Telefono = nuevoUsuario.Telefono;
+
+        isCreating = true;
+        try
+        {
+            var usuarioACrear = new Usuario
+            {
+                Nombre = nuevoUsuario.Nombre,
+                Email = nuevoUsuario.Email,
+                // Generate a temporary password. It will be hashed by the backend.
+                Password = GenerarPasswordTemporal(),
+                Telefono = nuevoUsuario.Telefono ?? "",
+                Activo = true,
+                FechaCreacion = DateTime.Now,
+                FechaModificacion = DateTime.Now,
+                UsuarioCreador = CurrentUserId
+            };
+
+            // Attach persona info so backend can persist Persona if supported
+            usuarioACrear.Persona = new Persona
+            {
+                Nombre = nuevoUsuario.Persona?.Nombre ?? nuevoUsuario.Nombre,
+                Email = nuevoUsuario.Persona?.Email ?? nuevoUsuario.Email,
+                Telefono = nuevoUsuario.Persona?.Telefono ?? nuevoUsuario.Telefono ?? string.Empty,
+                Direccion = nuevoUsuario.Persona?.Direccion ?? string.Empty
+            };
+
+            if (RoleName.Equals("Propietario", StringComparison.OrdinalIgnoreCase))
+            {
+                var propietarioRol = await ObtenerRolAsync("propietario");
+                if (propietarioRol != null) usuarioACrear.Roles = new List<Rol> { propietarioRol };
+            }
+
+            if (RoleName.Equals("Inquilino", StringComparison.OrdinalIgnoreCase))
+            {
+                var inquilinoRol = await ObtenerRolAsync("inquilino");
+                if (inquilinoRol != null) usuarioACrear.Roles = new List<Rol> { inquilinoRol };
+            }
+
+            var res = await serv_usuario.Crear(usuarioACrear);
+            if (res != null && res.Correcto && res.Datos != null)
+            {
+                var creado = res.Datos;
+                if (ConflictingUserId.HasValue && ConflictingUserId == creado.Id)
+                {
+                    MostrarNotificacion(NotificationSeverity.Warning, "Conflicto de roles", $"El usuario creado ya tiene el rol conflictivo. No puede ser también {RoleName}.");
+                    return;
+                }
+
+                SelectedUser = creado;
+                nuevoUsuario = new();
+                await UpdateSelectedUserId(creado.Id);
+                warningMessage = string.Empty;
+                StateHasChanged();
+                // Show temporary password to admin (backend stored hashed). Replace with email flow when available.
+                var tempPwd = usuarioACrear.Password;
+                await DialogService.Alert($"Usuario creado: {creado.Nombre}\nContraseña temporal: {tempPwd}\n\nSe recomienda enviar este dato por email o activar el flujo de restablecimiento de contraseña.", "{RoleName} creado");
+                MostrarNotificacion(NotificationSeverity.Success, $"{RoleName} creado", $"Se creó el usuario {creado.Nombre}.");
+            }
+            else
+            {
+                MostrarNotificacion(NotificationSeverity.Error, $"Error creando {RoleName}", res?.Mensaje ?? "Error desconocido.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error creando usuario.");
+            MostrarNotificacion(NotificationSeverity.Error, "Error", $"Ocurrió un error: {ex.Message}");
+        }
+        finally
+        {
+            isCreating = false;
+        }
+    }
+
+    private static string GenerarPasswordTemporal(int length = 10)
+    {
+        const string chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789@!#%";
+        var rnd = new System.Security.Cryptography.RNGCryptoServiceProvider();
+        var bytes = new byte[length];
+        rnd.GetBytes(bytes);
+        var result = new char[length];
+        for (int i = 0; i < length; i++)
+        {
+            result[i] = chars[bytes[i] % chars.Length];
+        }
+        return new string(result);
+    }
+
+    private async Task<Rol?> ObtenerRolAsync(string roleName)
+    {
+        try
+        {
+            var rolesRes = await serv_rol.Obtener_todos();
+            if (rolesRes != null && rolesRes.Correcto && rolesRes.Datos != null)
+            {
+                return rolesRes.Datos.FirstOrDefault(r => string.Equals(r.Nombre, roleName, StringComparison.OrdinalIgnoreCase));
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error obteniendo rol {RoleName}", roleName);
+        }
+        return null;
+    }
+
+    private async Task Asociarme()
+    {
+        if (!AllowAssociateSelf) return;
+
+        if (CurrentUserId.HasValue)
+        {
+            if (ConflictingUserId.HasValue && ConflictingUserId == CurrentUserId)
+            {
+                MostrarNotificacion(NotificationSeverity.Warning, "Conflicto de roles", $"Ya tienes el rol conflictivo. No puedes ser también {RoleName}.");
+                selectedOption = UserSelectionOption.Ninguna;
+                StateHasChanged();
+                return;
+            }
+
+            SelectedUser = null; // we'll set id and let OnParametersSetAsync fetch if needed
+            await UpdateSelectedUserId(CurrentUserId);
+            SelectedUser = new Usuario { Nombre = "Usuario actual (tú)", Id = CurrentUserId.Value, Email = "" };
+            warningMessage = string.Empty;
+            MostrarNotificacion(NotificationSeverity.Success, "Asociado", $"Te has asociado como {RoleName}.");
+            StateHasChanged();
+        }
+        else
+        {
+            MostrarNotificacion(NotificationSeverity.Warning, "No autenticado", "No se pudo obtener el usuario actual.");
+        }
+    }
+
+    private async void QuitarAsociacion()
+    {
+        SelectedUser = null;
+        SelectedOption = UserSelectionOption.Ninguna;
+        await UpdateSelectedUserId(null);
+        warningMessage = string.Empty;
+        MostrarNotificacion(NotificationSeverity.Info, "Asociación removida", $"Se quitó el {RoleName} asociado.");
+        StateHasChanged();
+    }
+
+    private async Task UpdateSelectedUserId(int? userId)
+    {
+        SelectedUserId = userId;
+        await SelectedUserIdChanged.InvokeAsync(SelectedUserId);
+    }
+
+    private string GetDireccion()
+    {
+        return nuevoUsuario?.Persona?.Direccion ?? string.Empty;
+    }
+
+    private void SetDireccion(string value)
+    {
+        if (nuevoUsuario.Persona == null)
+        {
+            nuevoUsuario.Persona = new Persona();
+        }
+        nuevoUsuario.Persona.Direccion = value;
+    }
+}
+
+<style>
+    .user-search-item {
+    }
+
+    .search-input {
+        min-width: 220px;
+    }
+
+    @@media (max-width:768px) {
+        .search-input {
+            width: 100% !important;
+        }
+    }
+
+    /* Make the search input more visible */
+    .search-input, .search-input input.rz-input {
+        border: 1px solid #ced4da !important;
+        padding: 8px !important;
+        border-radius: 4px !important;
+        background: white !important;
+    }
+
+        .search-input input.rz-input:focus {
+            box-shadow: 0003px rgba(99,102,241,0.12) !important;
+            border-color: #6366f1 !important;
+        }
+</style>

@@ -2,24 +2,91 @@
 using AdmIn.Common;
 using AdmIn.Common.Entidades;
 using AdmIn.Common.Repositorios;
+using System.Security.Cryptography;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace AdmIn.Business.Servicios
 {
     public class Serv_Usuario : IServ_Usuario
     {
         private readonly IUsuarioRepository _usuarioRepo;
+        private readonly IPasswordResetTokenRepository _tokenRepo;
+        private readonly AdmIn.Common.Services.IEmailService _emailService;
+        private readonly Microsoft.Extensions.Configuration.IConfiguration _config;
 
-        public Serv_Usuario(IUsuarioRepository usuarioRepository)
+        public Serv_Usuario(IUsuarioRepository usuarioRepository, IPasswordResetTokenRepository tokenRepository, AdmIn.Common.Services.IEmailService emailService, Microsoft.Extensions.Configuration.IConfiguration config)
         {
             _usuarioRepo = usuarioRepository;
+            _tokenRepo = tokenRepository;
+            _emailService = emailService;
+            _config = config;
         }
 
         public async Task<DTO<Usuario>> Crear(Usuario usuarioNuevo)
         {
-            // Usar bcrypt para encriptar la contraseña de usuarios nuevos
-            usuarioNuevo.Password = MiHash.GenerarHashBcrypt(usuarioNuevo.Password);
+            // Primero verificar si existe un usuario con ese email
+            if (!string.IsNullOrWhiteSpace(usuarioNuevo.Email))
+            {
+                var existente = await _usuarioRepo.Obtener_por_email(usuarioNuevo.Email);
+                if (existente != null && existente.Correcto && existente.Datos != null)
+                {
+                    // Usuario ya existe: agregar roles que falten y no tocar la contraseña.
+                    var user = existente.Datos;
+
+                    bool cambios = false;
+                    if (usuarioNuevo.Roles?.Any() == true)
+                    {
+                        foreach (var rol in usuarioNuevo.Roles)
+                        {
+                            if (user.Roles == null || !user.Roles.Any(r => r.Id == rol.Id))
+                            {
+                                if (user.Roles == null) user.Roles = new System.Collections.Generic.List<Rol>();
+                                user.Roles.Add(rol);
+                                cambios = true;
+                            }
+                        }
+                    }
+
+                    if (cambios)
+                    {
+                        var upd = await _usuarioRepo.Actualizar(user);
+                        // Do NOT send email when user already exists; user is assumed validated.
+                        return upd;
+                    }
+
+                    return new DTO<Usuario> { Correcto = true, Datos = user, Mensaje = "Usuario ya existe. Roles no cambiaron." };
+                }
+            }
+
+            // Nuevo usuario: hashear contraseña si existe
+            if (!string.IsNullOrWhiteSpace(usuarioNuevo.Password))
+            {
+                usuarioNuevo.Password = MiHash.GenerarHashBcrypt(usuarioNuevo.Password);
+            }
 
             var resultado = await _usuarioRepo.Crear(usuarioNuevo);
+
+            if (resultado != null && resultado.Correcto && resultado.Datos != null)
+            {
+                var creado = resultado.Datos;
+                // Generar token y enviar email para crear contraseña
+                var tokenRes = await GenerarTokenYGuardar(creado.Id, creado.PersonaId);
+                if (tokenRes.Correcto)
+                {
+                    var frontend = _config["Frontend:BaseUrl"] ?? "http://localhost:5000";
+                    var link = frontend.TrimEnd('/') + $"/confirm-password-reset?token={tokenRes.Datos}";
+                    var model = new System.Collections.Generic.Dictionary<string,string>
+                    {
+                        { "Name", creado.Nombre },
+                        { "Link", link },
+                        { "ExpiryHours", "24" }
+                    };
+                    var body = _emailService.RenderTemplate("NewUser_SetPassword.html", model) ?? string.Empty;
+                    if (string.IsNullOrWhiteSpace(body)) body = $"Hola {creado.Nombre}, use el siguiente link: {link}";
+                    await _emailService.SendAsync(creado.Email, "Configura tu contraseña", body);
+                }
+            }
 
             return resultado;
         }
@@ -223,6 +290,11 @@ namespace AdmIn.Business.Servicios
             };
         }
 
+        public async Task<DTO<IEnumerable<Usuario>>> Buscar_por_termino(string termino)
+        {
+            return await _usuarioRepo.Buscar_por_termino(termino);
+        }
+
         /// <summary>
         /// Migra una contraseña de SHA512 a bcrypt de forma transparente
         /// </summary>
@@ -240,6 +312,133 @@ namespace AdmIn.Business.Servicios
                 Console.WriteLine($"[BUSINESS] ✗ Error en migración de password: {ex.Message}");
                 // Si falla la migración, no afectar el login
                 // Se puede loggear el error si se desea
+            }
+        }
+
+        public async Task<DTO<string>> GenerarTokenYGuardar(int? usuarioId, int? personaId, int expiryHours =24, string purpose = "SetPassword")
+        {
+            try
+            {
+                var token = GenerarTokenSeguro();
+
+                var prt = new PasswordResetToken
+                {
+                    UsuarioId = usuarioId,
+                    PersonaId = personaId,
+                    Token = token,
+                    CreatedAt = DateTime.UtcNow,
+                    ExpiresAt = DateTime.UtcNow.AddHours(expiryHours),
+                    IsConsumed = false,
+                    Purpose = purpose
+                };
+
+                var res = await _tokenRepo.Crear(prt);
+                if (!res.Correcto) return new DTO<string> { Correcto = false, Mensaje = res.Mensaje };
+
+                return new DTO<string> { Correcto = true, Datos = token, Mensaje = "Token generado" };
+            }
+            catch (Exception ex)
+            {
+                return new DTO<string> { Correcto = false, Mensaje = ex.Message };
+            }
+        }
+
+        private static string GenerarTokenSeguro(int length =32)
+        {
+            var bytes = new byte[length];
+            using var rng = RandomNumberGenerator.Create();
+            rng.GetBytes(bytes);
+            // url-safe base64
+            return Convert.ToBase64String(bytes).Replace('+', '-').Replace('/', '_').TrimEnd('=');
+        }
+
+        public async Task<DTO<bool>> ResetPasswordByToken(string token, string nuevaPassword)
+        {
+            try
+            {
+                var tokenRes = await _tokenRepo.Obtener_por_token(token);
+                if (!tokenRes.Correcto || tokenRes.Datos == null)
+                    return new DTO<bool> { Correcto = false, Mensaje = "Token inválido" };
+
+                var prt = tokenRes.Datos;
+                if (prt.IsConsumed) return new DTO<bool> { Correcto = false, Mensaje = "Token ya consumido" };
+                if (prt.ExpiresAt < DateTime.UtcNow) return new DTO<bool> { Correcto = false, Mensaje = "Token expirado" };
+
+                if (!prt.UsuarioId.HasValue) return new DTO<bool> { Correcto = false, Mensaje = "Token no asociado a usuario" };
+
+                var userRes = await _usuarioRepo.Obtener_por_id(new Usuario { Id = prt.UsuarioId.Value });
+                if (!userRes.Correcto || userRes.Datos == null) return new DTO<bool> { Correcto = false, Mensaje = "Usuario no encontrado" };
+
+                var user = userRes.Datos;
+                user.Password = MiHash.GenerarHashBcrypt(nuevaPassword);
+                var upd = await _usuarioRepo.Actualizar(user);
+                if (!upd.Correcto) return new DTO<bool> { Correcto = false, Mensaje = "No se pudo actualizar contraseña" };
+
+                await _tokenRepo.Marcar_consumido(prt.Id);
+
+                return new DTO<bool> { Correcto = true, Datos = true, Mensaje = "Contraseña actualizada" };
+            }
+            catch (Exception ex)
+            {
+                return new DTO<bool> { Correcto = false, Mensaje = ex.Message };
+            }
+        }
+
+        public async Task<DTO<bool>> GenerateAndSendPasswordResetEmail(int usuarioId)
+        {
+            try
+            {
+                var userRes = await _usuarioRepo.Obtener_por_id(new Usuario { Id = usuarioId });
+                if (!userRes.Correcto || userRes.Datos == null) return new DTO<bool> { Correcto = false, Mensaje = "Usuario no encontrado" };
+
+                var tokenRes = await GenerarTokenYGuardar(usuarioId, userRes.Datos.PersonaId);
+                if (!tokenRes.Correcto) return new DTO<bool> { Correcto = false, Mensaje = tokenRes.Mensaje };
+
+                var frontend = _config["Frontend:BaseUrl"] ?? "http://localhost:5000";
+                var link = frontend.TrimEnd('/') + $"/confirm-password-reset?token={tokenRes.Datos}";
+                var model = new System.Collections.Generic.Dictionary<string,string>
+                {
+                    { "Name", userRes.Datos.Nombre },
+                    { "Link", link },
+                    { "ExpiryHours", "24" }
+                };
+                var body = _emailService.RenderTemplate("PasswordReset_Request.html", model) ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(body)) body = $"Hola {userRes.Datos.Nombre}, use el siguiente link: {link}";
+                await _emailService.SendAsync(userRes.Datos.Email, "Restablecer contraseña", body);
+                return new DTO<bool> { Correcto = true, Datos = true, Mensaje = "Email enviado" };
+            }
+            catch (Exception ex)
+            {
+                return new DTO<bool> { Correcto = false, Mensaje = ex.Message };
+            }
+        }
+
+        public async Task<DTO<object>> Obtener_info_token(string token)
+        {
+            try
+            {
+                var tokenRes = await _tokenRepo.Obtener_por_token(token);
+                if (!tokenRes.Correcto || tokenRes.Datos == null) return new DTO<object> { Correcto = false, Mensaje = "Token no encontrado" };
+
+                var prt = tokenRes.Datos;
+                if (prt.IsConsumed) return new DTO<object> { Correcto = false, Mensaje = "Token ya consumido" };
+                if (prt.ExpiresAt < DateTime.UtcNow) return new DTO<object> { Correcto = false, Mensaje = "Token expirado" };
+
+                if (!prt.UsuarioId.HasValue) return new DTO<object> { Correcto = false, Mensaje = "Token no asociado a usuario" };
+
+                var userRes = await _usuarioRepo.Obtener_por_id(new Usuario { Id = prt.UsuarioId.Value });
+                if (!userRes.Correcto || userRes.Datos == null) return new DTO<object> { Correcto = false, Mensaje = "Usuario no encontrado" };
+
+                var result = new {
+                    Usuario = userRes.Datos,
+                    Token = prt
+                };
+
+                return new DTO<object> { Correcto = true, Datos = result };
+            }
+            catch (Exception ex)
+            {
+                return new DTO<object> { Correcto = false, Mensaje = ex.Message };
             }
         }
     }

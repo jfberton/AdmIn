@@ -56,6 +56,12 @@
                               Text="Gestionar Trabajos"
                               Click="@(() => GestionarTrabajos())" />
             }
+
+            @* Nuevo botón Reservar (solo si disponible) *@
+            @if (inmueble?.Condicion?.Nombre?.ToLower() == "disponible")
+            {
+                <RadzenButton ButtonStyle="ButtonStyle.Warning" Icon="bookmark" Text="Reservar" Click="@(async () => AbrirDialogReservaDetalle())" />
+            }
         </RadzenStack>
 
         <!-- Información Principal -->
@@ -64,7 +70,15 @@
                 <RadzenCard>
                     <RadzenStack Gap="1.5rem">
                         <RadzenText TextStyle="TextStyle.H6" Text="Información General" />
-                        
+
+                        @* Description shown as plain paragraph (no label) *@
+                        @if (!string.IsNullOrWhiteSpace(inmueble.Descripcion))
+                        {
+                            <div class="info-desc">@inmueble.Descripcion</div>
+                        }
+
+                        <hr class="thin-divider" />
+
                         <RadzenRow Gap="1rem">
                             <RadzenColumn Size="12" SizeMD="6">
                                 <div class="info-item">
@@ -80,13 +94,38 @@
                             </RadzenColumn>
                         </RadzenRow>
 
-                        @if (!string.IsNullOrWhiteSpace(inmueble.Descripcion))
-                        {
-                            <div class="info-item">
-                                <RadzenText TextStyle="TextStyle.Caption" Text="DESCRIPCIÓN" />
-                                <RadzenText TextStyle="TextStyle.Body1" Text="@inmueble.Descripcion" />
-                            </div>
-                        }
+                        <hr class="thin-divider" />
+
+                        <RadzenRow Gap="1rem">
+                            <RadzenColumn Size="12" SizeMD="6">
+                                <div class="info-item">
+                                    <RadzenText TextStyle="TextStyle.Caption" Text="PROPIETARIO" />
+                                    @if (inmueble.Propietario != null)
+                                    {
+                                        <RadzenText TextStyle="TextStyle.Body1" Text="@($"{inmueble.Propietario.Nombre} ({inmueble.Propietario.Email})")" />
+                                    }
+                                    else
+                                    {
+                                        <RadzenText TextStyle="TextStyle.Body1" Text="Propietario no asignado" />
+                                    }
+                                </div>
+                            </RadzenColumn>
+
+                            <RadzenColumn Size="12" SizeMD="6">
+                                <div class="info-item">
+                                    <RadzenText TextStyle="TextStyle.Caption" Text="ADMINISTRADOR" />
+                                    @if (inmueble.Administrador != null)
+                                    {
+                                        <RadzenText TextStyle="TextStyle.Body1" Text="@($"{inmueble.Administrador.Nombre} ({inmueble.Administrador.Email})")" />
+                                    }
+                                    else
+                                    {
+                                        <RadzenText TextStyle="TextStyle.Body1" Text="No asignado" />
+                                    }
+                                </div>
+                            </RadzenColumn>
+                        </RadzenRow>
+
                     </RadzenStack>
                 </RadzenCard>
             </RadzenColumn>
@@ -126,17 +165,20 @@
                         }
                     </RadzenStack>
                 </RadzenCard>
+
+                <!-- Tarjeta: Propietario y Administrador -->
+                <!-- Eliminada la tarjeta separada de Propietario y Administrador -->
             </RadzenColumn>
         </RadzenRow>
 
-        <!-- Gestión de Características -->
+        <!-- Gesti?n de Caracter?sticas -->
         <RadzenCard id="caracteristicas">
             <CaracteristicasViewer InmuebleId="@inmueble.Id" 
                                   MostrarBotonGestionar="true"
                                   OnGestionarClick="@GestionarCaracteristicas" />
         </RadzenCard>
 
-        <!-- Gestión de Imágenes -->
+        <!-- Gesti?n de Im?genes -->
         <RadzenCard id="imagenes">
             <RadzenStack Gap="1.5rem">
                 <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
@@ -187,7 +229,7 @@
                             <div class="trabajo-item" style="display:flex;justify-content:space-between;align-items:center;padding:8px;border-left:4px solid #e5e7eb;background:#fafafa;border-radius:6px;margin-bottom:8px;">
                                 <div>
                                     <div style="font-weight:700;">@t.Descripcion</div>
-                                    <div style="color:#6b7280;font-size:0.9rem;">Estado: @t.Estado &nbsp;·&nbsp; Fecha: @t.Fecha.ToString("g")</div>
+                                    <div style="color:#6b7280;font-size:0.9rem;">Estado: @t.Estado &nbsp;•&nbsp; Fecha: @t.Fecha.ToString("g")</div>
                                 </div>
                                 <div style="display:flex;gap:8px;">
                                     <RadzenButton Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Info" Click="@(() => IrA($"/trabajos/{t.Id}"))">Ver</RadzenButton>
@@ -199,12 +241,12 @@
             </RadzenStack>
         </RadzenCard>
 
-        <!-- Información Adicional -->
+        <!-- Informaci?n Adicional -->
         @if (inmueble.Administrador != null || inmueble.Latitud != 0 || inmueble.Longitud != 0)
         {
             <RadzenCard>
                 <RadzenStack Gap="1.5rem">
-                    <RadzenText TextStyle="TextStyle.H6" Text="Información Adicional" />
+                    <RadzenText TextStyle="TextStyle.H6" Text="Informaci?n Adicional" />
                     
                     <RadzenRow Gap="1rem">
                         @if (inmueble.Administrador != null)
@@ -303,6 +345,21 @@ else
     }
 
     .trabajos-list { }
+
+    /* New styles for description and thin dividers */
+    .info-desc {
+        color: #374151; /* text-gray-700 */
+        font-size: 0.95rem;
+        line-height: 1.6;
+        margin-bottom: 0.5rem;
+        white-space: pre-line;
+    }
+
+    .thin-divider {
+        border: none;
+        border-top: 1px solid #e5e7eb; /* subtle gray */
+        margin: 0.75rem 0;
+    }
 </style>
 
 @code {
@@ -485,7 +542,7 @@ else
                 var nuevasImagenes = resultado.Datos.ToList();
 
                 // Si el servicio devolvió menos imágenes que las que ya vienen embebidas en el inmueble,
-                // es probable que el endpoint esté devolviendo solo la principal por algún motivo.
+                // es probable que el endpoint está devolviendo solo la principal por algún motivo.
                 // En ese caso preferimos usar las imágenes que ya vinieron con el objeto inmueble (que en el listado sí cargan todas).
                 if (inmueble?.Imagenes != null && inmueble.Imagenes.Count > nuevasImagenes.Count)
                 {
@@ -587,7 +644,7 @@ else
                 {
                     await caracteristicasViewer.RefreshCaracteristicas();
                 }
-                MostrarNotificacion(NotificationSeverity.Success, "Éxito", "Características actualizadas correctamente");
+                MostrarNotificacion(NotificationSeverity.Success, "éxito", "Características actualizadas correctamente");
             }
         }
         catch (Exception ex)
@@ -620,7 +677,7 @@ else
             {
                 await CargarImagenes();
                 await CargarInmueble(); // Para actualizar la imagen principal
-                MostrarNotificacion(NotificationSeverity.Success, "Éxito", "Imágenes actualizadas correctamente");
+                MostrarNotificacion(NotificationSeverity.Success, "éxito", "Imágenes actualizadas correctamente");
             }
         }
         catch (Exception ex)
@@ -653,7 +710,7 @@ else
                 
                 StateHasChanged();
                 await LogHelper.Info($"Imagen principal actualizada: {imagen.Nombre}");
-                MostrarNotificacion(NotificationSeverity.Success, "Éxito", "Imagen principal actualizada");
+                MostrarNotificacion(NotificationSeverity.Success, "éxito", "Imagen principal actualizada");
             }
         }
         catch (Exception ex)
@@ -721,7 +778,7 @@ else
                 await CargarImagenes();
             }
             
-            MostrarNotificacion(NotificationSeverity.Success, "Éxito", "Información de imagen actualizada");
+            MostrarNotificacion(NotificationSeverity.Success, "éxito", "Información de imagen actualizada");
         }
         catch (Exception ex)
         {
@@ -747,6 +804,46 @@ else
         if (result is bool ok && ok)
         {
             // navigations are handled inside dialog
+        }
+    }
+
+    private async Task AbrirDialogReservaDetalle()
+    {
+        try
+        {
+            var auth = await authStateProvider.GetAuthenticationStateAsync();
+            var user = auth.User;
+            var esAdmin = user.IsInRole("admin_usuario") || user.IsInRole("admin_propiedad");
+            var uid = user.FindFirst("Id")?.Value;
+            var esPropietario = inmueble.PropietarioId.HasValue && uid != null && int.TryParse(uid, out var id) && inmueble.PropietarioId.Value == id;
+
+            if (!esAdmin && !esPropietario)
+            {
+                MostrarNotificacion(NotificationSeverity.Warning, "Sin permisos", "Solo el administrador o propietario puede crear reservas.");
+                return;
+            }
+
+            var parameters = new Dictionary<string, object> { { "InmuebleId", inmueble.Id }, { "InitialCosto", inmueble.RentaMensual >0 ? inmueble.RentaMensual : inmueble.Valor } };
+            var result = await DialogService.OpenAsync<AdmIn.UI.Components.Shared.ReservaDialog>(
+                $"Reservar - {inmueble.Nombre}",
+                parameters,
+                new DialogOptions
+                {
+                    Width = "760px",
+                    Height = "640px",
+                    Resizable = true,
+                    Draggable = true,
+                    CloseDialogOnOverlayClick = false
+                });
+            if (result == true)
+            {
+                MostrarNotificacion(NotificationSeverity.Success, "Reserva", "Reserva creada correctamente.");
+                await CargarInmueble();
+            }
+        }
+        catch (Exception ex)
+        {
+            MostrarNotificacion(NotificationSeverity.Error, "Error", ex.Message);
         }
     }
 }

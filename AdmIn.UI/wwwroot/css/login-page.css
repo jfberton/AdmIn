@@ -1,8 +1,12 @@
 /* Custom Theme Colors */
 :root { /* Define variables at a high scope, accessible throughout this file */
-    --admin-primary-blue: #4A90E2;
-    --admin-primary-blue-dark: #357ABD;
-    --admin-primary-blue-rgb: 74, 144, 226;
+    --admin-primary-blue: #2563EB;
+    --admin-primary-blue-dark: #194bb0;
+    --admin-primary-blue-rgb: 37, 99, 235;
+    --card-bg-rgba: rgba(255,255,255,0.98); /* nearly opaque */
+    --card-border-rgba: rgba(0,0,0,0.04);
+    --card-shadow: 0 28px 80px rgba(10,25,47,0.10); /* stronger shadow */
+    --separator-cyan: rgba(64, 191, 174, 0.18); /* soft cyan for subtle separation */
 }
 
 /* General Page Styling - Applied to .page div in LoginLayout.razor */
@@ -12,186 +16,194 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    padding: 1rem;
-    background-color: #E9F5FE; /* Base soft blue color - Fallback */
-    background-image: url('../img/conceptual-background.jpg');
+    padding: 0.5rem 0.5rem;
+    background-image: linear-gradient(rgba(245, 248, 250, 0.65), rgba(245, 248, 250, 0.65)), url('../img/background.png');
     background-size: cover;
     background-position: center center;
     background-repeat: no-repeat;
-    overflow: hidden;
+    overflow: auto;
     position: relative;
-    box-sizing: border-box; /* Ensure padding doesn't add to width/height */
-}
-
-.login-container-row-mobile {
-    width: 100%;
-    max-width: 500px; /* Max width of the content area on mobile */
-    display: flex;
-    flex-direction: column;
-    z-index: 1;
-}
-
-.login-container-row-desktop {
-    width: 100%;
-    /* max-width: 800px; Let RadzenRow's JustifyContent handle centering of the SizeMD=6 column */
-    z-index: 1;
-    /* background-color, border-radius, box-shadow REMOVED */
-}
-
-/* Removed .login-image-column-mobile, .login-image-card-mobile, .login-image-card-desktop as elements are removed from Razor */
-
-.login-form-card {
-    padding: 2rem;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    width: 100%;
-    /* Desktop styles for semi-transparent card */
-    background-color: rgba(255, 255, 255, 0.92);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
-    border-radius: 12px;
-    border: 1px solid rgba(0, 0, 0, 0.05); /* Subtle border */
-    box-sizing: border-box; /* Ensure padding doesn't add to width/height */
-}
-
-/* Login Logo */
-.login-logo {
-    display: block;
-    margin: 0 auto 1.5rem auto;
-    max-width: 150px;
-    height: auto;
-}
-
-/* Login Title */
-.login-title {
-    font-size: 1.8rem;
-    font-weight: 600;
-    color: #333;
-    margin-bottom: 2rem !important;
-    text-align: center;
-    position: relative; /* Needed for pseudo-element positioning if more complex things were done */
-}
-
-.login-title::before {
-    content: '● ● ●';
-    display: block;
-    text-align: center;
-    font-size: 0.8rem;
-    color: #9CB8D2; /* Changed color for better visibility */
-    margin-bottom: 0.75rem;
-    letter-spacing: 0.3rem;
-}
-
-.login-form-card .rz-textbox,
-.login-form-card .rz-inputtext {
-    border-radius: 6px;
-    border: 1px solid #ced4da;
-    padding: 0.75rem 1rem;
-    font-size: 1rem;
-    width: 100%;
     box-sizing: border-box;
 }
 
-.login-form-card .rz-textbox:focus,
-.login-form-card .rz-inputtext:focus {
-    border-color: var(--admin-primary-blue-dark);
-    box-shadow: 0 0 0 0.2rem rgba(var(--admin-primary-blue-rgb), 0.25);
+.login-card {
+    width: 100%;
+    max-width: 1100px;
+    display: flex;
+    background: var(--card-bg-rgba);
+    border-radius: 14px;
+    box-shadow: var(--card-shadow);
+    overflow: hidden;
+    border: 1px solid var(--card-border-rgba);
 }
 
-.login-form-card .rz-label {
-    font-weight: 500;
-    margin-bottom: 0.5rem;
-    color: #555;
-    display: block;
+.login-card-left {
+    flex: 1 1 60%;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.25rem;
+}
+
+.login-card-left img {
+    max-width: 100%;
     width: 100%;
+    height: auto;
+    object-fit: cover;
+}
+
+/* Separator between left image and right form */
+.login-separator {
+    width: 1px;
+    background: linear-gradient(to bottom, rgba(255,255,255,0), var(--separator-cyan), rgba(255,255,255,0));
+    box-shadow: 0 0 18px rgba(64,191,174,0.06);
+}
+
+.login-card-right {
+    flex: 0 0 420px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    background: transparent;
+}
+
+.login-form-card {
+    width: 100%;
+    background: transparent; /* card container right side is already inside the white left image area */
+    border-radius: 8px;
+    padding: 0; /* inner spacing handled by elements */
+    box-sizing: border-box;
+}
+
+.login-title {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: rgba(15,23,42,0.95);
     text-align: left;
+    margin-bottom: 1rem;
+}
+
+/* Form controls styling (Radzen classes) */
+.login-form-card .rz-textbox,
+.login-form-card .rz-inputtext {
+    border-radius: 8px;
+    border: 1px solid rgba(15,23,42,0.08);
+    padding: 0.5rem 0.9rem;
+    font-size: 0.95rem;
+    width: 100%;
+    background-color: rgba(255,255,255,0.95);
+    box-sizing: border-box;
+    transition: box-shadow 0.12s ease, border-color 0.12s ease;
+}
+
+.login-form-card .rz-inputtext:focus,
+.login-form-card .rz-textbox:focus {
+    border-color: rgba(64,191,174,0.9);
+    box-shadow: 0 10px 26px rgba(64,191,174,0.06);
 }
 
 .login-form-card .rz-button[type='submit'] {
-    background-color: var(--admin-primary-blue);
+    background: linear-gradient(180deg, var(--admin-primary-blue), var(--admin-primary-blue-dark));
+    color: white;
     border: none;
-    padding: 0.75rem 1.5rem;
-    font-size: 1rem;
-    font-weight: 600;
-    border-radius: 6px;
+    padding: 0.6rem 0.9rem;
+    font-size: 0.95rem;
+    font-weight: 700;
+    border-radius: 8px;
     width: 100%;
-    transition: background-color 0.15s ease-in-out;
-    box-sizing: border-box;
+    transition: transform 0.08s ease, box-shadow 0.12s ease, background 0.12s ease;
+    box-shadow: 0 8px 28px rgba(37,99,235,0.12);
+    outline: none;
 }
 
-.login-form-card .rz-button[type='submit']:hover {
-    background-color: var(--admin-primary-blue-dark);
+/* Ensure hover / focus / active keep the same visual (override Radzen defaults) */
+.login-form-card .rz-button[type='submit']:hover,
+.login-form-card .rz-button[type='submit']:focus,
+.login-form-card .rz-button[type='submit']:active,
+.login-form-card .rz-button[type='submit']:focus-visible {
+    background: linear-gradient(180deg, var(--admin-primary-blue), var(--admin-primary-blue-dark));
+    color: white;
+    box-shadow: 0 10px 34px rgba(var(--admin-primary-blue-rgb),0.14);
+    transform: translateY(-1px);
 }
 
-.login-form-card .rz-form-group {
-    margin-bottom: 1.5rem;
-    width: 100%;
+.login-form-card .rz-button[type='submit']:active {
+    transform: translateY(0);
+    box-shadow: 0 6px 18px rgba(var(--admin-primary-blue-rgb),0.10);
 }
 
-.login-form-card .rz-form-group:last-of-type {
-    margin-bottom: 0;
+/* Disabled state */
+.login-form-card .rz-button[type='submit'][disabled],
+.login-form-card .rz-button[type='submit'][aria-disabled='true'] {
+    opacity: 0.6;
+    cursor: not-allowed;
+    box-shadow: none;
 }
 
-.login-form-card .RadzenTemplateForm {
-    width: 100%;
+/* End of additions */
+
+/* Remove social buttons area spacing since they no longer exist */
+.login-divider, .social-buttons { display:none; }
+
+/* Stronger overrides to ensure Radzen hover/focus styles don't turn the login button white */
+.login-form-card .rz-button,
+.login-form-card .rz-button.rz-primary,
+.login-form-card .rz-button.rz-primary.rz-state-active,
+.login-form-card .rz-button.rz-primary.rz-state-focused,
+.login-form-card .rz-button.rz-primary.rz-state-hover {
+    background: linear-gradient(180deg, var(--admin-primary-blue) 0%, var(--admin-primary-blue-dark) 100%) !important;
+    color: #ffffff !important;
+    border: none !important;
+}
+
+.login-form-card .rz-button.rz-primary:hover,
+.login-form-card .rz-button.rz-primary:focus,
+.login-form-card .rz-button.rz-primary:active,
+.login-form-card .rz-button.rz-primary.rz-state-hover,
+.login-form-card .rz-button.rz-primary.rz-state-focused,
+.login-form-card .rz-button.rz-primary.rz-state-active {
+    background: linear-gradient(180deg, var(--admin-primary-blue) 0%, var(--admin-primary-blue-dark) 100%) !important;
+    color: #ffffff !important;
+    box-shadow: 0 10px 34px rgba(var(--admin-primary-blue-rgb),0.14) !important;
+}
+
+/* If Radzen applies inline background-image or sets background-color on inner elements, also target the inner span */
+.login-form-card .rz-button .rz-button-text,
+.login-form-card .rz-button > span {
+    color: #fff !important;
+}
+
+/* Ensure focus outline is subtle and not white */
+.login-form-card .rz-button:focus {
+    outline: 2px solid rgba(var(--admin-primary-blue-rgb),0.14) !important;
+    outline-offset: 0 !important;
+}
+
+/* Responsive: stack image above form on small screens and make separator horizontal */
+@media (max-width: 900px) {
+    .login-card { flex-direction: column; max-width: 720px; }
+    .login-card-left { flex: none; width: 100%; padding: 0; }
+    .login-card-left img { width: 100%; height: auto; object-fit: cover; }
+    .login-card-right { flex: none; width: 100%; padding: 1.25rem; }
+    .login-title { text-align: center; }
+
+    .login-separator {
+        width: 100%;
+        height: 1px;
+        background: linear-gradient(to right, rgba(255,255,255,0), var(--separator-cyan), rgba(255,255,255,0));
+        margin: 0.25rem 0;
+        box-shadow: 0 0 12px rgba(64,191,174,0.04);
+    }
 }
 
 @media (max-width: 575.98px) {
-    .login-container-row-desktop {
-        /* Ensure no desktop specific styles apply on mobile if class is somehow present */
-        background-color: transparent;
-        box-shadow: none;
-    }
-
-    .login-logo {
-        max-width: 120px;
-        margin-top: 1rem;
-    }
-
-    .login-title {
-        font-size: 1.6rem;
-        margin-bottom: 1.5rem !important;
-    }
-
-    .login-title::before {
-        font-size: 0.7rem; /* Slightly smaller dots on mobile */
-        margin-bottom: 0.6rem;
-        letter-spacing: 0.25rem;
-    }
-
-    .login-form-card {
-        padding: 1.5rem;
-        /* Mobile: opaque card */
-        background-color: #ffffff;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-        border-radius: 8px;
-    }
-
-    /* Removed .login-image-column-mobile and .login-image-card-mobile specific media query rules */
-    /* Removed .login-form-card.rz-p-6 override as rz-p-X classes were removed from Razor */
+    .login-card { border-radius: 10px; }
+    .login-card-right { padding: 1rem; }
+    .login-title { font-size: 1.1rem; }
 }
 
 @media (max-width: 370px) {
-    .page {
-        padding: 0.5rem; /* Reduce page padding on very small screens */
-    }
-
-    .login-form-card {
-        padding: 1rem; /* Further reduce card padding on very small screens */
-    }
-
-    .login-title {
-        font-size: 1.4rem; /* Further reduce title font size */
-        margin-bottom: 1rem !important;
-    }
-
-    .login-title::before {
-        font-size: 0.6rem;
-        margin-bottom: 0.5rem;
-        letter-spacing: 0.2rem;
-    }
-
-    .login-logo {
-        max-width: 100px;
-    }
+    .page { padding: 0.4rem; }
 }

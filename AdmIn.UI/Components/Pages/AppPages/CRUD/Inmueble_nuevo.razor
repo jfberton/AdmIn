@@ -5,10 +5,11 @@
 @using AdmIn.Common
 @using AdmIn.UI.Services
 @using Microsoft.AspNetCore.Components.Authorization
+@using AdmIn.UI.Components.Shared
 
 @inject IServ_Inmueble serv_inmueble
 @inject IServ_InmuebleCondicion serv_condicion
-@inject IServ_Moneda serv_moneda
+@inject IServ_Moneda serv_moneda    
 @inject AuthenticationStateProvider authStateProvider
 
 <PageTitle>Nuevo Inmueble</PageTitle>
@@ -18,7 +19,7 @@
     <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem">
         <RadzenButton ButtonStyle="ButtonStyle.Light" 
                      Icon="arrow_back" 
-                     Click="@(() => IrA("/inmuebles"))"
+                     Click="@Cancelar"
                      Size="ButtonSize.Medium" />
         <RadzenText TextStyle="TextStyle.H4" Text="Crear Nuevo Inmueble" />
     </RadzenStack>
@@ -167,7 +168,7 @@
                         <RadzenColumn Size="6">
                             <RadzenFormField Text="Condición del Inmueble" Variant="Variant.Outlined" Style="width:100%">
                                 <ChildContent>
-                                    <RadzenDropDown @bind-Value="@condicionSeleccionada" 
+                                    <RadzenDropDown @bind-Value="condicionSeleccionada" 
                                                    Data="@condicionesDisponibles" 
                                                    TextProperty="Nombre"
                                                    ValueProperty="Id"
@@ -214,6 +215,30 @@
                         </RadzenRow>
                     }
                 </RadzenFieldset>
+
+                <!-- Propietario y Administrador como tarjetas separadas -->
+                <RadzenRow class="mb-4">
+                    <!-- Propietario (OBLIGATORIO) -->
+                    <RadzenColumn Size="12" SizeMD="6">
+                        <UserSelector Title="Propietario (obligatorio)"
+                                      RoleName="Propietario"
+                                      Description="Asegúrate de asignar un propietario antes de crear el inmueble."
+                                      @bind-SelectedUserId="nuevoInmueble.PropietarioId"
+                                      CurrentUserId="usuarioActualId"
+                                      ConflictingUserId="nuevoInmueble.AdministradorId"
+                                      IsRequired="true" />
+                    </RadzenColumn>
+
+                    <!-- Administrador (OPCIONAL) -->
+                    <RadzenColumn Size="12" SizeMD="6">
+                        <UserSelector Title="Administrador (opcional)"
+                                      RoleName="Administrador"
+                                      Description="Opcionalmente, asigna un administrador para el inmueble."
+                                      @bind-SelectedUserId="nuevoInmueble.AdministradorId"
+                                      CurrentUserId="usuarioActualId"
+                                      ConflictingUserId="nuevoInmueble.PropietarioId" />
+                    </RadzenColumn>
+                </RadzenRow>
 
                 <RadzenFieldset Text="Información Económica" class="mb-4">
                     <RadzenRow class="mb-3">
@@ -327,7 +352,7 @@
                     <RadzenButton ButtonStyle="ButtonStyle.Secondary" 
                                  Icon="cancel" 
                                  Text="Cancelar" 
-                                 Click="@(() => IrA("/inmuebles"))" />
+                                 Click="@Cancelar" />
                     <RadzenButton ButtonStyle="ButtonStyle.Primary" 
                                  Icon="save" 
                                  Text="Crear" 
@@ -386,12 +411,12 @@
     private bool componenteInicializado = false;
     private bool guardando = false;
 
-    // Condiciones del inmueble (reemplaza el dropdown de estado)
+    // Condiciones
     private List<InmuebleCondicion> condicionesDisponibles = new();
     private int? condicionSeleccionada = null;
-    
-    // Monedas disponibles
-    private List<Moneda> ListaMonedas = new();
+
+    // Monedas
+    private List<Moneda> ListaMonedas = new List<Moneda>();
 
     protected override async Task OnInitializedAsync()
     {
@@ -399,11 +424,17 @@
         {
             await base.OnInitializedAsync();
             EstablecerTituloPagina("Inmuebles", "Nuevo");
-            
+
             await ObtenerUsuarioActual();
             await CargarCondicionesDisponibles();
             await CargarMonedas();
             InicializarInmueble();
+
+            if (usuarioActualId.HasValue)
+            {
+                nuevoInmueble.UsuarioCreadorId = usuarioActualId;
+            }
+            
             componenteInicializado = true;
         }
         catch (Exception ex)
@@ -430,20 +461,13 @@
             else
             {
                 await LogHelper.Warn($"No se pudieron cargar las monedas: {resultado.Mensaje}");
-                // Crear una moneda por defecto si no hay ninguna
-                ListaMonedas = new List<Moneda>
-                {
-                    new Moneda { Id = 1, Nombre = "Peso Argentino", Codigo = "ARS" }
-                };
+                ListaMonedas = new List<Moneda> { new Moneda { Id = 1, Nombre = "Peso Argentino", Codigo = "ARS" } };
             }
         }
         catch (Exception ex)
         {
             await LogHelper.Error($"Error al cargar monedas: {ex.Message}");
-            ListaMonedas = new List<Moneda>
-            {
-                new Moneda { Id = 1, Nombre = "Peso Argentino", Codigo = "ARS" }
-            };
+            ListaMonedas = new List<Moneda> { new Moneda { Id = 1, Nombre = "Peso Argentino", Codigo = "ARS" } };
         }
     }
 
@@ -455,75 +479,21 @@
             if (resultado.Correcto && resultado.Datos != null)
             {
                 condicionesDisponibles = resultado.Datos.ToList();
-                
-                // Establecer la condición por defecto
-                var condicionPorDefecto = condicionesDisponibles.FirstOrDefault(c => c.Nombre == "Disponible") 
-                                       ?? condicionesDisponibles.FirstOrDefault();
-                
-                if (condicionPorDefecto != null)
-                {
-                    condicionSeleccionada = condicionPorDefecto.Id;
-                }
+                var condicionPorDefecto = condicionesDisponibles.FirstOrDefault(c => c.Nombre == "Disponible") ?? condicionesDisponibles.FirstOrDefault();
+                if (condicionPorDefecto != null) condicionSeleccionada = condicionPorDefecto.Id;
             }
             else
             {
-                await LogHelper.Warn($"No se pudieron cargar las condiciones: {resultado.Mensaje}");
-                // Crear una condición por defecto si no hay ninguna
-                condicionesDisponibles = new List<InmuebleCondicion>
-                {
-                    new InmuebleCondicion { Id = 1, Nombre = "Disponible", Descripcion = "Condición por defecto" }
-                };
+                condicionesDisponibles = new List<InmuebleCondicion> { new InmuebleCondicion { Id = 1, Nombre = "Disponible", Descripcion = "Condición por defecto" } };
                 condicionSeleccionada = 1;
             }
         }
         catch (Exception ex)
         {
             await LogHelper.Error($"Error al cargar condiciones: {ex.Message}");
-            condicionesDisponibles = new List<InmuebleCondicion>
-            {
-                new InmuebleCondicion { Id = 1, Nombre = "Disponible", Descripcion = "Condición por defecto" }
-            };
+            condicionesDisponibles = new List<InmuebleCondicion> { new InmuebleCondicion { Id = 1, Nombre = "Disponible", Descripcion = "Condición por defecto" } };
             condicionSeleccionada = 1;
         }
-    }
-
-    private async Task ForzarInicializacion()
-    {
-        componenteInicializado = false;
-        cargando = true;
-        errorCarga = null;
-        StateHasChanged();
-        
-        await Task.Delay(100);
-        
-        try
-        {
-            await ObtenerUsuarioActual();
-            await CargarCondicionesDisponibles();
-            await CargarMonedas();
-            InicializarInmueble();
-            componenteInicializado = true;
-        }
-        catch (Exception ex)
-        {
-            errorCarga = ex.Message;
-        }
-        finally
-        {
-            cargando = false;
-            StateHasChanged();
-        }
-    }
-
-    private async Task RecargarFormulario()
-    {
-        cargando = true;
-        errorCarga = null;
-        componenteInicializado = false;
-        StateHasChanged();
-        
-        await Task.Delay(500);
-        await OnInitializedAsync();
     }
 
     private async Task ObtenerUsuarioActual()
@@ -532,16 +502,11 @@
         {
             var authState = await authStateProvider.GetAuthenticationStateAsync();
             var userIdClaim = authState.User.FindFirst("Id");
-            
-            if (userIdClaim != null && int.TryParse(userIdClaim.Value, out int userId))
-            {
-                usuarioActualId = userId;
-            }
+            if (userIdClaim != null && int.TryParse(userIdClaim.Value, out int userId)) usuarioActualId = userId;
         }
         catch (Exception ex)
         {
             await LogHelper.Error($"Error obteniendo usuario actual: {ex.Message}");
-            // No lanzar excepción aquí, permitir que la app continúe
         }
     }
 
@@ -550,11 +515,11 @@
         nuevoInmueble = new Inmueble
         {
             Activo = true,
-            CondicionId = condicionSeleccionada ?? 1, // Usar CondicionId en lugar de Estado
-            MonedaId = ListaMonedas.FirstOrDefault()?.Id ?? 1, // Establecer moneda por defecto
+            CondicionId = condicionSeleccionada ?? 1,
+            MonedaId = ListaMonedas.FirstOrDefault()?.Id ?? 1,
             FechaCreacion = DateTime.Now,
             FechaModificacion = DateTime.Now,
-            UsuarioCreadorId = usuarioActualId,
+            UsuarioCreadorId = null,
             UsuarioModificadorId = usuarioActualId
         };
     }
@@ -572,62 +537,86 @@
     private async Task CrearInmueble(Inmueble inmueble)
     {
         if (guardando) return;
+
+        if (!inmueble.PropietarioId.HasValue)
+        {
+            MostrarNotificacion(NotificationSeverity.Warning, "Falta propietario", "El inmueble debe tener un propietario antes de crearlo.");
+            return;
+        }
         
+        if (inmueble.PropietarioId.HasValue && inmueble.AdministradorId.HasValue && inmueble.PropietarioId == inmueble.AdministradorId)
+        {
+            MostrarNotificacion(NotificationSeverity.Warning, "Conflicto de roles", "El propietario no puede ser también el administrador.");
+            return;
+        }
+
         try
         {
             guardando = true;
             await LogHelper.Info("Iniciando creación de inmueble");
 
-            // Asegurar que la condición esté asignada al modelo
             inmueble.CondicionId = condicionSeleccionada ?? 1;
-            
-            // Establecer usuario creador
-            inmueble.UsuarioCreadorId = usuarioActualId;
             inmueble.UsuarioModificadorId = usuarioActualId;
             inmueble.FechaCreacion = DateTime.Now;
             inmueble.FechaModificacion = DateTime.Now;
-            
-            // Asegurar que la moneda esté establecida
-            if (inmueble.MonedaId <= 0)
-            {
-                inmueble.MonedaId = ListaMonedas.FirstOrDefault()?.Id ?? 1;
-            }
+
+            if (inmueble.MonedaId <= 0) inmueble.MonedaId = ListaMonedas.FirstOrDefault()?.Id ?? 1;
 
             var resultado = await serv_inmueble.Crear(inmueble);
-            
             if (resultado.Correcto && resultado.Datos != null)
             {
-                await LogHelper.Info($"Inmueble creado exitosamente with ID: {resultado.Datos.Id}");
-                
-                MostrarNotificacion(
-                    NotificationSeverity.Success, 
-                    "¡Inmueble Creado!", 
-                    $"El inmueble '{inmueble.Nombre}' ha sido creado exitosamente.",
-                    $"/inmuebles/{resultado.Datos.Id}"
-                );
+                await LogHelper.Info($"Inmueble creado con ID: {resultado.Datos.Id}");
+                MostrarNotificacion(NotificationSeverity.Success, "¡Inmueble Creado!", $"El inmueble '{inmueble.Nombre}' ha sido creado exitosamente.", $"/inmuebles/{resultado.Datos.Id}");
             }
             else
             {
                 await LogHelper.Warn($"Error al crear inmueble: {resultado.Mensaje}");
-                MostrarNotificacion(
-                    NotificationSeverity.Error, 
-                    "Error al Crear", 
-                    resultado.Mensaje ?? "Error desconocido al crear el inmueble"
-                );
+                MostrarNotificacion(NotificationSeverity.Error, "Error al Crear", resultado.Mensaje ?? "Error desconocido al crear el inmueble");
             }
         }
         catch (Exception ex)
         {
             await LogHelper.Error($"Excepción al crear inmueble: {ex.Message}");
-            MostrarNotificacion(
-                NotificationSeverity.Error, 
-                "Error Inesperado", 
-                $"Ocurrió un error inesperado: {ex.Message}"
-            );
+            MostrarNotificacion(NotificationSeverity.Error, "Error Inesperado", $"Ocurrió un error inesperado: {ex.Message}");
         }
         finally
         {
             guardando = false;
         }
+    }
+
+    private void Cancelar() => IrA("/inmuebles");
+
+    private async Task ForzarInicializacion()
+    {
+        componenteInicializado = false;
+        cargando = true;
+        errorCarga = null;
+        StateHasChanged();
+        await Task.Delay(100);
+        try
+        {
+            await OnInitializedAsync();
+        }
+        catch (Exception ex)
+        {
+            errorCarga = ex.Message;
+            await LogHelper.Error($"Error en ForzarInicializacion: {ex.Message}");
+        }
+        finally
+        {
+            cargando = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task RecargarFormulario()
+    {
+        cargando = true;
+        errorCarga = null;
+        componenteInicializado = false;
+        StateHasChanged();
+        await Task.Delay(500);
+        await OnInitializedAsync();
     }
 }

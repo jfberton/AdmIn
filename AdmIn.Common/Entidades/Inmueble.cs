@@ -20,6 +20,7 @@ namespace AdmIn.Common.Entidades
         public decimal Valor { get; set; }
         public decimal ConstruccionM2 { get; set; }
         public decimal RentaMensual { get; set; }
+        public int? PropietarioId { get; set; }
         public int? AdministradorId { get; set; }
         public string Descripcion { get; set; } = string.Empty;
         public Guid? ImagenPrincipalId { get; set; }
@@ -35,6 +36,7 @@ namespace AdmIn.Common.Entidades
         public int? UsuarioModificadorId { get; set; }
 
         #region Propiedades de navegación
+        public Usuario? Propietario { get; set; }
         public Usuario? UsuarioCreador { get; set; }
         public Usuario? UsuarioModificador { get; set; }
         public Usuario? Administrador { get; set; }
@@ -47,9 +49,10 @@ namespace AdmIn.Common.Entidades
         public List<Imagen> Imagenes { get; set; } = new List<Imagen>();
         public List<CaracteristicaInmueble> Caracteristicas { get; set; } = new List<CaracteristicaInmueble>();
         public List<ContratoRenta> Contratos { get; set; } = new List<ContratoRenta>();
+        public List<Reserva> Reservas { get; set; } = new List<Reserva>();
 
         #endregion
-        
+
         #region Propiedades de compatibilidad (DEPRECATED)
         /// <summary>
         /// Propiedad de compatibilidad hacia atrás. 

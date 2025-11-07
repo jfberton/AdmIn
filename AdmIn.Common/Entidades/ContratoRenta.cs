@@ -25,12 +25,15 @@ namespace AdmIn.Common.Entidades
         public int? UsuarioCreadorId { get; set; }
         public int? UsuarioModificadorId { get; set; }
 
+        // NUEVO: referencia opcional a la reserva origen
+        public int? ReservaId { get; set; }
+
         #region Propiedades de navegación
         public Usuario? Inquilino { get; set; }
         public Inmueble? Inmueble { get; set; }
         public PolizaSeguro? PolizaRentaSegura { get; set; }
         public Moneda? Moneda { get; set; }
-        public List<PagoRenta> Pagos { get; set; }
+        public List<PagoRenta> Pagos { get; set; } = new List<PagoRenta>();
 
         #endregion
 

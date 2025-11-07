@@ -27,12 +27,12 @@ namespace AdmIn.Data.Repositorios
                 // Primero insertamos sin OUTPUT para evitar conflicto con triggers
                 var sqlInsert = @"INSERT INTO Inmueble 
                     (Nombre, Direccion, Pais, Estado, Ciudad, CP, Latitud, Longitud, 
-                     Valor, ConstruccionM2, RentaMensual, AdministradorId, Descripcion, 
+                     Valor, ConstruccionM2, RentaMensual, AdministradorId, PropietarioId, Descripcion, 
                      ImagenPrincipalId, MonedaId, CondicionId, Activo, FechaCreacion, FechaModificacion, 
                      UsuarioCreadorId, UsuarioModificadorId)
                     VALUES (@Nombre, @Direccion, @Pais, @Estado, @Ciudad, @CodigoPostal, 
                            @Latitud, @Longitud, @Valor, @ConstruccionM2, @RentaMensual, 
-                           @AdministradorId, @Descripcion, @ImagenPrincipalId, @MonedaId, 
+                           @AdministradorId, @PropietarioId, @Descripcion, @ImagenPrincipalId, @MonedaId, 
                            @CondicionId, @Activo, GETDATE(), GETDATE(), @UsuarioCreadorId, @UsuarioModificadorId);
                            
                     SELECT SCOPE_IDENTITY() AS NuevoId;";
@@ -51,6 +51,7 @@ namespace AdmIn.Data.Repositorios
                     ConstruccionM2 = inmueble.ConstruccionM2,
                     inmueble.RentaMensual,
                     AdministradorId = (object?)inmueble.AdministradorId ?? DBNull.Value,
+                    PropietarioId = (object?)inmueble.PropietarioId ?? DBNull.Value,
                     inmueble.Descripcion,
                     ImagenPrincipalId = (object?)inmueble.ImagenPrincipalId ?? DBNull.Value,
                     inmueble.MonedaId,
@@ -108,6 +109,7 @@ namespace AdmIn.Data.Repositorios
                         ConstruccionM2 = @ConstruccionM2,
                         RentaMensual = @RentaMensual,
                         AdministradorId = @AdministradorId,
+                        PropietarioId = @PropietarioId,
                         Descripcion = @Descripcion,
                         ImagenPrincipalId = @ImagenPrincipalId,
                         MonedaId = @MonedaId,
@@ -132,6 +134,7 @@ namespace AdmIn.Data.Repositorios
                     ConstruccionM2 = inmueble.ConstruccionM2,
                     inmueble.RentaMensual,
                     AdministradorId = (object?)inmueble.AdministradorId ?? DBNull.Value,
+                    PropietarioId = (object?)inmueble.PropietarioId ?? DBNull.Value,
                     inmueble.Descripcion,
                     ImagenPrincipalId = (object?)inmueble.ImagenPrincipalId ?? DBNull.Value,
                     inmueble.MonedaId,
@@ -141,7 +144,7 @@ namespace AdmIn.Data.Repositorios
                 }, transaccion);
 
                 if (filasAfectadas == 0)
-                    throw new Exception("No se encontró el inmueble para actualizar.");
+                    throw new Exception("No se encontr? el inmueble para actualizar.");
 
                 // Luego obtenemos el registro actualizado con todas las relaciones
                 var inmuebleActualizado = await ObtenerInmuebleCompletoInterno(inmueble.Id, conexion, transaccion);
@@ -178,7 +181,8 @@ namespace AdmIn.Data.Repositorios
             try
             {
                 // Verificar si tiene contratos activos
-                var sqlVerificarContratos = @"SELECT COUNT(*) FROM ContratoRenta WHERE InmuebleId = @InmuebleID;";
+                var sqlVerificarContratos = @"SELECT COUNT(*) FROM ContratoRenta WHERE InmuebleId = @InmuebleID;
+";
                 var tieneContratos = await conexion.QuerySingleAsync<int>(sqlVerificarContratos, new { InmuebleID = inmueble.Id }, transaccion);
 
                 if (tieneContratos > 0)
@@ -191,12 +195,14 @@ namespace AdmIn.Data.Repositorios
                     };
                 }
 
-                // Eliminar características asociadas
-                var sqlEliminarCaracteristicas = @"DELETE FROM CaracteristicaInmueble WHERE InmuebleID = @InmuebleID;";
+                // Eliminar caracter?sticas asociadas
+                var sqlEliminarCaracteristicas = @"DELETE FROM CaracteristicaInmueble WHERE InmuebleID = @InmuebleID;
+";
                 await conexion.ExecuteAsync(sqlEliminarCaracteristicas, new { InmuebleID = inmueble.Id }, transaccion);
 
                 // Eliminar el inmueble
-                var sqlEliminarInmueble = @"DELETE FROM Inmueble WHERE InmuebleID = @InmuebleID;";
+                var sqlEliminarInmueble = @"DELETE FROM Inmueble WHERE InmuebleID = @InmuebleID;
+";
                 var filasAfectadas = await conexion.ExecuteAsync(sqlEliminarInmueble, new { InmuebleID = inmueble.Id }, transaccion);
 
                 transaccion.Commit();
@@ -205,7 +211,7 @@ namespace AdmIn.Data.Repositorios
                 {
                     Correcto = filasAfectadas > 0,
                     Datos = filasAfectadas > 0,
-                    Mensaje = filasAfectadas > 0 ? "Inmueble eliminado correctamente." : "No se encontró el inmueble."
+                    Mensaje = filasAfectadas > 0 ? "Inmueble eliminado correctamente." : "No se encontr? el inmueble."
                 };
             }
             catch (Exception ex)
@@ -249,7 +255,7 @@ namespace AdmIn.Data.Repositorios
         }
 
         /// <summary>
-        /// Método interno para obtener un inmueble completo con todas sus relaciones
+        /// M?todo interno para obtener un inmueble completo con todas sus relaciones
         /// </summary>
         private async Task<Inmueble?> ObtenerInmuebleCompletoInterno(int inmuebleId, SqlConnection conexion, SqlTransaction? transaccion = null)
         {
@@ -267,6 +273,7 @@ namespace AdmIn.Data.Repositorios
                                 i.ConstruccionM2,
                                 i.RentaMensual,
                                 i.AdministradorId,
+                                i.PropietarioId,
                                 i.Descripcion,
                                 i.ImagenPrincipalId,
                                 i.MonedaId,
@@ -280,7 +287,7 @@ namespace AdmIn.Data.Repositorios
                                 m.MonedaID as Moneda_Id,
                                 m.Codigo as Moneda_Codigo,
                                 m.Nombre as Moneda_Nombre,
-                                -- Datos de la condición
+                                -- Datos de la condici?n
                                 ic.Id as Condicion_Id,
                                 ic.Nombre as Condicion_Nombre,
                                 ic.Descripcion as Condicion_Descripcion,
@@ -299,6 +306,10 @@ namespace AdmIn.Data.Repositorios
                                 adm.UsuarioID as Administrador_Id,
                                 adm.Nombre as Administrador_Nombre,
                                 adm.Email as Administrador_Email,
+                                -- Datos del propietario
+                                prop.UsuarioID as Propietario_Id,
+                                prop.Nombre as Propietario_Nombre,
+                                prop.Email as Propietario_Email,
                                 -- Datos de la imagen principal
                                 img.Id as ImagenPrincipal_Id,
                                 img.Nombre as ImagenPrincipal_Nombre,
@@ -312,6 +323,7 @@ namespace AdmIn.Data.Repositorios
                               LEFT JOIN Usuario uc ON i.UsuarioCreadorId = uc.UsuarioID
                               LEFT JOIN Usuario um ON i.UsuarioModificadorId = um.UsuarioID
                               LEFT JOIN Usuario adm ON i.AdministradorId = adm.UsuarioID
+                              LEFT JOIN Usuario prop ON i.PropietarioId = prop.UsuarioID
                               LEFT JOIN Imagen img ON i.ImagenPrincipalId = img.Id
                               WHERE i.InmuebleID = @InmuebleID;";
 
@@ -328,12 +340,12 @@ namespace AdmIn.Data.Repositorios
                                       LEFT JOIN Caracteristica c ON ci.CaracteristicaID = c.CaracteristicaID
                                       WHERE ci.InmuebleID = @InmuebleID;";
 
-            // Consulta para obtener todas las imágenes del inmueble
+            // Consulta para obtener todas las im?genes del inmueble
             var sqlImagenes = @"
                 SELECT DISTINCT 
                     Id, Nombre, Descripcion, Url, UrlThumb, FechaCreacion
                 FROM (
-                    -- Imágenes de la tabla InmuebleImagen (si existe)
+                    -- Im?genes de la tabla InmuebleImagen (si existe)
                     SELECT 
                         i.Id,
                         i.Nombre,
@@ -348,7 +360,7 @@ namespace AdmIn.Data.Repositorios
                     
                     UNION
                     
-                    -- Imagen principal como parte de las imágenes del inmueble
+                    -- Imagen principal como parte de las im?genes del inmueble
                     SELECT 
                         img.Id,
                         img.Nombre,
@@ -382,6 +394,7 @@ namespace AdmIn.Data.Repositorios
                 ConstruccionM2 = inmuebleData.ConstruccionM2,
                 RentaMensual = inmuebleData.RentaMensual,
                 AdministradorId = inmuebleData.AdministradorId,
+                PropietarioId = inmuebleData.PropietarioId,
                 Descripcion = inmuebleData.Descripcion,
                 ImagenPrincipalId = inmuebleData.ImagenPrincipalId,
                 MonedaId = inmuebleData.MonedaId,
@@ -404,7 +417,7 @@ namespace AdmIn.Data.Repositorios
                 };
             }
 
-            // Mapear la condición si existe
+            // Mapear la condici?n si existe
             if (inmuebleData.Condicion_Id != null)
             {
                 inmuebleEncontrado.Condicion = new InmuebleCondicion
@@ -451,6 +464,17 @@ namespace AdmIn.Data.Repositorios
                 };
             }
 
+            // Mapear el propietario si existe
+            if (inmuebleData.Propietario_Id != null)
+            {
+                inmuebleEncontrado.Propietario = new Usuario
+                {
+                    Id = inmuebleData.Propietario_Id,
+                    Nombre = inmuebleData.Propietario_Nombre,
+                    Email = inmuebleData.Propietario_Email
+                };
+            }
+
             // Mapear la imagen principal si existe
             if (inmuebleData.ImagenPrincipal_Id != null)
             {
@@ -465,7 +489,7 @@ namespace AdmIn.Data.Repositorios
                 };
             }
 
-            // Cargar características del inmueble
+            // Cargar caracter?sticas del inmueble
             var caracteristicasData = await conexion.QueryAsync(sqlCaracteristicas, new { InmuebleID = inmuebleId }, transaccion);
             inmuebleEncontrado.Caracteristicas = caracteristicasData.Select(ci => new CaracteristicaInmueble
             {
@@ -482,7 +506,7 @@ namespace AdmIn.Data.Repositorios
                 } : null
             }).ToList();
 
-            // Cargar todas las imágenes del inmueble
+            // Cargar todas las im?genes del inmueble
             try
             {
                 var imagenesData = await conexion.QueryAsync<Imagen>(sqlImagenes, new { InmuebleID = inmuebleId }, transaccion);
@@ -530,6 +554,7 @@ namespace AdmIn.Data.Repositorios
                                  i.ConstruccionM2,
                                  i.RentaMensual,
                                  i.AdministradorId,
+                                 i.PropietarioId,
                                  i.Descripcion,
                                  i.ImagenPrincipalId,
                                  i.MonedaId,
@@ -543,7 +568,7 @@ namespace AdmIn.Data.Repositorios
                                  m.MonedaID as Moneda_Id,
                                  m.Codigo as Moneda_Codigo,
                                  m.Nombre as Moneda_Nombre,
-                                 -- Datos de la condición
+                                 -- Datos de la condici?n
                                  ic.Id as Condicion_Id,
                                  ic.Nombre as Condicion_Nombre,
                                  ic.Descripcion as Condicion_Descripcion,
@@ -559,21 +584,26 @@ namespace AdmIn.Data.Repositorios
                                  uc.UsuarioID as UsuarioCreador_Id,
                                  uc.Nombre as UsuarioCreador_Nombre,
                                  um.UsuarioID as UsuarioModificador_Id,
-                                 um.Nombre as UsuarioModificador_Nombre
+                                 um.Nombre as UsuarioModificador_Nombre,
+                                 -- Datos del propietario
+                                 prop.UsuarioID as Propietario_Id,
+                                 prop.Nombre as Propietario_Nombre,
+                                 prop.Email as Propietario_Email
                                FROM Inmueble i
                                LEFT JOIN Moneda m ON i.MonedaId = m.MonedaID
                                LEFT JOIN InmuebleCondicion ic ON i.CondicionId = ic.Id
                                LEFT JOIN Imagen img ON i.ImagenPrincipalId = img.Id
                                LEFT JOIN Usuario uc ON i.UsuarioCreadorId = uc.UsuarioID
-                               LEFT JOIN Usuario um ON i.UsuarioModificadorId = um.UsuarioID;";
+                               LEFT JOIN Usuario um ON i.UsuarioModificadorId = um.UsuarioID
+                               LEFT JOIN Usuario prop ON i.PropietarioId = prop.UsuarioID;";
 
-            // Consulta para obtener todas las imágenes asociadas a inmuebles usando la nueva lógica
+            // Consulta para obtener todas las im?genes asociadas a inmuebles usando la nueva l?gica
             var sqlImagenesInmuebles = @"
                 SELECT DISTINCT 
-                    -- Usar un UNION para obtener imágenes tanto de InmuebleImagen como imagen principal
+                    -- Usar un UNION para obtener im?genes tanto de InmuebleImagen como imagen principal
                     InmuebleId, ImagenId, Id, Nombre, Descripcion, Url, UrlThumb, FechaCreacion
                 FROM (
-                    -- Imágenes de la tabla InmuebleImagen (si existe)
+                    -- Im?genes de la tabla InmuebleImagen (si existe)
                     SELECT 
                         ii.InmuebleId,
                         ii.ImagenId,
@@ -588,7 +618,7 @@ namespace AdmIn.Data.Repositorios
                     
                     UNION
                     
-                    -- Imagen principal como parte de las imágenes del inmueble
+                    -- Imagen principal como parte de las im?genes del inmueble
                     SELECT 
                         inm.InmuebleID as InmuebleId,
                         img.Id as ImagenId,
@@ -606,7 +636,7 @@ namespace AdmIn.Data.Repositorios
 
             var inmueblesData = (await conexion.QueryAsync(sqlInmuebles)).ToList();
             
-            // Obtener todas las imágenes de inmuebles
+            // Obtener todas las im?genes de inmuebles
             var imagenesInmueblesData = new List<dynamic>();
             try
             {
@@ -614,7 +644,7 @@ namespace AdmIn.Data.Repositorios
             }
             catch (Exception)
             {
-                // Si la tabla ImagenInmueble no existe, intentar obtener solo las imágenes principales
+                // Si la tabla ImagenInmueble no existe, intentar obtener solo las im?genes principales
                 try
                 {
                     var sqlSoloImagenesPrincipales = @"
@@ -635,7 +665,7 @@ namespace AdmIn.Data.Repositorios
                 }
                 catch (Exception)
                 {
-                    // Si todo falla, continuar sin imágenes adicionales
+                    // Si todo falla, continuar sin im?genes adicionales
                     imagenesInmueblesData = new List<dynamic>();
                 }
             }
@@ -659,6 +689,7 @@ namespace AdmIn.Data.Repositorios
                     ConstruccionM2 = inmuebleData.ConstruccionM2,
                     RentaMensual = inmuebleData.RentaMensual,
                     AdministradorId = inmuebleData.AdministradorId,
+                    PropietarioId = inmuebleData.PropietarioId,
                     Descripcion = inmuebleData.Descripcion,
                     ImagenPrincipalId = inmuebleData.ImagenPrincipalId,
                     MonedaId = inmuebleData.MonedaId,
@@ -681,7 +712,7 @@ namespace AdmIn.Data.Repositorios
                     };
                 }
 
-                // Mapear la condición si existe
+                // Mapear la condici?n si existe
                 if (inmuebleData.Condicion_Id != null)
                 {
                     inmueble.Condicion = new InmuebleCondicion
@@ -726,7 +757,18 @@ namespace AdmIn.Data.Repositorios
                     };
                 }
 
-                // Mapear todas las imágenes del inmueble
+                // Mapear el propietario si existe
+                if (inmuebleData.Propietario_Id != null)
+                {
+                    inmueble.Propietario = new Usuario
+                    {
+                        Id = inmuebleData.Propietario_Id,
+                        Nombre = inmuebleData.Propietario_Nombre,
+                        Email = inmuebleData.Propietario_Email
+                    };
+                }
+
+                // Mapear todas las im?genes del inmueble
                 var imagenesDelInmueble = imagenesInmueblesData
                     .Where(img => img.InmuebleId == inmueble.Id)
                     .Select(img => new Imagen
@@ -777,6 +819,7 @@ namespace AdmIn.Data.Repositorios
                             i.ConstruccionM2,
                             i.RentaMensual,
                             i.AdministradorId,
+                            i.PropietarioId,
                             i.Descripcion,
                             i.ImagenPrincipalId,
                             i.MonedaId,
@@ -790,7 +833,7 @@ namespace AdmIn.Data.Repositorios
                             m.MonedaID as Moneda_Id,
                             m.Codigo as Moneda_Codigo,
                             m.Nombre as Moneda_Nombre,
-                            -- Datos de la condición
+                            -- Datos de la condici?n
                             ic.Id as Condicion_Id,
                             ic.Nombre as Condicion_Nombre,
                             ic.Descripcion as Condicion_Descripcion,
@@ -806,13 +849,18 @@ namespace AdmIn.Data.Repositorios
                             uc.UsuarioID as UsuarioCreador_Id,
                             uc.Nombre as UsuarioCreador_Nombre,
                             um.UsuarioID as UsuarioModificador_Id,
-                            um.Nombre as UsuarioModificador_Nombre
+                            um.Nombre as UsuarioModificador_Nombre,
+                            -- Datos del propietario
+                            prop.UsuarioID as Propietario_Id,
+                            prop.Nombre as Propietario_Nombre,
+                            prop.Email as Propietario_Email
                         FROM Inmueble i
                         LEFT JOIN Moneda m ON i.MonedaId = m.MonedaID
                         LEFT JOIN InmuebleCondicion ic ON i.CondicionId = ic.Id
                         LEFT JOIN Imagen img ON i.ImagenPrincipalId = img.Id
                         LEFT JOIN Usuario uc ON i.UsuarioCreadorId = uc.UsuarioID
                         LEFT JOIN Usuario um ON i.UsuarioModificadorId = um.UsuarioID
+                        LEFT JOIN Usuario prop ON i.PropietarioId = prop.UsuarioID
                         WHERE 
                             (@FiltroBusqueda IS NULL OR i.Nombre LIKE '%' + @FiltroBusqueda + '%' 
                              OR i.Direccion LIKE '%' + @FiltroBusqueda + '%' 
@@ -855,6 +903,7 @@ namespace AdmIn.Data.Repositorios
                     ConstruccionM2 = row.ConstruccionM2,
                     RentaMensual = row.RentaMensual,
                     AdministradorId = row.AdministradorId,
+                    PropietarioId = row.PropietarioId,
                     Descripcion = row.Descripcion,
                     ImagenPrincipalId = row.ImagenPrincipalId,
                     MonedaId = row.MonedaId,
@@ -877,7 +926,7 @@ namespace AdmIn.Data.Repositorios
                     };
                 }
 
-                // Mapear la condición si existe
+                // Mapear la condici?n si existe
                 if (row.Condicion_Id != null)
                 {
                     inmueble.Condicion = new InmuebleCondicion
@@ -919,6 +968,17 @@ namespace AdmIn.Data.Repositorios
                     {
                         Id = row.UsuarioModificador_Id,
                         Nombre = row.UsuarioModificador_Nombre
+                    };
+                }
+
+                // Mapear el propietario si existe
+                if (row.Propietario_Id != null)
+                {
+                    inmueble.Propietario = new Usuario
+                    {
+                        Id = row.Propietario_Id,
+                        Nombre = row.Propietario_Nombre,
+                        Email = row.Propietario_Email
                     };
                 }
 
@@ -1033,7 +1093,7 @@ namespace AdmIn.Data.Repositorios
         {
             using var conexion = new SqlConnection(InfoSQL.Conexion);
             await conexion.OpenAsync();
-
+            
             var sql = @"SELECT 
                             ci.CaracteristicaInmuebleID as Id,
                             ci.InmuebleID,
@@ -1078,7 +1138,7 @@ namespace AdmIn.Data.Repositorios
             {
                 Correcto = true,
                 Datos = caracteristicas,
-                Mensaje = "Características obtenidas correctamente"
+                Mensaje = "Caracter?sticas obtenidas correctamente"
             };
         }
 
@@ -1115,7 +1175,7 @@ namespace AdmIn.Data.Repositorios
                 var caracteristicaCreada = await conexion.QuerySingleOrDefaultAsync<CaracteristicaInmueble>(sqlSelect, new { Id = nuevoId }, transaccion);
 
                 if (caracteristicaCreada == null)
-                    throw new Exception("No se pudo obtener la característica creada.");
+                    throw new Exception("No se pudo obtener la caracter?stica creada.");
 
                 transaccion.Commit();
 
@@ -1123,7 +1183,7 @@ namespace AdmIn.Data.Repositorios
                 {
                     Correcto = true,
                     Datos = caracteristicaCreada,
-                    Mensaje = "Característica agregada correctamente."
+                    Mensaje = "Caracter?stica agregada correctamente."
                 };
             }
             catch (Exception ex)
@@ -1132,7 +1192,7 @@ namespace AdmIn.Data.Repositorios
                 return new DTO<CaracteristicaInmueble>
                 {
                     Correcto = false,
-                    Mensaje = $"Error al agregar característica: {ex.Message}"
+                    Mensaje = $"Error al agregar caracter?stica: {ex.Message}"
                 };
             }
         }
@@ -1157,7 +1217,7 @@ namespace AdmIn.Data.Repositorios
                 }, transaccion);
 
                 if (filasAfectadas == 0)
-                    throw new Exception("No se encontró la característica para actualizar.");
+                    throw new Exception("No se encontr? la caracter?stica para actualizar.");
 
                 // Luego obtenemos el registro actualizado
                 var sqlSelect = @"SELECT 
@@ -1171,7 +1231,7 @@ namespace AdmIn.Data.Repositorios
                 var caracteristicaActualizada = await conexion.QuerySingleOrDefaultAsync<CaracteristicaInmueble>(sqlSelect, new { Id = caracteristica.Id }, transaccion);
 
                 if (caracteristicaActualizada == null)
-                    throw new Exception("No se pudo obtener la característica actualizada.");
+                    throw new Exception("No se pudo obtener la caracter?stica actualizada.");
 
                 transaccion.Commit();
 
@@ -1188,7 +1248,7 @@ namespace AdmIn.Data.Repositorios
                 return new DTO<CaracteristicaInmueble>
                 {
                     Correcto = false,
-                    Mensaje = $"Error al actualizar característica: {ex.Message}"
+                    Mensaje = $"Error al actualizar caracter?stica: {ex.Message}"
                 };
             }
         }
@@ -1210,7 +1270,7 @@ namespace AdmIn.Data.Repositorios
                 {
                     Correcto = filasAfectadas > 0,
                     Datos = filasAfectadas > 0,
-                    Mensaje = filasAfectadas > 0 ? "Característica eliminada correctamente." : "No se encontró la característica."
+                    Mensaje = filasAfectadas > 0 ? "Caracter?stica eliminada correctamente." : "No se encontr? la caracter?stica."
                 };
             }
             catch (Exception ex)
@@ -1219,7 +1279,7 @@ namespace AdmIn.Data.Repositorios
                 return new DTO<bool>
                 {
                     Correcto = false,
-                    Mensaje = $"Error al eliminar característica: {ex.Message}"
+                    Mensaje = $"Error al eliminar caracter?stica: {ex.Message}"
                 };
             }
         }
