@@ -69,24 +69,25 @@ namespace AdmIn.Business.Servicios
 
             if (resultado != null && resultado.Correcto && resultado.Datos != null)
             {
-                var creado = resultado.Datos;
-                // Generar token y enviar email para crear contraseña
-                var tokenRes = await GenerarTokenYGuardar(creado.Id, creado.PersonaId);
-                if (tokenRes.Correcto)
-                {
-                    var frontend = _config["Frontend:BaseUrl"] ?? "http://localhost:5000";
-                    var link = frontend.TrimEnd('/') + $"/confirm-password-reset?token={tokenRes.Datos}";
-                    var model = new System.Collections.Generic.Dictionary<string,string>
-                    {
-                        { "Name", creado.Nombre },
-                        { "Link", link },
-                        { "ExpiryHours", "24" }
-                    };
-                    var body = _emailService.RenderTemplate("NewUser_SetPassword.html", model) ?? string.Empty;
-                    if (string.IsNullOrWhiteSpace(body)) body = $"Hola {creado.Nombre}, use el siguiente link: {link}";
-                    await _emailService.SendAsync(creado.Email, "Configura tu contraseña", body);
-                }
-            }
+   var creado = resultado.Datos;
+ // Generar token y enviar email para crear contraseña
+    var tokenRes = await GenerarTokenYGuardar(creado.Id, creado.PersonaId);
+       if (tokenRes.Correcto)
+          {
+      var frontend = _config["Frontend:BaseUrl"] ?? "http://localhost:5000";
+ var link = frontend.TrimEnd('/') + $"/confirm-password-reset?token={tokenRes.Datos}";
+    var model = new System.Collections.Generic.Dictionary<string,string>
+     {
+          { "Name", creado.Nombre },
+ { "Link", link },
+ { "ExpiryHours", "24" },
+        { "Year", DateTime.Now.Year.ToString() }
+       };
+        var body = _emailService.RenderTemplate("NewUser_SetPassword.html", model) ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(body)) body = $"Hola {creado.Nombre}, use el siguiente link: {link}";
+    await _emailService.SendAsync(creado.Email, "Bienvenido a m3tria - Establece tu contraseña", body);
+  }
+  }
 
             return resultado;
         }
@@ -280,6 +281,34 @@ namespace AdmIn.Business.Servicios
 
             var actualizado = await _usuarioRepo.Actualizar(usuarioResult.Datos);
 
+            // Enviar email de notificación de cambio de contraseña
+            try
+            {
+                var frontend = _config["Frontend:BaseUrl"] ?? "http://localhost:5000";
+                var securityLink = frontend.TrimEnd('/') + "/request-password-reset";
+
+                var model = new System.Collections.Generic.Dictionary<string, string>
+                {
+                    { "Name", usuarioResult.Datos.Nombre },
+                    { "Timestamp", DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss") },
+                    { "Device", "Navegador Web" },
+                    { "Location", "No disponible" },
+                    { "SecurityLink", securityLink },
+                    { "Year", DateTime.Now.Year.ToString() }
+                };
+
+                var body = _emailService.RenderTemplate("PasswordChanged_Notification.html", model);
+                if (!string.IsNullOrWhiteSpace(body))
+                {
+                    await _emailService.SendAsync(usuarioResult.Datos.Email, "Tu contraseña ha sido actualizada", body);
+                }
+            }
+            catch (Exception emailEx)
+            {
+                // No fallar el cambio de contraseña si el email falla
+                Console.WriteLine($"[BUSINESS] ⚠️ Error enviando email de notificación: {emailEx.Message}");
+            }
+
             return new DTO<bool>
             {
                 Correcto = actualizado.Correcto,
@@ -376,6 +405,34 @@ namespace AdmIn.Business.Servicios
 
                 await _tokenRepo.Marcar_consumido(prt.Id);
 
+                // Enviar email de notificación de cambio de contraseña
+                try
+                {
+                    var frontend = _config["Frontend:BaseUrl"] ?? "http://localhost:5000";
+                    var securityLink = frontend.TrimEnd('/') + "/request-password-reset";
+   
+                    var model = new System.Collections.Generic.Dictionary<string, string>
+                    {
+                        { "Name", user.Nombre },
+                        { "Timestamp", DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss") },
+                        { "Device", "Navegador Web" },
+                        { "Location", "No disponible" },
+                        { "SecurityLink", securityLink },
+                        { "Year", DateTime.Now.Year.ToString() }
+                    };
+
+                    var body = _emailService.RenderTemplate("PasswordChanged_Notification.html", model);
+                    if (!string.IsNullOrWhiteSpace(body))
+                    {
+                        await _emailService.SendAsync(user.Email, "Tu contraseña ha sido actualizada", body);
+                    }
+                }
+                catch (Exception emailEx)
+                {
+                    // No fallar el reseteo si el email falla
+                    Console.WriteLine($"[BUSINESS] ⚠️ Error enviando email de notificación: {emailEx.Message}");
+                }
+
                 return new DTO<bool> { Correcto = true, Datos = true, Mensaje = "Contraseña actualizada" };
             }
             catch (Exception ex)
@@ -388,57 +445,60 @@ namespace AdmIn.Business.Servicios
         {
             try
             {
-                var userRes = await _usuarioRepo.Obtener_por_id(new Usuario { Id = usuarioId });
-                if (!userRes.Correcto || userRes.Datos == null) return new DTO<bool> { Correcto = false, Mensaje = "Usuario no encontrado" };
+       var userRes = await _usuarioRepo.Obtener_por_id(new Usuario { Id = usuarioId });
+        if (!userRes.Correcto || userRes.Datos == null) return new DTO<bool> { Correcto = false, Mensaje = "Usuario no encontrado" };
 
-                var tokenRes = await GenerarTokenYGuardar(usuarioId, userRes.Datos.PersonaId);
-                if (!tokenRes.Correcto) return new DTO<bool> { Correcto = false, Mensaje = tokenRes.Mensaje };
+    var tokenRes = await GenerarTokenYGuardar(usuarioId, userRes.Datos.PersonaId);
+  if (!tokenRes.Correcto) return new DTO<bool> { Correcto = false, Mensaje = tokenRes.Mensaje };
 
-                var frontend = _config["Frontend:BaseUrl"] ?? "http://localhost:5000";
-                var link = frontend.TrimEnd('/') + $"/confirm-password-reset?token={tokenRes.Datos}";
-                var model = new System.Collections.Generic.Dictionary<string,string>
-                {
-                    { "Name", userRes.Datos.Nombre },
-                    { "Link", link },
-                    { "ExpiryHours", "24" }
-                };
-                var body = _emailService.RenderTemplate("PasswordReset_Request.html", model) ?? string.Empty;
-                if (string.IsNullOrWhiteSpace(body)) body = $"Hola {userRes.Datos.Nombre}, use el siguiente link: {link}";
-                await _emailService.SendAsync(userRes.Datos.Email, "Restablecer contraseña", body);
-                return new DTO<bool> { Correcto = true, Datos = true, Mensaje = "Email enviado" };
-            }
-            catch (Exception ex)
-            {
-                return new DTO<bool> { Correcto = false, Mensaje = ex.Message };
-            }
-        }
+     var frontend = _config["Frontend:BaseUrl"] ?? "http://localhost:5000";
+  var link = frontend.TrimEnd('/') + $"/confirm-password-reset?token={tokenRes.Datos}";
+    var model = new System.Collections.Generic.Dictionary<string,string>
+  {
+  { "Name", userRes.Datos.Nombre },
+   { "Link", link },
+     { "ExpiryHours", "24" },
+         { "Year", DateTime.Now.Year.ToString() }
+      };
+     var body = _emailService.RenderTemplate("PasswordReset_Request.html", model) ?? string.Empty;
+          if (string.IsNullOrWhiteSpace(body)) body = $"Hola {userRes.Datos.Nombre}, use el siguiente link: {link}";
+      await _emailService.SendAsync(userRes.Datos.Email, "Restablecer tu contraseña - m3tria", body);
+     return new DTO<bool> { Correcto = true, Datos = true, Mensaje = "Email enviado" };
+ }
+     catch (Exception ex)
+         {
+return new DTO<bool> { Correcto = false, Mensaje = ex.Message };
+ }
+  }
 
-        public async Task<DTO<object>> Obtener_info_token(string token)
+        public async Task<DTO<TokenInfo>> Obtener_info_token(string token)
         {
             try
             {
                 var tokenRes = await _tokenRepo.Obtener_por_token(token);
-                if (!tokenRes.Correcto || tokenRes.Datos == null) return new DTO<object> { Correcto = false, Mensaje = "Token no encontrado" };
+                if (!tokenRes.Correcto || tokenRes.Datos == null) return new DTO<TokenInfo> { Correcto = false, Mensaje = "Token no encontrado" };
 
                 var prt = tokenRes.Datos;
-                if (prt.IsConsumed) return new DTO<object> { Correcto = false, Mensaje = "Token ya consumido" };
-                if (prt.ExpiresAt < DateTime.UtcNow) return new DTO<object> { Correcto = false, Mensaje = "Token expirado" };
+                if (prt.IsConsumed) return new DTO<TokenInfo> { Correcto = false, Mensaje = "Token ya consumido" };
+                if (prt.ExpiresAt < DateTime.UtcNow) return new DTO<TokenInfo> { Correcto = false, Mensaje = "Token expirado" };
 
-                if (!prt.UsuarioId.HasValue) return new DTO<object> { Correcto = false, Mensaje = "Token no asociado a usuario" };
+                if (!prt.UsuarioId.HasValue) return new DTO<TokenInfo> { Correcto = false, Mensaje = "Token no asociado a usuario" };
 
                 var userRes = await _usuarioRepo.Obtener_por_id(new Usuario { Id = prt.UsuarioId.Value });
-                if (!userRes.Correcto || userRes.Datos == null) return new DTO<object> { Correcto = false, Mensaje = "Usuario no encontrado" };
+                if (!userRes.Correcto || userRes.Datos == null) return new DTO<TokenInfo> { Correcto = false, Mensaje = "Usuario no encontrado" };
 
-                var result = new {
+                // Usar clase concreta TokenInfo
+                var result = new TokenInfo
+                {
                     Usuario = userRes.Datos,
                     Token = prt
                 };
 
-                return new DTO<object> { Correcto = true, Datos = result };
+                return new DTO<TokenInfo> { Correcto = true, Datos = result, Mensaje = "Token válido" };
             }
             catch (Exception ex)
             {
-                return new DTO<object> { Correcto = false, Mensaje = ex.Message };
+                return new DTO<TokenInfo> { Correcto = false, Mensaje = ex.Message };
             }
         }
     }

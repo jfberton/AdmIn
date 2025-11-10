@@ -42,45 +42,45 @@ namespace AdmIn.UI.Services
             Console.WriteLine($"[UI AUTH] Timestamp: {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}");
             Console.WriteLine($"[UI AUTH] Entorno: {(_env.IsDevelopment() ? "Development" : "Production")}");
             Console.WriteLine($"[UI AUTH] Path API configurado: {path_api ?? "null"}");
-            
+
             try
             {
                 Console.WriteLine($"[UI AUTH] ✓ Configuración cargada correctamente");
                 Console.WriteLine($"[UI AUTH] Creando cliente HTTP...");
-                
+
                 var clienteHttp = _httpClientFactory.CreateClient();
-                
+
                 // Configurar timeout más largo para diagnóstico
                 clienteHttp.Timeout = TimeSpan.FromSeconds(30);
                 Console.WriteLine($"[UI AUTH] ✓ Cliente HTTP creado con timeout de 30 segundos");
-                
+
                 var apiUrl = path_api + "Auth/login";
                 Console.WriteLine($"[UI AUTH] URL completa del API: {apiUrl}");
                 Console.WriteLine($"[UI AUTH] Datos a enviar - Email: {login?.Email}, Password length: {login?.Password?.Length ?? 0}");
-                
+
                 // ===== PASO 1: DIAGNÓSTICO PREVIO - PING AL API =====
                 Console.WriteLine($"[UI AUTH] 🏥 DIAGNÓSTICO: Probando conectividad con el API...");
                 var pingSuccess = await TestApiConnectivity(clienteHttp, path_api);
-                
+
                 if (!pingSuccess)
                 {
                     Console.WriteLine($"[UI AUTH] ❌ DIAGNÓSTICO FALLÓ: No hay conectividad con el API");
                     Console.WriteLine($"[UI AUTH] 💡 Problema: El API no responde o no está disponible en: {path_api}");
                     return null;
                 }
-                
+
                 Console.WriteLine($"[UI AUTH] ✅ DIAGNÓSTICO OK: API está respondiendo correctamente");
-                
+
                 // ===== PASO 2: ENVIAR PETICIÓN DE LOGIN =====
                 Console.WriteLine($"[UI AUTH] 🚀 Enviando petición POST al endpoint de login...");
-                
+
                 var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-                
+
                 var response = await clienteHttp.PostAsJsonAsync(apiUrl, login);
-                
+
                 stopwatch.Stop();
                 var responseTime = stopwatch.ElapsedMilliseconds;
-                
+
                 Console.WriteLine($"[UI AUTH] ✓ Respuesta HTTP recibida en {responseTime}ms");
                 Console.WriteLine($"[UI AUTH] ✓ Status Code: {response.StatusCode} ({(int)response.StatusCode})");
                 Console.WriteLine($"[UI AUTH] ✓ Is Success: {response.IsSuccessStatusCode}");
@@ -97,19 +97,19 @@ namespace AdmIn.UI.Services
                 if (response.IsSuccessStatusCode)
                 {
                     Console.WriteLine($"[UI AUTH] ✓ Respuesta HTTP exitosa, deserializando JSON...");
-                    
+
                     // Leer contenido como string primero para diagnóstico
                     var rawContent = await response.Content.ReadAsStringAsync();
                     Console.WriteLine($"[UI AUTH] 📄 Raw response content length: {rawContent?.Length ?? 0}");
-                    
+
                     var previewLength = Math.Min(200, rawContent?.Length ?? 0);
                     var preview = rawContent?.Substring(0, previewLength) ?? "null";
                     Console.WriteLine($"[UI AUTH] 📄 Raw response preview: {preview}...");
-                    
+
                     try
                     {
                         var dto = await response.Content.ReadFromJsonAsync<DTO<Usuario>>();
-                        
+
                         Console.WriteLine($"[UI AUTH] ✓ JSON deserializado correctamente");
                         Console.WriteLine($"[UI AUTH] ✓ DTO.Correcto: {dto?.Correcto == true}");
                         Console.WriteLine($"[UI AUTH] ✓ DTO.Mensaje: {dto?.Mensaje ?? "null"}");
@@ -124,7 +124,7 @@ namespace AdmIn.UI.Services
                             Console.WriteLine($"[UI AUTH] ✓ Usuario Email: {usuarioLogueado?.Email ?? "null"}");
                             Console.WriteLine($"[UI AUTH] ✓ Usuario Token length: {usuarioLogueado?.Token?.Length ?? 0}");
                             Console.WriteLine($"[UI AUTH] ✓ Usuario Roles count: {usuarioLogueado?.Roles?.Count ?? 0}");
-                            
+
                             if (usuarioLogueado?.Roles?.Any() == true)
                             {
                                 foreach (var rol in usuarioLogueado.Roles)
@@ -132,7 +132,7 @@ namespace AdmIn.UI.Services
                                     Console.WriteLine($"[UI AUTH]   - Usuario tiene rol: {rol.Nombre}");
                                 }
                             }
-                            
+
                             Console.WriteLine($"[UI AUTH] 🎉 LOGIN EXITOSO - Retornando usuario completo");
                         }
                         else
@@ -144,7 +144,7 @@ namespace AdmIn.UI.Services
 
                         Console.WriteLine($"[UI AUTH] ✓ Retornando usuario: {dto?.Datos != null}");
                         Console.WriteLine("========== LOGIN UI COMPLETADO ==========");
-                        
+
                         return dto?.Datos;
                     }
                     catch (System.Text.Json.JsonException jsonEx)
@@ -160,10 +160,10 @@ namespace AdmIn.UI.Services
                 {
                     Console.WriteLine($"[UI AUTH] ❌ Respuesta HTTP no exitosa");
                     Console.WriteLine($"[UI AUTH] ❌ Status: {response.StatusCode} - {response.ReasonPhrase}");
-                    
+
                     // Análisis específico por código de estado
                     await AnalyzeHttpErrorResponse(response);
-                    
+
                     Console.WriteLine("========== LOGIN UI FALLIDO - HTTP ERROR ==========");
                     return null;
                 }
@@ -184,10 +184,10 @@ namespace AdmIn.UI.Services
                 Console.WriteLine($"[UI AUTH] 🌐 ERROR DE CONECTIVIDAD HTTP");
                 Console.WriteLine($"[UI AUTH] ❌ HttpRequestException: {httpEx.Message}");
                 Console.WriteLine($"[UI AUTH] ❌ Stack trace: {httpEx.StackTrace}");
-                
+
                 // Análisis específico del error HTTP
                 await AnalyzeHttpRequestException(httpEx, path_api);
-                
+
                 Console.WriteLine("========== LOGIN UI ERROR HTTP ==========");
                 return null;
             }
@@ -197,12 +197,12 @@ namespace AdmIn.UI.Services
                 Console.WriteLine($"[UI AUTH] ❌ Exception: {ex.GetType().Name}");
                 Console.WriteLine($"[UI AUTH] ❌ Message: {ex.Message}");
                 Console.WriteLine($"[UI AUTH] ❌ Stack trace: {ex.StackTrace}");
-                
+
                 if (ex.InnerException != null)
                 {
                     Console.WriteLine($"[UI AUTH] ❌ Inner exception: {ex.InnerException.GetType().Name} - {ex.InnerException.Message}");
                 }
-                
+
                 Console.WriteLine("========== LOGIN UI ERROR GENERAL ==========");
                 return null;
             }
@@ -213,13 +213,17 @@ namespace AdmIn.UI.Services
         {
             try
             {
-                Console.WriteLine($"[UI AUTH] 🏥 Probando ping a: {apiBasePath}Diagnostic/ping");
+                // HealthCheckController está en la raíz, no en /api/
+                // Necesitamos remover /api/ de la ruta base para este endpoint
+                var baseUrl = apiBasePath.Replace("/api/", "/", StringComparison.OrdinalIgnoreCase);
+                var pingUrl = baseUrl + "diagnostic/ping";
                 
-                var pingUrl = apiBasePath + "Diagnostic/ping";
+                Console.WriteLine($"[UI AUTH] 🏥 Probando ping a: {pingUrl}");
+
                 var pingResponse = await client.GetAsync(pingUrl);
-                
+
                 Console.WriteLine($"[UI AUTH] 🏥 Ping Status: {pingResponse.StatusCode}");
-                
+
                 if (pingResponse.IsSuccessStatusCode)
                 {
                     var pingContent = await pingResponse.Content.ReadAsStringAsync();
@@ -245,32 +249,32 @@ namespace AdmIn.UI.Services
         private async Task AnalyzeHttpErrorResponse(HttpResponseMessage response)
         {
             Console.WriteLine($"[UI AUTH] 🔍 ANÁLISIS DETALLADO DEL ERROR HTTP:");
-            
+
             switch (response.StatusCode)
             {
                 case System.Net.HttpStatusCode.NotFound:
                     Console.WriteLine($"[UI AUTH] 💡 404 NOT FOUND - El endpoint Auth/login no existe");
                     Console.WriteLine($"[UI AUTH] 💡 Verifica que el controlador Auth esté registrado correctamente");
                     break;
-                    
+
                 case System.Net.HttpStatusCode.InternalServerError:
                     Console.WriteLine($"[UI AUTH] 💡 500 INTERNAL SERVER ERROR - Error en el API");
                     Console.WriteLine($"[UI AUTH] 💡 Revisa los logs del API para más detalles");
                     break;
-                    
+
                 case System.Net.HttpStatusCode.BadRequest:
                     Console.WriteLine($"[UI AUTH] 💡 400 BAD REQUEST - Datos enviados incorrectos");
                     break;
-                    
+
                 case System.Net.HttpStatusCode.Unauthorized:
                     Console.WriteLine($"[UI AUTH] 💡 401 UNAUTHORIZED - Problema de autenticación");
                     break;
-                    
+
                 case System.Net.HttpStatusCode.ServiceUnavailable:
                     Console.WriteLine($"[UI AUTH] 💡 503 SERVICE UNAVAILABLE - API temporalmente no disponible");
                     break;
             }
-            
+
             // Intentar leer el contenido del error
             try
             {
@@ -287,7 +291,7 @@ namespace AdmIn.UI.Services
         private async Task AnalyzeHttpRequestException(HttpRequestException ex, string apiPath)
         {
             Console.WriteLine($"[UI AUTH] 🔍 ANÁLISIS DETALLADO DE HttpRequestException:");
-            
+
             if (ex.Message.Contains("timeout") || ex.Message.Contains("timed out"))
             {
                 Console.WriteLine($"[UI AUTH] ⏰ TIPO: Timeout de conexión");
@@ -312,12 +316,12 @@ namespace AdmIn.UI.Services
             {
                 Console.WriteLine($"[UI AUTH] ❓ TIPO: Error HTTP genérico");
             }
-            
+
             Console.WriteLine($"[UI AUTH] 🔧 SUGERENCIAS:");
             Console.WriteLine($"[UI AUTH]   1. Verifica que el API esté ejecutándose");
             Console.WriteLine($"[UI AUTH]   2. Verifica la URL en appsettings: {apiPath}");
             Console.WriteLine($"[UI AUTH]   3. Verifica firewall/proxy entre UI y API");
-            
+
             if (ex.InnerException != null)
             {
                 Console.WriteLine($"[UI AUTH] 🔍 Inner exception análisis: {ex.InnerException.GetType().Name}");

@@ -1,0 +1,501 @@
+@page "/admin/test-email"
+@using AdmIn.Common
+@using AdmIn.UI.Services.UtilityServices
+@using Microsoft.AspNetCore.Authorization
+@using System.Net.Http.Headers
+@using System.Text.Json
+@using Radzen
+@attribute [Authorize(Roles = "admin_sistema")]
+@inject IHttpClientFactory HttpClientFactory
+@inject IConfiguration Configuration
+@inject ITokenService TokenService
+@inject NavigationManager Navigation
+@inject NotificationService NotificationService
+
+<PageTitle>Prueba de Envío de Email</PageTitle>
+
+<RadzenCard class="rz-my-4">
+    <RadzenStack Gap="1rem">
+     <RadzenRow AlignItems="AlignItems.Center">
+   <RadzenColumn Size="12">
+    <RadzenText TextStyle="TextStyle.H4" TagName="TagName.H1">
+             ?? Prueba de Envío de Email
+        </RadzenText>
+        <RadzenText TextStyle="TextStyle.Body2" class="rz-color-secondary">
+      Herramienta de diagnóstico para verificar la configuración SMTP
+         </RadzenText>
+          </RadzenColumn>
+    </RadzenRow>
+    </RadzenStack>
+</RadzenCard>
+
+@if (isLoading)
+{
+    <RadzenCard>
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem">
+     <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Medium" />
+<RadzenText>@loadingMessage</RadzenText>
+  </RadzenStack>
+    </RadzenCard>
+}
+else
+{
+    <RadzenRow Gap="2rem">
+        <!-- Columna Izquierda: Formulario -->
+   <RadzenColumn Size="12" SizeMD="6">
+          <RadzenCard>
+         <RadzenStack Gap="1.5rem">
+      <RadzenText TextStyle="TextStyle.H6">Configuración del Email de Prueba</RadzenText>
+
+              <RadzenStack Gap="1rem">
+           <!-- Email Destinatario -->
+      <RadzenFormField Text="Email Destinatario" Variant="Variant.Outlined">
+ <RadzenTextBox bind-Value="@request.To" 
+  Placeholder="ejemplo@dominio.com" 
+         Style="width: 100%;" />
+  </RadzenFormField>
+
+               <!-- Tipo de Prueba -->
+<RadzenFormField Text="Tipo de Prueba" Variant="Variant.Outlined">
+             <RadzenDropDown @bind-Value="@request.TestType" 
+   Data="@testTypes" 
+      Style="width: 100%;"
+     Change="@OnTestTypeChanged" />
+              </RadzenFormField>
+
+    <!-- Asunto (opcional) -->
+      <RadzenFormField Text="Asunto (opcional)" Variant="Variant.Outlined">
+    <RadzenTextBox @bind-Value="@request.Subject" 
+         Placeholder="Deja vacío para usar el por defecto" 
+          Style="width: 100%;" />
+              </RadzenFormField>
+
+       <!-- Cuerpo (opcional para tipo simple) -->
+      @if (request.TestType == "simple")
+        {
+<RadzenFormField Text="Mensaje (opcional)" Variant="Variant.Outlined">
+            <RadzenTextArea @bind-Value="@request.Body" 
+       Placeholder="Contenido personalizado del email..." 
+       Rows="4" 
+          Style="width: 100%;" />
+         </RadzenFormField>
+     }
+
+            <!-- Descripción del tipo -->
+            <RadzenAlert AlertStyle="AlertStyle.Info" Variant="Variant.Flat" Shade="Shade.Lighter">
+    <strong>@GetTestTypeTitle(request.TestType)</strong>
+   <br />
+       @GetTestTypeDescription(request.TestType)
+      </RadzenAlert>
+
+            <!-- Botones -->
+  <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" JustifyContent="JustifyContent.SpaceBetween">
+       <RadzenButton Text="Enviar Email de Prueba" 
+ Icon="send" 
+              ButtonStyle="ButtonStyle.Primary" 
+             Click="@EnviarEmail" 
+        Disabled="@(string.IsNullOrWhiteSpace(request.To))" />
+              
+     <RadzenButton Text="Ver Configuración SMTP" 
+    Icon="settings" 
+                 ButtonStyle="ButtonStyle.Secondary" 
+          Variant="Variant.Outlined"
+  Click="@VerConfiguracion" />
+        </RadzenStack>
+     </RadzenStack>
+     </RadzenStack>
+            </RadzenCard>
+    </RadzenColumn>
+
+      <!-- Columna Derecha: Resultados -->
+        <RadzenColumn Size="12" SizeMD="6">
+        <!-- Configuración SMTP -->
+            @if (smtpConfig != null)
+            {
+                <RadzenCard class="rz-mb-4">
+          <RadzenStack Gap="1rem">
+            <RadzenText TextStyle="TextStyle.H6">
+         <RadzenIcon Icon="settings" /> Configuración SMTP
+            </RadzenText>
+
+             <RadzenStack Gap="0.5rem">
+         <RadzenText>
+           <strong>Estado:</strong> 
+  @if (smtpConfig.IsConfigured)
+      {
+        <RadzenBadge BadgeStyle="BadgeStyle.Success" Text="Configurado" />
+          }
+         else
+        {
+     <RadzenBadge BadgeStyle="BadgeStyle.Danger" Text="No Configurado" />
+    }
+  </RadzenText>
+
+     <RadzenText><strong>Host:</strong> @smtpConfig.Config.Host</RadzenText>
+    <RadzenText><strong>Port:</strong> @smtpConfig.Config.Port</RadzenText>
+  <RadzenText><strong>User:</strong> @smtpConfig.Config.User</RadzenText>
+ <RadzenText><strong>Password:</strong> @(smtpConfig.Config.PasswordConfigured ? "? Configurado" : "? No configurado")</RadzenText>
+       <RadzenText><strong>SSL:</strong> @smtpConfig.Config.EnableSsl</RadzenText>
+     <RadzenText><strong>From:</strong> @smtpConfig.Config.From</RadzenText>
+      </RadzenStack>
+
+       @if (smtpConfig.Warnings?.Any() == true)
+  {
+        <RadzenAlert AlertStyle="AlertStyle.Warning" Variant="Variant.Flat" Shade="Shade.Lighter">
+    @foreach (var warning in smtpConfig.Warnings)
+    {
+<div>@warning</div>
+              }
+     </RadzenAlert>
+          }
+         </RadzenStack>
+                </RadzenCard>
+      }
+
+            <!-- Resultado del Envío -->
+     @if (resultado != null)
+            {
+ <RadzenCard>
+             <RadzenStack Gap="1rem">
+  <RadzenText TextStyle="TextStyle.H6">
+        @if (resultado.Success)
+          {
+             <RadzenIcon Icon="check_circle" Style="color: var(--rz-success);" />
+       <span>Resultado del Envío</span>
+                  }
+   else
+         {
+       <RadzenIcon Icon="error" Style="color: var(--rz-danger);" />
+     <span>Error en el Envío</span>
+          }
+</RadzenText>
+
+     @if (resultado.Success)
+         {
+    <RadzenAlert AlertStyle="AlertStyle.Success" Variant="Variant.Flat">
+          <strong>? Email enviado exitosamente</strong>
+    <div class="rz-mt-2">
+   <small>Destinatario: @resultado.Details?.To</small><br />
+        <small>Asunto: @resultado.Details?.Subject</small><br />
+     <small>Tipo: @resultado.Details?.TestType</small><br />
+      <small>Timestamp: @resultado.Timestamp?.ToString("yyyy-MM-dd HH:mm:ss")</small>
+           </div>
+         </RadzenAlert>
+
+       @if (resultado.Details?.SmtpConfig != null)
+              {
+     <RadzenText TextStyle="TextStyle.Subtitle2" class="rz-mt-2">
+            <strong>Configuración utilizada:</strong>
+    </RadzenText>
+            <ul class="rz-m-0" style="font-size: 0.875rem;">
+  <li>Host: @resultado.Details.SmtpConfig.Host</li>
+   <li>Port: @resultado.Details.SmtpConfig.Port</li>
+       <li>SSL: @resultado.Details.SmtpConfig.Ssl</li>
+            <li>User: @resultado.Details.SmtpConfig.User</li>
+     </ul>
+           }
+                }
+            else
+  {
+    <RadzenAlert AlertStyle="AlertStyle.Danger" Variant="Variant.Flat">
+           <strong>? Error al enviar email</strong>
+    <div class="rz-mt-2">
+<code>@resultado.Error</code>
+             </div>
+      
+    @if (!string.IsNullOrEmpty(resultado.SmtpStatusCode))
+   {
+               <div class="rz-mt-2">
+        <small><strong>Código SMTP:</strong> @resultado.SmtpStatusCode</small>
+         </div>
+                }
+          
+     @if (!string.IsNullOrEmpty(resultado.InnerException))
+       {
+      <div class="rz-mt-2">
+          <small><strong>Excepción Interna:</strong> @resultado.InnerException</small>
+      </div>
+ }
+          </RadzenAlert>
+
+      @if (resultado.Suggestions?.Any() == true)
+     {
+     <RadzenAlert AlertStyle="AlertStyle.Info" Variant="Variant.Flat" class="rz-mt-3">
+       <strong>?? Sugerencias:</strong>
+        <ul class="rz-m-2">
+     @foreach (var suggestion in resultado.Suggestions)
+         {
+           <li style="margin: 0.5rem 0;">@suggestion</li>
+   }
+        </ul>
+      </RadzenAlert>
+ }
+
+    @if (resultado.SmtpConfig != null)
+         {
+         <RadzenText TextStyle="TextStyle.Subtitle2" class="rz-mt-3">
+       <strong>Configuración intentada:</strong>
+              </RadzenText>
+    <ul class="rz-m-0" style="font-size: 0.875rem;">
+             <li>Host: @resultado.SmtpConfig.Host</li>
+        <li>Port: @resultado.SmtpConfig.Port</li>
+        <li>SSL: @resultado.SmtpConfig.Ssl</li>
+      <li>User: @resultado.SmtpConfig.User</li>
+        </ul>
+          }
+        }
+
+       <RadzenButton Text="Ver Logs Detallados" 
+    Icon="description" 
+      ButtonStyle="ButtonStyle.Light" 
+     Size="ButtonSize.Small"
+       Click="@(() => Navigation.NavigateTo("/diagnostic/logs/view", true))" />
+       </RadzenStack>
+            </RadzenCard>
+}
+
+            <!-- Info adicional -->
+     @if (resultado == null && smtpConfig == null)
+            {
+      <RadzenCard>
+           <RadzenStack Gap="1rem" class="rz-text-align-center rz-p-4">
+       <RadzenIcon Icon="info" Style="font-size: 48px; color: var(--rz-info);" />
+        <RadzenText TextStyle="TextStyle.H6">
+       ¿Cómo usar esta herramienta?
+  </RadzenText>
+ <RadzenText TextStyle="TextStyle.Body2" class="rz-color-secondary">
+        1. Haz clic en "Ver Configuración SMTP" para verificar la config<br />
+          2. Ingresa un email de destino<br />
+ 3. Selecciona el tipo de prueba<br />
+       4. Haz clic en "Enviar Email de Prueba"<br />
+    5. Revisa los resultados y logs
+             </RadzenText>
+ </RadzenStack>
+ </RadzenCard>
+            }
+        </RadzenColumn>
+    </RadzenRow>
+}
+
+@code {
+    private bool isLoading = false;
+    private string loadingMessage = "";
+  
+    private TestEmailRequest request = new TestEmailRequest
+    {
+        To = "",
+        TestType = "simple"
+    };
+
+    private List<string> testTypes = new()
+    {
+        "simple",
+        "password_reset",
+        "new_user"
+    };
+
+    private SmtpConfigResponse? smtpConfig;
+    private EmailTestResult? resultado;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await VerConfiguracion();
+    }
+
+    private void OnTestTypeChanged()
+    {
+        if (request.TestType != "simple")
+        {
+       request.Body = null;
+      }
+        request.Subject = null;
+    }
+
+    private string GetTestTypeTitle(string type)
+  {
+        return type switch
+        {
+     "simple" => "Email Simple",
+            "password_reset" => "Reseteo de Contraseña",
+          "new_user" => "Nuevo Usuario",
+            _ => "Desconocido"
+        };
+    }
+
+    private string GetTestTypeDescription(string type)
+ {
+        return type switch
+      {
+        "simple" => "Envía un email de prueba básico con el contenido que especifiques.",
+       "password_reset" => "Usa la plantilla de reseteo de contraseña (PasswordReset_Request.html).",
+    "new_user" => "Usa la plantilla de nuevo usuario (NewUser_SetPassword.html).",
+        _ => ""
+        };
+    }
+
+    private async Task VerConfiguracion()
+    {
+  isLoading = true;
+        loadingMessage = "Obteniendo configuración SMTP...";
+        
+        try
+        {
+  var client = HttpClientFactory.CreateClient();
+        var apiUrl = Configuration["Path_api_dev"] ?? Configuration["Path_api_prod"];
+            
+ var token = await TokenService.GetTokenAsync();
+    if (!string.IsNullOrEmpty(token))
+            {
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            }
+
+        var response = await client.GetAsync($"{apiUrl}diagnostic/smtp-config");
+    
+    if (response.IsSuccessStatusCode)
+          {
+         var json = await response.Content.ReadAsStringAsync();
+        smtpConfig = JsonSerializer.Deserialize<SmtpConfigResponse>(json, new JsonSerializerOptions
+       {
+PropertyNameCaseInsensitive = true
+         });
+
+                if (smtpConfig?.IsConfigured == false)
+                {
+    NotificationService.Notify(NotificationSeverity.Warning, 
+ "Configuración Incompleta", 
+  "La configuración SMTP no está completa. Revisa los detalles.");
+     }
+            }
+          else
+            {
+          NotificationService.Notify(NotificationSeverity.Error, 
+    "Error", 
+         $"No se pudo obtener la configuración: {response.StatusCode}");
+            }
+        }
+        catch (Exception ex)
+        {
+  NotificationService.Notify(NotificationSeverity.Error, 
+                "Error", 
+    $"Error al obtener configuración: {ex.Message}");
+        }
+  finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task EnviarEmail()
+    {
+  if (string.IsNullOrWhiteSpace(request.To))
+    {
+            NotificationService.Notify(NotificationSeverity.Warning, 
+       "Campo Requerido", 
+   "Debes ingresar un email destinatario.");
+    return;
+     }
+
+    isLoading = true;
+        loadingMessage = "Enviando email de prueba...";
+        resultado = null;
+     
+        try
+        {
+       var client = HttpClientFactory.CreateClient();
+       var apiUrl = Configuration["Path_api_dev"] ?? Configuration["Path_api_prod"];
+        
+    var token = await TokenService.GetTokenAsync();
+        if (!string.IsNullOrEmpty(token))
+{
+         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            }
+
+            var response = await client.PostAsJsonAsync($"{apiUrl}diagnostic/testmail", request);
+         var json = await response.Content.ReadAsStringAsync();
+ 
+      resultado = JsonSerializer.Deserialize<EmailTestResult>(json, new JsonSerializerOptions
+            {
+        PropertyNameCaseInsensitive = true
+         });
+
+    if (resultado?.Success == true)
+        {
+   NotificationService.Notify(NotificationSeverity.Success, 
+        "Email Enviado", 
+    $"El email de prueba fue enviado exitosamente a {request.To}");
+            }
+  else
+            {
+   NotificationService.Notify(NotificationSeverity.Error, 
+ "Error al Enviar", 
+  "Revisa los detalles del error en el panel de resultados.");
+            }
+        }
+  catch (Exception ex)
+        {
+         NotificationService.Notify(NotificationSeverity.Error, 
+        "Error", 
+     $"Error al enviar email: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+  }
+
+    private class TestEmailRequest
+    {
+        public string To { get; set; } = string.Empty;
+        public string? Subject { get; set; }
+ public string? Body { get; set; }
+        public string TestType { get; set; } = "simple";
+    }
+
+    private class SmtpConfigResponse
+    {
+ public bool Success { get; set; }
+        public bool IsConfigured { get; set; }
+        public SmtpConfigDetails Config { get; set; } = new();
+   public List<string> Warnings { get; set; } = new();
+    }
+
+    private class SmtpConfigDetails
+    {
+        public string Host { get; set; } = string.Empty;
+        public string Port { get; set; } = string.Empty;
+        public string User { get; set; } = string.Empty;
+public bool PasswordConfigured { get; set; }
+        public string EnableSsl { get; set; } = string.Empty;
+        public string From { get; set; } = string.Empty;
+    }
+
+    private class EmailTestResult
+    {
+        public bool Success { get; set; }
+        public string? Message { get; set; }
+        public string? Error { get; set; }
+        public DateTime? Timestamp { get; set; }
+  public EmailTestDetails? Details { get; set; }
+      public string? SmtpStatusCode { get; set; }
+public string? InnerException { get; set; }
+        public List<string>? Suggestions { get; set; }
+  public SmtpConfigUsed? SmtpConfig { get; set; }
+    }
+
+    private class EmailTestDetails
+    {
+        public string? To { get; set; }
+        public string? Subject { get; set; }
+public string? TestType { get; set; }
+        public SmtpConfigUsed? SmtpConfig { get; set; }
+    }
+
+    private class SmtpConfigUsed
+    {
+        public string? Host { get; set; }
+        public string? Port { get; set; }
+        public string? Ssl { get; set; }
+        public string? User { get; set; }
+    public string? From { get; set; }
+    }
+}

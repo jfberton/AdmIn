@@ -19,6 +19,6 @@ namespace AdmIn.Business.Servicios
         Task<DTO<string>> GenerarTokenYGuardar(int? usuarioId, int? personaId, int expiryHours =24, string purpose = "SetPassword");
         Task<DTO<bool>> ResetPasswordByToken(string token, string nuevaPassword);
         Task<DTO<bool>> GenerateAndSendPasswordResetEmail(int usuarioId);
-        Task<DTO<object>> Obtener_info_token(string token);
+        Task<DTO<TokenInfo>> Obtener_info_token(string token);
     }
 }
